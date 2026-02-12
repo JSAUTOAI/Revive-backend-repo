@@ -8,6 +8,9 @@ const express = require('express');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
 
+// Import estimation services
+const { queueEstimation } = require('./services/estimationJob');
+
 // Create Express app
 const app = express();
 
@@ -170,6 +173,10 @@ app.post('/api/quote', async (req, res) => {
     console.log('Services:', servicesArray.join(', ') || 'none');
     console.log('Time:', new Date().toISOString());
     console.log('-------------------------');
+
+    // Trigger async estimation job (non-blocking)
+    const savedQuote = data[0];
+    queueEstimation(supabase, savedQuote.id, savedQuote);
 
     // Return success (same format as before)
     res.json({
