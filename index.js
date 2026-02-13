@@ -11,6 +11,10 @@ const { createClient } = require('@supabase/supabase-js');
 // Import estimation services
 const { queueEstimation } = require('./services/estimationJob');
 
+// Import admin middleware and routes
+const { requireAdminAuth } = require('./middleware/auth');
+const adminRoutes = require('./routes/admin');
+
 // Create Express app
 const app = express();
 
@@ -23,15 +27,18 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// Pass Supabase client to admin routes
+adminRoutes.setSupabaseClient(supabase);
+
 // =======================
 // MIDDLEWARE
 // =======================
 
-// CORS - Allow Aura form to submit
+// CORS - Allow Aura form to submit and admin API access
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
@@ -192,7 +199,23 @@ app.post('/api/quote', async (req, res) => {
     });
   }
 });
- 
+
+// =======================
+// ADMIN ROUTES (Protected)
+// =======================
+
+// List quotes with filtering
+app.get('/admin/quotes', requireAdminAuth, adminRoutes.listQuotes);
+
+// Get single quote
+app.get('/admin/quotes/:id', requireAdminAuth, adminRoutes.getQuote);
+
+// Update quote status
+app.patch('/admin/quotes/:id/status', requireAdminAuth, adminRoutes.updateQuoteStatus);
+
+// Update admin notes
+app.patch('/admin/quotes/:id/notes', requireAdminAuth, adminRoutes.updateQuoteNotes);
+
 // =======================
 // ERROR HANDLING
 // =======================
