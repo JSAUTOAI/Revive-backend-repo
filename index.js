@@ -11,6 +11,9 @@ const { createClient } = require('@supabase/supabase-js');
 // Import estimation services
 const { queueEstimation } = require('./services/estimationJob');
 
+// Import email service
+const { sendConfirmationEmail } = require('./services/emailer');
+
 // Import admin middleware and routes
 const { requireAdminAuth } = require('./middleware/auth');
 const adminRoutes = require('./routes/admin');
@@ -184,6 +187,12 @@ app.post('/api/quote', async (req, res) => {
     // Trigger async estimation job (non-blocking)
     const savedQuote = data[0];
     queueEstimation(supabase, savedQuote.id, savedQuote);
+
+    // Send confirmation email (non-blocking, fire-and-forget)
+    sendConfirmationEmail(savedQuote).catch(err => {
+      console.error('[Quote Route] Failed to send confirmation email:', err);
+      // Don't fail the request if email fails - quote is already saved
+    });
 
     // Return success (same format as before)
     res.json({

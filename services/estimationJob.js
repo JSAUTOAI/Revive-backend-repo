@@ -8,6 +8,7 @@
 
 const { calculateEstimate, ESTIMATION_VERSION } = require('./estimator');
 const { calculateLeadScore, shouldAlertAdmin } = require('./scorer');
+const { sendEstimateEmail, sendAdminAlert } = require('./emailer');
 
 /**
  * Process estimation for a quote
@@ -33,7 +34,7 @@ async function processEstimation(supabase, quoteId, quote) {
     }
 
     // Step 3: Update database with results
-    const { error } = await supabase
+    const { data: updatedQuote, error } = await supabase
       .from('quotes')
       .update({
         estimated_value_min: estimate.min,
@@ -44,7 +45,9 @@ async function processEstimation(supabase, quoteId, quote) {
         qualification_status: scoring.qualification,
         conversion_likelihood: scoring.conversionLikelihood
       })
-      .eq('id', quoteId);
+      .eq('id', quoteId)
+      .select()
+      .single();
 
     if (error) {
       console.error(`[Estimation Job] Database update failed:`, error);
@@ -53,10 +56,19 @@ async function processEstimation(supabase, quoteId, quote) {
 
     console.log(`[Estimation Job] ✅ Complete for quote ${quoteId}`);
 
-    // Step 4: Check if should alert admin (for Phase 5 - email automation)
+    // Step 4: Send estimate email to customer (non-blocking)
+    sendEstimateEmail(updatedQuote).catch(err => {
+      console.error(`[Estimation Job] Failed to send estimate email:`, err);
+    });
+
+    // Step 5: Check if should alert admin
     if (shouldAlertAdmin(scoring.score, scoring.qualification)) {
       console.log(`[Estimation Job] 🔥 HOT LEAD DETECTED - Score: ${scoring.score}, Qualification: ${scoring.qualification}`);
-      // TODO Phase 5: Send admin alert email
+
+      // Send admin alert email (non-blocking)
+      sendAdminAlert(updatedQuote).catch(err => {
+        console.error(`[Estimation Job] Failed to send admin alert:`, err);
+      });
     }
 
     return {
