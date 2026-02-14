@@ -9,6 +9,7 @@
 const { calculateEstimate, ESTIMATION_VERSION } = require('./estimator');
 const { calculateLeadScore, shouldAlertAdmin } = require('./scorer');
 const { sendEstimateEmail, sendAdminAlert } = require('./emailer');
+const { sendEstimateWhatsApp, sendAdminAlertWhatsApp } = require('./whatsapp');
 
 /**
  * Process estimation for a quote
@@ -56,19 +57,41 @@ async function processEstimation(supabase, quoteId, quote) {
 
     console.log(`[Estimation Job] ✅ Complete for quote ${quoteId}`);
 
-    // Step 4: Send estimate email to customer (non-blocking)
-    sendEstimateEmail(updatedQuote).catch(err => {
-      console.error(`[Estimation Job] Failed to send estimate email:`, err);
-    });
+    // Step 4: Send estimate to customer based on preferred contact method
+    const preferredContact = updatedQuote.preferred_contact?.toLowerCase();
+
+    if (preferredContact === 'whatsapp' || preferredContact === 'phone') {
+      // Send via WhatsApp
+      sendEstimateWhatsApp(updatedQuote).catch(err => {
+        console.error(`[Estimation Job] Failed to send estimate WhatsApp:`, err);
+        // Fallback to email if WhatsApp fails
+        console.log(`[Estimation Job] Falling back to email...`);
+        sendEstimateEmail(updatedQuote).catch(emailErr => {
+          console.error(`[Estimation Job] Email fallback also failed:`, emailErr);
+        });
+      });
+    } else {
+      // Send via email (default)
+      sendEstimateEmail(updatedQuote).catch(err => {
+        console.error(`[Estimation Job] Failed to send estimate email:`, err);
+      });
+    }
 
     // Step 5: Check if should alert admin
     if (shouldAlertAdmin(scoring.score, scoring.qualification)) {
       console.log(`[Estimation Job] 🔥 HOT LEAD DETECTED - Score: ${scoring.score}, Qualification: ${scoring.qualification}`);
 
-      // Send admin alert email (non-blocking)
+      // Send admin alert via email
       sendAdminAlert(updatedQuote).catch(err => {
-        console.error(`[Estimation Job] Failed to send admin alert:`, err);
+        console.error(`[Estimation Job] Failed to send admin alert email:`, err);
       });
+
+      // Also send admin alert via WhatsApp if ADMIN_PHONE is set
+      if (process.env.ADMIN_PHONE) {
+        sendAdminAlertWhatsApp(updatedQuote).catch(err => {
+          console.error(`[Estimation Job] Failed to send admin alert WhatsApp:`, err);
+        });
+      }
     }
 
     return {

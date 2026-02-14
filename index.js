@@ -14,6 +14,9 @@ const { queueEstimation } = require('./services/estimationJob');
 // Import email service
 const { sendConfirmationEmail } = require('./services/emailer');
 
+// Import WhatsApp service
+const { sendConfirmationWhatsApp } = require('./services/whatsapp');
+
 // Import admin middleware and routes
 const { requireAdminAuth } = require('./middleware/auth');
 const adminRoutes = require('./routes/admin');
@@ -188,11 +191,24 @@ app.post('/api/quote', async (req, res) => {
     const savedQuote = data[0];
     queueEstimation(supabase, savedQuote.id, savedQuote);
 
-    // Send confirmation email (non-blocking, fire-and-forget)
-    sendConfirmationEmail(savedQuote).catch(err => {
-      console.error('[Quote Route] Failed to send confirmation email:', err);
-      // Don't fail the request if email fails - quote is already saved
-    });
+    // Send confirmation based on preferred contact method
+    const contactMethod = savedQuote.preferred_contact?.toLowerCase();
+
+    if (contactMethod === 'whatsapp' || contactMethod === 'phone') {
+      // Send WhatsApp confirmation
+      sendConfirmationWhatsApp(savedQuote).catch(err => {
+        console.error('[Quote Route] Failed to send confirmation WhatsApp:', err);
+        // Fallback to email if WhatsApp fails
+        sendConfirmationEmail(savedQuote).catch(emailErr => {
+          console.error('[Quote Route] Email fallback also failed:', emailErr);
+        });
+      });
+    } else {
+      // Send email confirmation (default)
+      sendConfirmationEmail(savedQuote).catch(err => {
+        console.error('[Quote Route] Failed to send confirmation email:', err);
+      });
+    }
 
     // Return success (same format as before)
     res.json({
