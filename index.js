@@ -17,6 +17,9 @@ const { sendConfirmationEmail } = require('./services/emailer');
 // Import WhatsApp service
 const { sendConfirmationWhatsApp } = require('./services/whatsapp');
 
+// Import Google Sheets service
+const { syncQuoteToSheets } = require('./services/googleSheets');
+
 // Import admin notification functions
 const { sendAdminAlert } = require('./services/emailer');
 const { sendAdminAlertWhatsApp } = require('./services/whatsapp');
@@ -191,8 +194,15 @@ app.post('/api/quote', async (req, res) => {
     console.log('Time:', new Date().toISOString());
     console.log('-------------------------');
 
-    // Trigger async estimation job (non-blocking)
     const savedQuote = data[0];
+
+    // Sync to Google Sheets (non-blocking)
+    syncQuoteToSheets(savedQuote).catch(err => {
+      console.error('[Quote Route] Failed to sync to Google Sheets:', err);
+      // Continue even if Sheets sync fails - don't block customer workflow
+    });
+
+    // Trigger async estimation job (non-blocking)
     queueEstimation(supabase, savedQuote.id, savedQuote);
 
     // Send confirmation based on preferred contact method
@@ -690,8 +700,19 @@ app.post('/confirm-acceptance/:quoteId', async (req, res) => {
 
     console.log(`[Accept Route] ✅ Quote ${quoteId} accepted by ${quote.name}`);
 
+    const acceptedAt = new Date().toISOString();
+
+    // Update Google Sheets with acceptance status (non-blocking)
+    const { updateQuoteInSheets } = require('./services/googleSheets');
+    updateQuoteInSheets(quoteId, {
+      customer_accepted_estimate: true,
+      customer_accepted_at: acceptedAt
+    }).catch(err => {
+      console.error('[Accept Route] Failed to update Google Sheets:', err);
+    });
+
     // Send admin notification (email)
-    const updatedQuote = { ...quote, customer_accepted_estimate: true, customer_accepted_at: new Date().toISOString() };
+    const updatedQuote = { ...quote, customer_accepted_estimate: true, customer_accepted_at: acceptedAt };
     sendAdminAlert(updatedQuote, true).catch(err => {
       console.error('[Accept Route] Failed to send admin alert email:', err);
     });

@@ -10,6 +10,7 @@ const { calculateEstimate, ESTIMATION_VERSION } = require('./estimator');
 const { calculateLeadScore, shouldAlertAdmin } = require('./scorer');
 const { sendEstimateEmail, sendAdminAlert } = require('./emailer');
 const { sendEstimateWhatsApp, sendAdminAlertWhatsApp } = require('./whatsapp');
+const { updateQuoteInSheets } = require('./googleSheets');
 
 /**
  * Process estimation for a quote
@@ -56,6 +57,17 @@ async function processEstimation(supabase, quoteId, quote) {
     }
 
     console.log(`[Estimation Job] ✅ Complete for quote ${quoteId}`);
+
+    // Update Google Sheets with estimation results (non-blocking)
+    updateQuoteInSheets(quoteId, {
+      estimated_value_min: estimate.min,
+      estimated_value_max: estimate.max,
+      lead_score: scoring.score,
+      qualification_status: scoring.qualification
+    }).catch(err => {
+      console.error(`[Estimation Job] Failed to update Google Sheets:`, err);
+      // Continue even if Sheets update fails
+    });
 
     // Step 4: Send estimate to customer based on preferred contact method
     const preferredContact = updatedQuote.preferred_contact?.toLowerCase();

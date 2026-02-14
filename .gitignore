@@ -1,6 +1,9 @@
 # Environment variables (NEVER commit these)
 .env
 
+# Google Service Account credentials (NEVER commit these)
+credentials/
+
 # Dependencies
 node_modules/
 
