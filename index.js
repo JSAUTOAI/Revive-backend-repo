@@ -17,6 +17,10 @@ const { sendConfirmationEmail } = require('./services/emailer');
 // Import WhatsApp service
 const { sendConfirmationWhatsApp } = require('./services/whatsapp');
 
+// Import admin notification functions
+const { sendAdminAlert } = require('./services/emailer');
+const { sendAdminAlertWhatsApp } = require('./services/whatsapp');
+
 // Import admin middleware and routes
 const { requireAdminAuth } = require('./middleware/auth');
 const adminRoutes = require('./routes/admin');
@@ -222,6 +226,368 @@ app.post('/api/quote', async (req, res) => {
       success: false,
       error: 'An unexpected error occurred'
     });
+  }
+});
+
+// =======================
+// CUSTOMER ACCEPTANCE ROUTE
+// =======================
+
+// Accept estimate route - Customer clicks link from email/WhatsApp
+app.get('/accept-estimate/:quoteId', async (req, res) => {
+  try {
+    const { quoteId } = req.params;
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(quoteId)) {
+      return res.status(400).send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Invalid Link - Revive Exterior Cleaning</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              margin: 0;
+              padding: 20px;
+              min-height: 100vh;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+            .container {
+              background: white;
+              border-radius: 16px;
+              box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+              padding: 40px;
+              max-width: 500px;
+              text-align: center;
+            }
+            h1 { color: #dc2626; margin-bottom: 16px; }
+            p { color: #64748b; line-height: 1.6; margin-bottom: 24px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>⚠️ Invalid Link</h1>
+            <p>This acceptance link appears to be invalid or incomplete. Please use the link provided in your quote email or WhatsApp message.</p>
+            <p>If you continue to have issues, please contact us directly.</p>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+
+    // Fetch quote from database
+    const { data: quote, error } = await supabase
+      .from('quotes')
+      .select('*')
+      .eq('id', quoteId)
+      .single();
+
+    if (error || !quote) {
+      console.error('[Accept Route] Quote not found:', quoteId, error);
+      return res.status(404).send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Quote Not Found - Revive Exterior Cleaning</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              margin: 0;
+              padding: 20px;
+              min-height: 100vh;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+            .container {
+              background: white;
+              border-radius: 16px;
+              box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+              padding: 40px;
+              max-width: 500px;
+              text-align: center;
+            }
+            h1 { color: #dc2626; margin-bottom: 16px; }
+            p { color: #64748b; line-height: 1.6; margin-bottom: 24px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>❌ Quote Not Found</h1>
+            <p>We couldn't find this quote in our system. The link may have expired or the quote may have already been processed.</p>
+            <p>Please contact us directly if you need assistance.</p>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+
+    // Check if already accepted
+    if (quote.customer_accepted_estimate) {
+      console.log(`[Accept Route] Quote ${quoteId} already accepted at ${quote.customer_accepted_at}`);
+      return res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Already Accepted - Revive Exterior Cleaning</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+              background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+              margin: 0;
+              padding: 20px;
+              min-height: 100vh;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+            .container {
+              background: white;
+              border-radius: 16px;
+              box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+              padding: 40px;
+              max-width: 500px;
+              text-align: center;
+            }
+            .checkmark {
+              width: 80px;
+              height: 80px;
+              border-radius: 50%;
+              background: #10b981;
+              margin: 0 auto 24px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-size: 48px;
+            }
+            h1 { color: #065f46; margin-bottom: 16px; }
+            p { color: #64748b; line-height: 1.6; margin-bottom: 16px; }
+            .info { background: #f0fdf4; padding: 16px; border-radius: 8px; border-left: 4px solid #10b981; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="checkmark">✓</div>
+            <h1>Quote Already Accepted</h1>
+            <p>You've already accepted this quote. We've noted your interest and will be in touch soon!</p>
+            <div class="info">
+              <p style="margin: 0; font-size: 14px;"><strong>What happens next?</strong><br>
+              We'll contact you at your preferred time to discuss the job in detail and provide a precise, finalised quote.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+
+    // Update database - mark as accepted
+    const { error: updateError } = await supabase
+      .from('quotes')
+      .update({
+        customer_accepted_estimate: true,
+        customer_accepted_at: new Date().toISOString(),
+        customer_response: 'accepted'
+      })
+      .eq('id', quoteId);
+
+    if (updateError) {
+      console.error('[Accept Route] Failed to update quote:', updateError);
+      return res.status(500).send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Error - Revive Exterior Cleaning</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              margin: 0;
+              padding: 20px;
+              min-height: 100vh;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+            .container {
+              background: white;
+              border-radius: 16px;
+              box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+              padding: 40px;
+              max-width: 500px;
+              text-align: center;
+            }
+            h1 { color: #dc2626; margin-bottom: 16px; }
+            p { color: #64748b; line-height: 1.6; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>⚠️ Something Went Wrong</h1>
+            <p>We encountered an error recording your acceptance. Please try again or contact us directly.</p>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+
+    console.log(`[Accept Route] ✅ Quote ${quoteId} accepted by ${quote.name}`);
+
+    // Send admin notification (email)
+    const updatedQuote = { ...quote, customer_accepted_estimate: true, customer_accepted_at: new Date().toISOString() };
+    sendAdminAlert(updatedQuote, true).catch(err => {
+      console.error('[Accept Route] Failed to send admin alert email:', err);
+    });
+
+    // Send admin notification (WhatsApp if configured)
+    if (process.env.ADMIN_PHONE) {
+      sendAdminAlertWhatsApp(updatedQuote, true).catch(err => {
+        console.error('[Accept Route] Failed to send admin alert WhatsApp:', err);
+      });
+    }
+
+    // Success page
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Quote Accepted - Revive Exterior Cleaning</title>
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 500px;
+            text-align: center;
+          }
+          .checkmark {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: #10b981;
+            margin: 0 auto 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            animation: scaleIn 0.5s ease-out;
+          }
+          @keyframes scaleIn {
+            from { transform: scale(0); }
+            to { transform: scale(1); }
+          }
+          h1 {
+            color: #065f46;
+            margin-bottom: 16px;
+            font-size: 28px;
+          }
+          p {
+            color: #64748b;
+            line-height: 1.6;
+            margin-bottom: 16px;
+          }
+          .estimate {
+            background: #f0fdf4;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 24px 0;
+            border-left: 4px solid #10b981;
+          }
+          .estimate-amount {
+            font-size: 32px;
+            font-weight: bold;
+            color: #065f46;
+            margin: 8px 0;
+          }
+          .disclaimer {
+            background: #f8fafc;
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #64748b;
+            line-height: 1.5;
+            margin-top: 24px;
+          }
+          .services {
+            text-align: left;
+            margin: 16px 0;
+          }
+          .service-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #e2e8f0;
+          }
+          .service-item:last-child {
+            border-bottom: none;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="checkmark">✓</div>
+          <h1>Thank You, ${quote.name}!</h1>
+          <p>We've received your acceptance of the estimated quote.</p>
+
+          <div class="estimate">
+            <p style="margin: 0 0 8px 0; color: #065f46; font-weight: 600;">Estimated Price Range</p>
+            <div class="estimate-amount">£${quote.estimated_value_min} - £${quote.estimated_value_max}</div>
+            <div class="services">
+              ${quote.services.map(s => `<div class="service-item">✓ ${s.charAt(0).toUpperCase() + s.slice(1)} Cleaning</div>`).join('')}
+            </div>
+          </div>
+
+          <p><strong>What happens next?</strong></p>
+          <p>Our team will contact you ${quote.best_time ? `at your preferred time (${quote.best_time})` : 'shortly'} via ${quote.preferred_contact || 'email'} to discuss your requirements in detail and arrange a convenient time for the service.</p>
+
+          <div class="disclaimer">
+            <strong>Please note:</strong> The price range provided is an estimate based on the information you've supplied. The final quote will be confirmed following a detailed discussion of your specific requirements and may be subject to adjustment based on site conditions, accessibility, and the full scope of work required.
+          </div>
+        </div>
+      </body>
+      </html>
+    `);
+
+  } catch (err) {
+    console.error('[Accept Route] Unexpected error:', err);
+    res.status(500).send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Error - Revive Exterior Cleaning</title>
+      </head>
+      <body>
+        <h1>An unexpected error occurred</h1>
+        <p>Please contact us directly.</p>
+      </body>
+      </html>
+    `);
   }
 });
 

@@ -83,8 +83,12 @@ ${quote.services.map(s => `• ${capitalizeService(s)}`).join('\n')}
 
 ℹ️ *Please note:* This is an estimated range. Final pricing will be confirmed after we assess your property in person.
 
-🗓️ *Ready to book?*
-Reply to this message or call us to schedule your service!
+✅ *Happy with this price range?*
+Tap here to accept: https://revive-backend-repo-production.up.railway.app/accept-estimate/${quote.id}
+
+We'll contact you ${quote.best_time ? `at your preferred time (${quote.best_time})` : 'shortly'} to discuss the job in detail and provide a final quotation.
+
+💬 Have questions? Just reply to this message!
 
 - The Revive Team
 Professional Property Care`
@@ -103,27 +107,40 @@ Professional Property Care`
  * Send admin alert via WhatsApp for high-value leads
  *
  * @param {Object} quote - Quote data with lead scoring
+ * @param {boolean} isAcceptance - True if customer just accepted the estimate
  * @returns {Promise<Object>} - Twilio API response
  */
-async function sendAdminAlertWhatsApp(quote) {
+async function sendAdminAlertWhatsApp(quote, isAcceptance = false) {
   try {
-    // Only send if lead score is high (80+) or high estimated value
-    if (quote.lead_score < 80 && quote.estimated_value_max < 500) {
-      console.log('[WhatsApp] Skipping admin alert - lead score too low');
-      return { success: true, skipped: true };
+    // Skip threshold check if this is an acceptance notification
+    if (!isAcceptance) {
+      // Only send if lead score is high (80+) or high estimated value
+      if (quote.lead_score < 80 && quote.estimated_value_max < 500) {
+        console.log('[WhatsApp] Skipping admin alert - lead score too low');
+        return { success: true, skipped: true };
+      }
     }
 
-    console.log(`[WhatsApp] Sending admin alert for high-value lead`);
+    const alertType = isAcceptance ? 'customer acceptance' : 'high-value lead';
+    console.log(`[WhatsApp] Sending admin alert for ${alertType}`);
 
     // Get admin phone from env or use a default
     const adminPhone = process.env.ADMIN_PHONE || quote.phone; // Fallback for testing
     const toWhatsApp = formatPhoneNumber(adminPhone);
 
+    const header = isAcceptance
+      ? `🎉 *CUSTOMER ACCEPTED QUOTE!*`
+      : `🔥 *HOT LEAD ALERT*`;
+
+    const acceptanceInfo = isAcceptance
+      ? `\n⚡ *ACTION REQUIRED:* Contact ${quote.name} ASAP to schedule!\n`
+      : '';
+
     const message = await client.messages.create({
       from: FROM_WHATSAPP,
       to: toWhatsApp,
-      body: `🔥 *HOT LEAD ALERT*
-
+      body: `${header}
+${acceptanceInfo}
 Lead Score: ${quote.lead_score}/100
 Qualification: ${quote.qualification_status.toUpperCase()}
 Estimated Value: £${quote.estimated_value_min}-£${quote.estimated_value_max}
@@ -140,7 +157,7 @@ ${quote.services.map(s => `• ${capitalizeService(s)}`).join('\n')}
 *Preferred Contact:* ${quote.preferred_contact || 'Email'}
 ${quote.best_time ? `*Best Time:* ${quote.best_time}` : ''}
 
-Contact them ASAP! 🚀`
+${isAcceptance ? '🚀 Customer is ready to proceed!' : 'Contact them ASAP! 🚀'}`
     });
 
     console.log(`[WhatsApp] Admin alert sent successfully: ${message.sid}`);

@@ -139,8 +139,19 @@ async function sendEstimateEmail(quote) {
             </div>
 
             <div style="text-align: center; margin: 30px 0;">
-              <p style="font-size: 16px; margin-bottom: 15px;"><strong>Ready to book?</strong></p>
-              <p style="font-size: 14px; color: #666;">Reply to this email or give us a call to schedule your service.</p>
+              <p style="font-size: 18px; margin-bottom: 15px;"><strong>Happy with this price range?</strong></p>
+              <a href="https://revive-backend-repo-production.up.railway.app/accept-estimate/${quote.id}"
+                 style="display: inline-block; background-color: #84cc16; color: white; padding: 16px 40px; text-decoration: none; border-radius: 8px; font-size: 18px; font-weight: bold; margin: 10px 0;">
+                ✓ Yes, Accept This Quote
+              </a>
+              <p style="font-size: 13px; color: #888; margin-top: 15px; line-height: 1.5;">
+                By accepting, you confirm your interest in proceeding. We'll contact you ${quote.best_time ? `at your preferred time (${quote.best_time})` : 'shortly'} via ${quote.preferred_contact || 'email'} to discuss the job in detail and provide a final, accurate quotation.
+              </p>
+            </div>
+
+            <div style="text-align: center; margin: 20px 0; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+              <p style="font-size: 14px; color: #666; margin-bottom: 8px;">Have questions first?</p>
+              <p style="font-size: 14px; color: #666;">Reply to this email or give us a call.</p>
             </div>
 
             <p style="font-size: 14px; color: #666;">
@@ -175,24 +186,33 @@ async function sendEstimateEmail(quote) {
  * Send admin alert for high-value or hot leads
  *
  * @param {Object} quote - Quote data with lead scoring
+ * @param {boolean} isAcceptance - True if customer just accepted the estimate
  * @returns {Promise<Object>} - Resend API response
  */
-async function sendAdminAlert(quote) {
+async function sendAdminAlert(quote, isAcceptance = false) {
   try {
-    // Only send if lead score is high (80+) or high estimated value
-    if (quote.lead_score < 80 && quote.estimated_value_max < 500) {
-      console.log('[Email] Skipping admin alert - lead score too low');
-      return { success: true, skipped: true };
+    // Skip threshold check if this is an acceptance notification
+    if (!isAcceptance) {
+      // Only send if lead score is high (80+) or high estimated value
+      if (quote.lead_score < 80 && quote.estimated_value_max < 500) {
+        console.log('[Email] Skipping admin alert - lead score too low');
+        return { success: true, skipped: true };
+      }
     }
 
-    console.log(`[Email] Sending admin alert for high-value lead`);
+    const alertType = isAcceptance ? 'Customer Accepted Quote' : 'High-Value Lead';
+    console.log(`[Email] Sending admin alert for ${alertType.toLowerCase()}`);
 
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@revive.com'; // TODO: Set in .env
+
+    const subject = isAcceptance
+      ? `🎉 Customer Accepted Quote - ${quote.name} (£${quote.estimated_value_max})`
+      : `🔥 Hot Lead Alert - £${quote.estimated_value_max} potential`;
 
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: adminEmail,
-      subject: `🔥 Hot Lead Alert - £${quote.estimated_value_max} potential`,
+      subject: subject,
       html: `
         <!DOCTYPE html>
         <html>
@@ -200,12 +220,22 @@ async function sendAdminAlert(quote) {
           <meta charset="utf-8">
         </head>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; padding: 20px;">
-          <h2 style="color: #84cc16;">New High-Value Lead</h2>
+          ${isAcceptance ? `
+          <div style="background-color: #10b981; color: white; padding: 20px; border-radius: 8px; text-align: center; margin-bottom: 20px;">
+            <h2 style="margin: 0; font-size: 24px;">🎉 Customer Accepted Quote!</h2>
+          </div>
+          <p style="font-size: 16px; color: #065f46; font-weight: bold;">
+            ${quote.name} just accepted the estimated quote. Contact them ASAP!
+          </p>
+          ` : `
+          <h2 style="color: #84cc16;">🔥 New High-Value Lead</h2>
+          `}
 
           <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
             <p><strong>Lead Score:</strong> ${quote.lead_score}/100</p>
             <p><strong>Estimated Value:</strong> £${quote.estimated_value_min} - £${quote.estimated_value_max}</p>
             <p><strong>Qualification:</strong> ${quote.qualification_status}</p>
+            ${isAcceptance ? `<p><strong>Accepted At:</strong> ${new Date(quote.customer_accepted_at).toLocaleString('en-GB')}</p>` : ''}
           </div>
 
           <h3>Customer Details</h3>
@@ -216,7 +246,16 @@ async function sendAdminAlert(quote) {
             <li><strong>Address:</strong> ${quote.address_line1}, ${quote.postcode}</li>
             <li><strong>Services:</strong> ${quote.services.join(', ')}</li>
             <li><strong>Preferred Contact:</strong> ${quote.preferred_contact || 'Email'}</li>
+            ${quote.best_time ? `<li><strong>Best Time to Contact:</strong> ${quote.best_time}</li>` : ''}
           </ul>
+
+          ${isAcceptance ? `
+          <div style="background-color: #d1fae5; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981; margin: 20px 0;">
+            <p style="margin: 0; font-weight: bold; color: #065f46;">
+              ⚡ Action Required: Contact ${quote.name} to schedule and finalize the quote!
+            </p>
+          </div>
+          ` : ''}
 
           <p style="margin-top: 20px;">
             <a href="https://revive-backend-repo-production.up.railway.app/admin/quotes/${quote.id}" style="background-color: #84cc16; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">View in Admin</a>
