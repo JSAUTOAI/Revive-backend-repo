@@ -1,0 +1,482 @@
+<html lang="en" class="scroll-smooth antialiased"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact Us – Revive Exterior Cleaning</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Space+Grotesk:wght@300;400;500;600&amp;display=swap" rel="stylesheet">
+    <style>
+      body {
+          font-family: 'Inter', sans-serif;
+          background-color: #000000;
+          color: #e5e5e5;
+      }
+      h1, h2, h3, h4, h5, h6 {
+          font-family: 'Space Grotesk', sans-serif;
+      }
+      
+      /* Card Hover Glow Effect */
+      .contact-card {
+          transition: all 0.3s ease;
+          background: #171717; /* Neutral-900 */
+      }
+      .contact-card:hover {
+          transform: translateY(-4px);
+          border-color: #404040;
+          box-shadow: 0 20px 40px -10px rgba(163, 230, 53, 0.15);
+      }
+      
+      /* Form Focus Effects */
+      input:focus, textarea:focus {
+          box-shadow: 0 0 0 2px rgba(163, 230, 53, 0.2);
+      }
+
+      /* Accordion Styles */
+      details > summary {
+          list-style: none;
+      }
+      details > summary::-webkit-details-marker {
+          display: none;
+      }
+      details[open] summary ~ * {
+          animation: slideDown 0.3s ease-in-out;
+      }
+      @keyframes slideDown {
+          0% { opacity: 0; transform: translateY(-10px); }
+          100% { opacity: 1; transform: translateY(0); }
+      }
+
+      /* Animations */
+      .animate-fade-up {
+          animation: fadeUp 0.6s ease-out forwards;
+          opacity: 0;
+          transform: translateY(20px);
+      }
+      .delay-100 { animation-delay: 0.1s; }
+      .delay-200 { animation-delay: 0.2s; }
+      .delay-300 { animation-delay: 0.3s; }
+      
+      @keyframes fadeUp {
+          to { opacity: 1; transform: translateY(0); }
+      }
+
+      ::-webkit-scrollbar { width: 8px; }
+      ::-webkit-scrollbar-track { background: #0a0a0a; }
+      ::-webkit-scrollbar-thumb { background: #262626; border-radius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: #404040; }
+    </style>
+</head>
+<body class="selection:bg-lime-500/30 selection:text-lime-200 flex flex-col min-h-screen text-neutral-300 bg-black">
+
+<!-- Background Video -->
+<div class="video-background-container fixed top-0 w-full h-screen -z-10" data-alpha-mask="80" style="mask-image: linear-gradient(to bottom, transparent, black 0%, black 80%, transparent); -webkit-mask-image: linear-gradient(to bottom, transparent, black 0%, black 80%, transparent)"><video src="https://www.youtube.com/watch?v=XZ44b103f_I" autoplay="" loop="" muted="" playsinline="" class="w-full h-full object-cover opacity-40"></video></div>
+
+    <!-- 1️⃣ Sticky Header -->
+    <header class="fixed transition-all duration-300 bg-black/80 w-full border-neutral-800 border-b top-0 left-0 backdrop-blur z-50">
+      <div class="sm:px-6 lg:px-8 flex h-20 max-w-7xl mr-auto ml-auto pr-4 pl-4 items-center justify-between">
+        <!-- Logo -->
+        <a href="/" class="flex items-center gap-2 group">
+          <img src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/c766f414-a5c1-47b3-9891-ea60080a5074_320w.png" class="group-hover:shadow-[0_0_15px_rgba(163,230,53,0.5)] transition-shadow w-[42px] h-[42px] object-cover border-0 rounded pt-1 pr-1 pb-1 pl-1" alt="Revive logo">
+          <span class="group-hover:text-lime-300 transition-colors text-lg font-medium text-white tracking-tight">
+                    REVIVE <span class="font-light text-neutral-500 font-poppins tracking-tight" style="transition: outline 0.1s ease-in-out;">Exterior cleaning solutions</span>
+          </span>
+        </a>
+
+        <!-- Desktop Nav -->
+        <nav class="hidden md:flex items-center gap-8 text-xs font-medium text-neutral-400">
+          <a href="/home" class="hover:text-white transition-colors">Home</a>
+          <a href="/services-2" class="hover:text-white transition-colors">Services</a>
+          <a href="/instant-quote-page" class="hover:text-white transition-colors">Instant Quote</a><a href="/before-and-after" class="hover:text-white transition-colors">Before &amp; After</a>
+          
+          <a href="/about" class="hover:text-white transition-colors">About</a>
+          <a href="/contact-us" class="text-white">Contact Us</a>
+        </nav>
+
+        <!-- Right Actions -->
+        <div class="flex gap-4 items-center">
+          <a href="https://wa.me/447934032980" class="hidden sm:flex items-center justify-center hover:text-lime-400 transition-colors text-neutral-400" aria-label="WhatsApp">
+            <iconify-icon icon="solar:phone-calling-linear" width="20" height="20" stroke-width="1.5" class=""></iconify-icon>
+          </a>
+          <a href="/instant-quote-page" class="hidden hover:bg-lime-400 hover:text-black transition-all items-center gap-2 sm:flex text-xs font-bold text-black bg-lime-400 rounded-full pt-2 pr-4 pb-2 pl-4">
+            <span class="">Get Quote</span>
+            <iconify-icon icon="solar:arrow-right-linear" stroke-width="2" class=""></iconify-icon>
+          </a>
+<!-- Mobile Menu Button -->
+<div class="md:hidden relative z-50">
+  <button type="button" aria-label="Toggle menu" class="transition-colors hover:bg-neutral-900 hover:text-white group text-neutral-400 rounded-lg pt-2 pr-2 pb-2 pl-2" onclick="
+      const m = document.getElementById('mobileMenu');
+      if (!m) { console.warn('mobileMenu not found'); return; }
+
+      const i = this.querySelector('iconify-icon');
+      const opening = m.classList.contains('hidden');
+
+      if (opening) {
+        m.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        if (i) i.setAttribute('icon', 'lucide:x');
+      } else {
+        m.classList.add('hidden');
+        document.body.style.overflow = '';
+        if (i) i.setAttribute('icon', 'lucide:menu');
+      }
+    ">
+    <iconify-icon icon="lucide:menu" width="24" height="24" stroke-width="1.5" style="color: white;"></iconify-icon>
+  </button>
+</div>
+
+<div id="mobileMenu" class="hidden fixed left-0 right-0 top-16 z-40 bg-black/95 backdrop-blur-xl border-t border-neutral-800 p-6 max-h-[80vh] overflow-y-auto">
+  <nav class="flex flex-col space-y-6 mt-20">
+    <a href="/home" class="text-lg font-medium text-white">Home</a>
+    <a href="/services-2" class="text-lg font-medium text-white">Services</a>
+    <a href="/instant-quote-page" class="text-lg font-medium text-white">Instant Quote</a>
+    <a href="/before-and-after" class="text-lg font-medium text-white">Before &amp; After</a>
+    <a href="/about" class="text-lg font-medium text-white">About</a>
+    <a href="/contact-us" class="text-lg font-medium text-white">Contact</a>
+  </nav>
+</div>
+
+  <!-- Full-screen overlay -->
+  <div id="mobileMenu" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" onclick="
+      if (event.target === this) {
+        this.classList.add('hidden');
+        document.body.style.overflow='';
+        const btn = this.previousElementSibling;
+        const icon = btn.querySelector('iconify-icon');
+        icon.setAttribute('icon','lucide:menu');
+      }
+    ">
+    <!-- Slide-out panel -->
+    <div class="absolute right-0 top-0 h-full w-[85%] max-w-sm bg-black/95 border-l border-neutral-800 p-6 overflow-y-auto">
+      <nav class="flex flex-col space-y-6 mt-10">
+        <a href="/home" class="text-lg font-medium text-neutral-400 transition-colors font-poppins hover:text-lime-400 tracking-tight" onclick="document.getElementById('mobileMenu').classList.add('hidden');document.body.style.overflow='';document.querySelector('[aria-label=&quot;Toggle menu&quot;] iconify-icon').setAttribute('icon','lucide:menu');">Home</a>
+
+        <a href="/services-2" class="text-lg font-medium text-neutral-400 transition-colors font-poppins hover:text-lime-400 tracking-tight" onclick="document.getElementById('mobileMenu').classList.add('hidden');document.body.style.overflow='';document.querySelector('[aria-label=&quot;Toggle menu&quot;] iconify-icon').setAttribute('icon','lucide:menu');">Services</a>
+
+        <a href="/instant-quote-page" class="text-lg font-medium text-neutral-400 transition-colors font-poppins hover:text-lime-400 tracking-tight" onclick="document.getElementById('mobileMenu').classList.add('hidden');document.body.style.overflow='';document.querySelector('[aria-label=&quot;Toggle menu&quot;] iconify-icon').setAttribute('icon','lucide:menu');">Instant Quote</a>
+
+        <a href="/before-and-after" class="text-lg font-medium text-neutral-400 transition-colors font-poppins hover:text-lime-400 tracking-tight" onclick="document.getElementById('mobileMenu').classList.add('hidden');document.body.style.overflow='';document.querySelector('[aria-label=&quot;Toggle menu&quot;] iconify-icon').setAttribute('icon','lucide:menu');">Before &amp; After</a>
+
+        <a href="/about" class="text-lg font-medium text-neutral-400 transition-colors font-poppins hover:text-lime-400 tracking-tight" onclick="document.getElementById('mobileMenu').classList.add('hidden');document.body.style.overflow='';document.querySelector('[aria-label=&quot;Toggle menu&quot;] iconify-icon').setAttribute('icon','lucide:menu');">About</a>
+
+        <a href="/contact-us" class="text-lg font-medium text-neutral-400 transition-colors font-poppins hover:text-lime-400 tracking-tight" onclick="document.getElementById('mobileMenu').classList.add('hidden');document.body.style.overflow='';document.querySelector('[aria-label=&quot;Toggle menu&quot;] iconify-icon').setAttribute('icon','lucide:menu');">Contact us</a>
+      </nav>
+
+      <div class="flex flex-col gap-4 mt-8 pt-8 border-t border-neutral-800">
+        <a href="https://wa.me/447934032980" class="flex items-center justify-center w-full gap-2 py-3 text-sm font-medium text-white transition-colors border rounded-full border-neutral-800 bg-black/50 backdrop-blur-sm hover:bg-neutral-900">
+          <iconify-icon icon="lucide:phone" width="18" height="18"></iconify-icon>
+          <span class="font-poppins tracking-tight">WhatsApp Us</span>
+        </a>
+
+        <a href="/instant-quote-page" class="flex items-center justify-center w-full gap-2 py-3 text-sm font-semibold text-black transition-all rounded-full bg-lime-400 hover:bg-lime-300 hover:shadow-[0_0_20px_rgba(163,230,53,0.4)]">
+          <span class="font-poppins tracking-tight">Get Instant Quote</span>
+          <iconify-icon icon="lucide:arrow-right" width="18" height="18"></iconify-icon>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+            </div>
+        
+    </header>
+
+    <!-- 2️⃣ Hero / Intro Section -->
+    <section class="sm:pt-40 sm:pb-20 pt-32 pr-4 pb-12 pl-4 relative">
+        <!-- Subtle Glow -->
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-lime-500/10 blur-[120px] rounded-full pointer-events-none"></div>
+
+        <div class="max-w-3xl mx-auto text-center animate-fade-up relative z-10">
+            <h1 class="text-4xl md:text-6xl font-medium text-white tracking-tighter mb-6">
+                Get in Touch
+            </h1>
+            <p class="text-lg md:text-xl font-light text-neutral-400 leading-relaxed max-w-2xl mx-auto">
+                Whether you need a quick price guide, want to arrange a job, or just have a question, we're here to help. Choose the easiest way to reach us below.
+            </p>
+        </div>
+    </section>
+
+    <!-- 3️⃣ Contact Methods Section -->
+    <section class="px-4 pb-20">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex items-center gap-3 mb-8 animate-fade-up delay-100">
+                <span class="h-px flex-grow bg-neutral-800"></span>
+                <span class="text-neutral-500 text-sm font-medium uppercase tracking-widest">How to Reach Us</span>
+                <span class="h-px flex-grow bg-neutral-800"></span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Card 1: WhatsApp -->
+                <div class="contact-card group p-8 rounded-2xl border border-neutral-800 flex flex-col items-start animate-fade-up delay-100">
+                    <div class="bg-lime-400/10 text-lime-400 p-4 rounded-xl mb-6">
+                        <iconify-icon icon="solar:chat-round-dots-linear" width="32" height="32" stroke-width="1.5"></iconify-icon>
+                    </div>
+                    <h3 class="text-xl font-medium text-white mb-2">Message on WhatsApp</h3>
+                    <p class="text-sm text-neutral-400 mb-8 flex-grow">Fastest way to get in touch — usually reply within hours.</p>
+                    <a href="https://wa.me/447934032980" class="group-hover:bg-lime-400 group-hover:text-black transition-all group-hover:border-lime-400 text-sm font-medium text-white text-center bg-neutral-800 w-full border-neutral-700 border rounded-lg pt-3 pr-4 pb-3 pl-4">
+                        Start Chat
+                    </a>
+                </div>
+
+                <!-- Card 2: Phone -->
+                <div class="contact-card group p-8 rounded-2xl border border-neutral-800 flex flex-col items-start animate-fade-up delay-200">
+                    <div class="bg-neutral-800 text-white p-4 rounded-xl mb-6">
+                        <iconify-icon icon="solar:phone-calling-linear" width="32" height="32" stroke-width="1.5"></iconify-icon>
+                    </div>
+                    <h3 class="text-xl font-medium text-white mb-2">Call Us</h3>
+                    <p class="text-sm text-neutral-400 mb-8 flex-grow">Speak to us directly Monday–Friday 8am–6pm, Saturday 9am–5pm.</p>
+                    <a href="tel:07934032980" class="group-hover:bg-white group-hover:text-black transition-all group-hover:border-white text-sm font-medium text-white text-center bg-neutral-800 w-full border-neutral-700 border rounded-lg pt-3 pr-4 pb-3 pl-4">
+                        Call 07934 032 980
+                    </a>
+                </div>
+
+                <!-- Card 3: Email -->
+                <div class="contact-card group p-8 rounded-2xl border border-neutral-800 flex flex-col items-start animate-fade-up delay-300">
+                    <div class="bg-neutral-800 text-white p-4 rounded-xl mb-6">
+                        <iconify-icon icon="solar:letter-linear" width="32" height="32" stroke-width="1.5"></iconify-icon>
+                    </div>
+                    <h3 class="text-xl font-medium text-white mb-2">Email Us</h3>
+                    <p class="text-sm text-neutral-400 mb-8 flex-grow">Send us a message any time — we'll reply as soon as we can.</p>
+                    <a href="mailto:reviveexteriorcleaningsolutions@gmail.com" class="group-hover:bg-white group-hover:text-black transition-all group-hover:border-white text-sm font-medium text-white text-center bg-neutral-800 w-full border-neutral-700 border rounded-lg pt-3 pr-4 pb-3 pl-4">
+                        Send Email
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4️⃣ Operating Hours & Availability -->
+    <section class="px-4 py-16 bg-neutral-900/30 border-y border-neutral-900">
+        <div class="max-w-5xl mx-auto">
+            <h2 class="text-2xl font-medium text-white mb-10">Hours &amp; Appointments</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+                <!-- Hours -->
+                <div class="">
+                    <h4 class="text-lime-400 text-xs uppercase tracking-widest font-bold mb-4">Office &amp; Quote Hours</h4>
+                    <ul class="space-y-4 text-sm text-neutral-300">
+                        <li class="flex justify-between border-b border-neutral-800 pb-2">
+                            <span>Monday – Friday</span>
+                            <span>8am – 6pm</span>
+                        </li>
+                        <li class="flex justify-between border-b border-neutral-800 pb-2">
+                            <span>Saturday</span>
+                            <span>9am – 5pm</span>
+                        </li>
+                        <li class="flex justify-between border-b border-neutral-800 pb-2 text-neutral-500">
+                            <span>Sunday</span>
+                            <span>10am – 4pm</span>
+                        </li>
+                    </ul>
+                    <div class="mt-8">
+                        <h4 class="text-lime-400 text-xs uppercase tracking-widest font-bold mb-2">On-Site Work Hours</h4>
+                        <p class="text-sm text-neutral-400">We work Monday–Saturday, weather permitting. Sunday work available for emergencies or pre-arranged jobs.</p>
+                    </div>
+                </div>
+
+                <!-- Availability Note -->
+                <div class="bg-neutral-900 border border-neutral-800 p-8 rounded-xl relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-lime-500/5 blur-3xl rounded-full pointer-events-none"></div>
+                    <div class="relative z-10">
+                        <div class="flex items-center gap-3 mb-4 text-lime-400">
+                            <iconify-icon icon="solar:calendar-mark-linear" width="24" height="24"></iconify-icon>
+                            <h4 class="font-medium text-white">Current Availability</h4>
+                        </div>
+                        <p class="text-neutral-400 text-sm leading-relaxed mb-6">
+                            Lead times vary by season. We're usually able to schedule work within .
+                        </p>
+                        <p class="text-neutral-400 text-sm leading-relaxed mb-6">
+                            For urgent repairs (leaking gutters, storm damage), message us on WhatsApp and we'll prioritise where we can.
+                        </p>
+                        <a href="https://wa.me/447934032980" class="inline-flex items-center gap-2 text-sm text-white font-medium border-b border-lime-400 pb-0.5 hover:text-lime-400 transition-colors">
+                            Check availability now <iconify-icon icon="solar:arrow-right-linear" class=""></iconify-icon>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 5️⃣ Simple Contact Form & Map -->
+    <section class="px-4 py-20 bg-black">
+        <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16">
+            
+            <!-- Contact Form -->
+            <div class="">
+                <h2 class="text-3xl font-medium text-white mb-4">Send Us a Quick Message</h2>
+                <p class="text-neutral-500 text-sm mb-8">Fill in the form below if you prefer — we'll get back to you by email or phone within one working day.</p>
+                
+                <form class="space-y-5">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div class="space-y-1">
+                            <label for="name" class="text-xs text-neutral-400 font-medium ml-1">Name</label>
+                            <input type="text" id="name" class="w-full bg-neutral-900/50 border border-neutral-800 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-lime-400 focus:bg-neutral-900 transition-colors placeholder:text-neutral-600" placeholder="Your name">
+                        </div>
+                        <div class="space-y-1">
+                             <label for="phone" class="text-xs text-neutral-400 font-medium ml-1">Phone</label>
+                            <input type="tel" id="phone" class="w-full bg-neutral-900/50 border border-neutral-800 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-lime-400 focus:bg-neutral-900 transition-colors placeholder:text-neutral-600" placeholder="07...">
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-1">
+                         <label for="email" class="text-xs text-neutral-400 font-medium ml-1">Email</label>
+                        <input type="email" id="email" class="w-full bg-neutral-900/50 border border-neutral-800 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-lime-400 focus:bg-neutral-900 transition-colors placeholder:text-neutral-600" placeholder="you@example.com">
+                    </div>
+                    
+                    <div class="space-y-1">
+                        <label for="message" class="text-xs text-neutral-400 font-medium ml-1">How can we help?</label>
+                        <textarea id="message" rows="4" class="w-full bg-neutral-900/50 border border-neutral-800 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-lime-400 focus:bg-neutral-900 transition-colors placeholder:text-neutral-600 resize-none" placeholder="Tell us what you need help with..."></textarea>
+                    </div>
+
+                    <button type="button" class="bg-white hover:bg-lime-400 hover:text-black text-black text-sm font-bold px-8 py-3 rounded-lg transition-all flex items-center justify-center gap-2 w-full md:w-auto">
+                        Send Message <iconify-icon icon="solar:plain-linear" stroke-width="2"></iconify-icon>
+                    </button>
+                    <p class="text-[10px] text-neutral-600 mt-4 text-center md:text-left">We'll only use your details to respond to your enquiry. No spam, ever.</p>
+                </form>
+            </div>
+
+            <!-- Map & Areas -->
+            <div class="flex flex-col h-full">
+                <h2 class="text-3xl font-medium text-white mb-4">Areas We Cover</h2>
+                <p class="text-neutral-400 text-sm leading-relaxed mb-8">
+                    We're based in Swansea and primarily serve  (Swansea city centre, Sketty, Killay, Gorseinon, Morriston, Cockett, and surrounding areas). We also travel to Neath, Port Talbot, Llanelli, and Gower for larger jobs.
+                </p>
+                
+                <div class="w-full h-80 lg:h-full min-h-[300px] rounded-2xl overflow-hidden border border-neutral-800 relative bg-neutral-900">
+                    <!-- Google Map Embed -->
+                    <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d39762.63663675685!2d-3.978583486163353!3d51.6231969248589!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x486e6329c362da55%3A0x6442651b1473775d!2sSwansea!5e0!3m2!1sen!2suk!4v1716388657644!5m2!1sen!2suk" width="100%" height="100%" style="border:0; filter: grayscale(1) invert(1) contrast(0.8) brightness(0.8);" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade" class=""></iframe>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 6️⃣ FAQ Section -->
+    <section class="px-4 py-20 border-t border-neutral-900">
+        <div class="max-w-3xl mx-auto">
+            <h2 class="text-2xl font-medium text-white mb-10 text-center">Common Questions</h2>
+            
+            <div class="space-y-4">
+                <details class="group bg-neutral-900/50 border border-neutral-800 rounded-lg overflow-hidden">
+                    <summary class="flex justify-between items-center p-5 cursor-pointer text-white font-medium hover:bg-neutral-800 transition-colors select-none">
+                        Do you offer free quotes?
+                        <iconify-icon icon="solar:alt-arrow-down-linear" class="group-open:rotate-180 transition-transform text-neutral-400"></iconify-icon>
+                    </summary>
+                    <div class="p-5 pt-0 text-neutral-400 text-sm leading-relaxed border-t border-transparent group-open:border-neutral-800">
+                        Yes — use our instant quote tool online or message us for a quick estimate.
+                    </div>
+                </details>
+
+                <details class="group bg-neutral-900/50 border border-neutral-800 rounded-lg overflow-hidden">
+                    <summary class="flex justify-between items-center p-5 cursor-pointer text-white font-medium hover:bg-neutral-800 transition-colors select-none">
+                        Can I book an emergency gutter repair?
+                        <iconify-icon icon="solar:alt-arrow-down-linear" class="group-open:rotate-180 transition-transform text-neutral-400"></iconify-icon>
+                    </summary>
+                    <div class="p-5 pt-0 text-neutral-400 text-sm leading-relaxed border-t border-transparent group-open:border-neutral-800">
+                        Yes, message us on WhatsApp or call — we prioritise urgent repairs where water is entering the property.
+                    </div>
+                </details>
+
+                <details class="group bg-neutral-900/50 border border-neutral-800 rounded-lg overflow-hidden">
+                    <summary class="flex justify-between items-center p-5 cursor-pointer text-white font-medium hover:bg-neutral-800 transition-colors select-none">
+                        Do you work weekends?
+                        <iconify-icon icon="solar:alt-arrow-down-linear" class="group-open:rotate-180 transition-transform text-neutral-400"></iconify-icon>
+                    </summary>
+                    <div class="p-5 pt-0 text-neutral-400 text-sm leading-relaxed border-t border-transparent group-open:border-neutral-800">
+                        Yes, Saturdays are normal working days for us. Sundays are available by special arrangement.
+                    </div>
+                </details>
+                
+                 <details class="group bg-neutral-900/50 border border-neutral-800 rounded-lg overflow-hidden">
+                    <summary class="flex justify-between items-center p-5 cursor-pointer text-white font-medium hover:bg-neutral-800 transition-colors select-none">
+                        How quickly can you visit?
+                        <iconify-icon icon="solar:alt-arrow-down-linear" class="group-open:rotate-180 transition-transform text-neutral-400"></iconify-icon>
+                    </summary>
+                    <div class="p-5 pt-0 text-neutral-400 text-sm leading-relaxed border-t border-transparent group-open:border-neutral-800">
+                        Usually within 1–2 weeks depending on the season and the type of job required.
+                    </div>
+                </details>
+            </div>
+        </div>
+    </section>
+
+    <!-- 7️⃣ Final CTA Banner -->
+    <section class="bg-center bg-lime-400 bg-[url(https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/59d07b03-ab22-4468-8bd1-8525d10a5bf9_3840w.jpg?w=800&amp;q=80)] bg-cover border-neutral-800 border-t pt-24 pr-4 pb-24 pl-4 relative">
+        <!-- Overlay -->
+        <div class="absolute inset-0 bg-lime-500/90 mix-blend-multiply"></div>
+        
+        <div class="max-w-4xl mx-auto text-center relative z-10">
+            <h2 class="text-3xl md:text-5xl font-medium text-white tracking-tighter mb-6">
+                Ready to Book or <span class="text-black">Get a Quote?</span>
+            </h2>
+            <p class="text-lg text-black/70 mb-10 font-medium">
+                The easiest way to get started is to use our instant quote tool — or just send us a message and we'll take it from there.
+            </p>
+            <div class="flex flex-col sm:flex-row justify-center items-center gap-4">
+                <a href="/instant-quote-page" class="hover:bg-neutral-800 transition-all flex items-center gap-2 transform hover:-translate-y-1 text-sm font-bold text-white bg-black rounded-full pt-4 pr-8 pb-4 pl-8 shadow-lg">
+                    Get Instant Quote <iconify-icon icon="solar:arrow-right-linear" stroke-width="2" class=""></iconify-icon>
+                </a>
+                <a href="https://wa.me/447934032980" class="group bg-white/90 hover:bg-white text-black text-sm font-bold px-8 py-4 rounded-full transition-colors flex items-center gap-2">
+                     Or message us on WhatsApp
+                     <iconify-icon icon="solar:chat-round-dots-linear" class="group-hover:translate-x-1 transition-transform"></iconify-icon>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- 8️⃣ Footer -->
+    <footer class="text-xs bg-black border-neutral-900 border-t pt-20 pb-10">
+      <div class="sm:px-6 lg:px-8 max-w-7xl mr-auto ml-auto pr-4 pl-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16 gap-x-12 gap-y-12">
+          <div class="col-span-1">
+            <a href="/" class="flex items-center gap-2 mb-4 hover:opacity-80 transition-opacity">
+              <div class="bg-lime-400 p-0.5 rounded text-black">
+                <iconify-icon icon="solar:waterdrops-linear" width="14" height="14"></iconify-icon>
+              </div>
+              <span class="font-bold text-white tracking-tight">REVIVE</span>
+            </a>
+            <p class="text-neutral-500 mb-4">
+              Serving Swansea (SA1–SA6) and wider South Wales.
+            </p>
+          </div>
+
+          <div class="">
+            <h5 class="font-semibold text-white mb-4">Services</h5>
+            <ul class="space-y-2 text-neutral-500">
+              <li class=""><a href="/services-2" class="hover:text-lime-400 transition-colors">Roof Cleaning</a></li>
+              <li class=""><a href="/services-2" class="hover:text-lime-400 transition-colors">Driveway Washing</a></li>
+              <li class=""><a href="/services-2" class="hover:text-lime-400 transition-colors">Gutter Clearance</a></li>
+              
+            </ul>
+          </div>
+
+          <div class="">
+            <h5 class="font-semibold text-white mb-4">Company</h5>
+            <ul class="space-y-2 text-neutral-500">
+              <li class=""><a href="/about" class="hover:text-lime-400 transition-colors">About Us</a></li>
+              <li class=""><a href="/before-and-after" class="hover:text-lime-400 transition-colors">Our Work</a></li>
+              <li class=""><a href="/instant-quote-page" class="hover:text-lime-400 transition-colors">Get a Quote</a></li>
+            </ul>
+          </div>
+
+          <div class="">
+            <h5 class="font-semibold text-white mb-4">Contact</h5>
+            <ul class="space-y-2 text-neutral-500">
+              <li class="flex items-center gap-2">
+                <a href="mailto:reviveexteriorcleaningsolutions@gmail.com" class="hover:text-lime-400 transition-colors">Email Us</a>
+              </li>
+              <li class="flex items-center gap-2">
+                <a href="https://wa.me/447934032980" class="hover:text-lime-400 transition-colors">07934 032 980</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="border-t border-neutral-900 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-neutral-600">
+          <p>© 2024 Revive Exterior Cleaning Solutions. All rights reserved.</p>
+          <div class="flex gap-4">
+             <a href="/legal-pages-privacy-cookies-terms" class="hover:text-white transition-colors">Privacy</a>
+             <a href="/cookies" class="hover:text-white transition-colors">Cookies</a>
+             <a href="/legal-pages-privacy-cookies-terms" class="hover:text-white transition-colors">Terms</a>
+          </div>
+        </div>
+      </div>
+    </footer>
+</body></html>

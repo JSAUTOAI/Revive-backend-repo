@@ -1,0 +1,935 @@
+<html lang="en" class="scroll-smooth antialiased"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instant Quote – Revive Exterior Cleaning</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Space+Grotesk:wght@300;400;500;600&amp;display=swap" rel="stylesheet">
+    <style>
+      body {
+          font-family: 'Inter', sans-serif;
+          background-color: #000000;
+          color: #e5e5e5;
+      }
+      h1, h2, h3, h4, h5, h6 {
+          font-family: 'Space Grotesk', sans-serif;
+      }
+
+      /* Custom Inputs */
+      .form-input {
+          background-color: rgba(23, 23, 23, 0.5);
+          border: 1px solid #262626;
+          color: white;
+          transition: all 0.2s;
+      }
+      .form-input:focus {
+          outline: none;
+          border-color: #a3e635;
+          box-shadow: 0 0 0 1px #a3e635;
+          background-color: rgba(23, 23, 23, 0.8);
+      }
+
+      /* Service Card Selection */
+      .service-checkbox:checked + .service-card {
+          border-color: #a3e635;
+          background-color: rgba(163, 230, 53, 0.05);
+      }
+      .service-checkbox:checked + .service-card .check-icon {
+          opacity: 1;
+          transform: scale(1);
+      }
+
+      /* File Upload */
+      .file-drop-area {
+        border: 1px dashed #404040;
+        transition: all 0.2s;
+      }
+      .file-drop-area:hover {
+        border-color: #a3e635;
+        background-color: rgba(255,255,255,0.02);
+      }
+
+      /* Transitions */
+      .step-content {
+          display: none;
+          animation: fadeIn 0.4s ease-out forwards;
+      }
+      .step-content.active {
+          display: block;
+      }
+
+      @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+      }
+
+      ::-webkit-scrollbar { width: 8px; }
+      ::-webkit-scrollbar-track { background: #0a0a0a; }
+      ::-webkit-scrollbar-thumb { background: #262626; border-radius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: #404040; }
+    </style>
+  </head>
+  <body class="selection:bg-lime-500/30 selection:text-lime-200 text-neutral-300 bg-black flex flex-col min-h-screen">
+    <!-- 1️⃣ Sticky Header -->
+    <header class="fixed transition-all duration-300 bg-black/80 w-full border-neutral-800 border-b top-0 left-0 backdrop-blur z-50">
+      <div class="sm:px-6 lg:px-8 flex h-20 max-w-7xl mr-auto ml-auto pr-4 pl-4 items-center justify-between">
+        <!-- Logo -->
+        <a href="/" class="flex items-center gap-2 group">
+          <img src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/c766f414-a5c1-47b3-9891-ea60080a5074_320w.png" class="group-hover:shadow-[0_0_15px_rgba(163,230,53,0.5)] transition-shadow w-[42px] h-[42px] object-cover border-0 rounded pt-1 pr-1 pb-1 pl-1" alt="Revive logo">
+          <span class="group-hover:text-lime-300 transition-colors text-lg font-medium text-white tracking-tight">
+                    REVIVE <span class="font-light text-neutral-500 font-poppins tracking-tight" style="transition: outline 0.1s ease-in-out;">Exterior cleaning solutions</span>
+            </span>
+          
+        </a>
+
+        <!-- Desktop Nav -->
+        <nav class="hidden md:flex items-center gap-8 text-xs font-medium text-neutral-400">
+          <a href="/home" class="hover:text-white transition-colors">Home</a>
+          <a href="/services-2" class="hover:text-white transition-colors">
+            Services
+          </a>
+          <a href="/instant-quote-page" class="text-white">Instant Quote</a>
+          <a href="/before-and-after" class="hover:text-white transition-colors">
+            Before &amp; After
+          </a>
+          <a href="/about" class="hover:text-white transition-colors">About</a>
+          <a href="/contact-us" class="hover:text-white transition-colors">
+            Contact Us
+          </a>
+        </nav>
+
+        <!-- Right Actions -->
+        <div class="flex items-center gap-4">
+          <a href="https://wa.me/447934032980" class="hidden sm:flex items-center justify-center hover:text-lime-400 transition-colors text-neutral-400" aria-label="WhatsApp">
+            <iconify-icon icon="solar:phone-calling-linear" width="20" height="20" stroke-width="1.5" class=""></iconify-icon>
+          </a>
+          <!-- Button disabled/hidden visually on this page as we are here -->
+          <div class="hidden sm:flex opacity-50 cursor-default bg-neutral-800 text-neutral-400 text-xs font-semibold px-4 py-2 rounded-full items-center gap-2">
+            <span>Get Quote</span>
+          </div>
+
+<!-- Mobile Menu Button -->
+<div class="md:hidden relative z-50">
+  <button type="button" aria-label="Toggle menu" class="transition-colors hover:bg-neutral-900 hover:text-white group text-neutral-400 rounded-lg pt-2 pr-2 pb-2 pl-2" onclick="
+      const m = document.getElementById('mobileMenu');
+      if (!m) { console.warn('mobileMenu not found'); return; }
+
+      const i = this.querySelector('iconify-icon');
+      const opening = m.classList.contains('hidden');
+
+      if (opening) {
+        m.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        if (i) i.setAttribute('icon', 'lucide:x');
+      } else {
+        m.classList.add('hidden');
+        document.body.style.overflow = '';
+        if (i) i.setAttribute('icon', 'lucide:menu');
+      }
+    ">
+    <iconify-icon icon="lucide:menu" width="24" height="24" stroke-width="1.5" style="color: white;"></iconify-icon>
+  </button>
+</div>
+
+<div id="mobileMenu" class="hidden fixed left-0 right-0 top-16 z-40 bg-black/95 backdrop-blur-xl border-t border-neutral-800 p-6 max-h-[80vh] overflow-y-auto">
+  <nav class="flex flex-col space-y-6 mt-20">
+    <a href="/home" class="text-lg font-medium text-white">Home</a>
+    <a href="/services-2" class="text-lg font-medium text-white">Services</a>
+    <a href="/instant-quote-page" class="text-lg font-medium text-white">Instant Quote</a>
+    <a href="/before-and-after" class="text-lg font-medium text-white">Before &amp; After</a>
+    <a href="/about" class="text-lg font-medium text-white">About</a>
+    <a href="/contact-us" class="text-lg font-medium text-white">Contact</a>
+  </nav>
+</div>
+
+  <!-- Full-screen overlay -->
+  <div id="mobileMenu" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" onclick="
+      if (event.target === this) {
+        this.classList.add('hidden');
+        document.body.style.overflow='';
+        const btn = this.previousElementSibling;
+        const icon = btn.querySelector('iconify-icon');
+        icon.setAttribute('icon','lucide:menu');
+      }
+    ">
+    <!-- Slide-out panel -->
+    <div class="absolute right-0 top-0 h-full w-[85%] max-w-sm bg-black/95 border-l border-neutral-800 p-6 overflow-y-auto">
+      <nav class="flex flex-col space-y-6 mt-10">
+        <a href="/home" class="text-lg font-medium text-neutral-400 transition-colors font-poppins hover:text-lime-400 tracking-tight" onclick="document.getElementById('mobileMenu').classList.add('hidden');document.body.style.overflow='';document.querySelector('[aria-label=&quot;Toggle menu&quot;] iconify-icon').setAttribute('icon','lucide:menu');">Home</a>
+
+        <a href="/services-2" class="text-lg font-medium text-neutral-400 transition-colors font-poppins hover:text-lime-400 tracking-tight" onclick="document.getElementById('mobileMenu').classList.add('hidden');document.body.style.overflow='';document.querySelector('[aria-label=&quot;Toggle menu&quot;] iconify-icon').setAttribute('icon','lucide:menu');">Services</a>
+
+        <a href="/instant-quote-page" class="text-lg font-medium text-neutral-400 transition-colors font-poppins hover:text-lime-400 tracking-tight" onclick="document.getElementById('mobileMenu').classList.add('hidden');document.body.style.overflow='';document.querySelector('[aria-label=&quot;Toggle menu&quot;] iconify-icon').setAttribute('icon','lucide:menu');">Instant Quote</a>
+
+        <a href="/before-and-after" class="text-lg font-medium text-neutral-400 transition-colors font-poppins hover:text-lime-400 tracking-tight" onclick="document.getElementById('mobileMenu').classList.add('hidden');document.body.style.overflow='';document.querySelector('[aria-label=&quot;Toggle menu&quot;] iconify-icon').setAttribute('icon','lucide:menu');">Before &amp; After</a>
+
+        <a href="/about" class="text-lg font-medium text-neutral-400 transition-colors font-poppins hover:text-lime-400 tracking-tight" onclick="document.getElementById('mobileMenu').classList.add('hidden');document.body.style.overflow='';document.querySelector('[aria-label=&quot;Toggle menu&quot;] iconify-icon').setAttribute('icon','lucide:menu');">About</a>
+
+        <a href="/contact-us" class="text-lg font-medium text-neutral-400 transition-colors font-poppins hover:text-lime-400 tracking-tight" onclick="document.getElementById('mobileMenu').classList.add('hidden');document.body.style.overflow='';document.querySelector('[aria-label=&quot;Toggle menu&quot;] iconify-icon').setAttribute('icon','lucide:menu');">Contact us</a>
+      </nav>
+
+      <div class="flex flex-col gap-4 mt-8 pt-8 border-t border-neutral-800">
+        <a href="https://wa.me/447934032980" class="flex items-center justify-center w-full gap-2 py-3 text-sm font-medium text-white transition-colors border rounded-full border-neutral-800 bg-black/50 backdrop-blur-sm hover:bg-neutral-900">
+          <iconify-icon icon="lucide:phone" width="18" height="18"></iconify-icon>
+          <span class="font-poppins tracking-tight">WhatsApp Us</span>
+        </a>
+
+        <a href="/instant-quote-page" class="flex items-center justify-center w-full gap-2 py-3 text-sm font-semibold text-black transition-all rounded-full bg-lime-400 hover:bg-lime-300 hover:shadow-[0_0_20px_rgba(163,230,53,0.4)]">
+          <span class="font-poppins tracking-tight">Get Instant Quote</span>
+          <iconify-icon icon="lucide:arrow-right" width="18" height="18"></iconify-icon>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+            </div>
+        
+    </header>
+
+    <!-- 2️⃣ Hero / Intro Section -->
+    <section class="pt-32 pb-12 px-4 sm:px-6 relative overflow-hidden">
+      <!-- Ambient Background Glow -->
+      <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-lime-500/10 blur-[100px] rounded-full pointer-events-none"></div>
+
+      <div class="max-w-3xl mx-auto text-center relative z-10">
+        <div class="inline-flex gap-2 text-[10px] uppercase font-medium text-lime-400 tracking-widest bg-lime-400/5 border border-lime-400/20 rounded-full mb-6 py-1 px-3 items-center">
+          <iconify-icon icon="solar:bolt-linear" width="12" height="12"></iconify-icon>
+          Takes less than 60 seconds
+        </div>
+        <h1 class="text-4xl md:text-5xl lg:text-6xl font-medium text-white tracking-tighter mb-6">
+          Instant Exterior
+          <span class="text-lime-400">Cleaning Quote</span>
+        </h1>
+        <p class="text-lg text-neutral-400 mb-8 font-light leading-relaxed max-w-2xl mx-auto">
+          Get a quick price guide in just a minute. Tell us about your property,
+          upload a few photos if you can, and we’ll send your estimate — then
+          confirm everything properly before booking.
+        </p>
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-4 text-xs font-medium text-neutral-500 mb-8">
+          <span class="flex items-center gap-1">
+            <iconify-icon icon="solar:check-circle-linear" class="text-lime-400"></iconify-icon>
+            No obligation
+          </span>
+          <span class="hidden sm:inline">·</span>
+          <span class="flex items-center gap-1">
+            <iconify-icon icon="solar:check-circle-linear" class="text-lime-400"></iconify-icon>
+            Fast response
+          </span>
+          <span class="hidden sm:inline">·</span>
+          <span class="flex items-center gap-1">
+            <iconify-icon icon="solar:check-circle-linear" class="text-lime-400"></iconify-icon>
+            Friendly local team
+          </span>
+        </div>
+
+        <button onclick="scrollToForm()" class="animate-bounce bg-neutral-900/50 p-2 rounded-full border border-neutral-800 text-neutral-400 hover:text-white hover:border-lime-400/50 transition-all">
+          <iconify-icon icon="solar:arrow-down-linear" width="20" height="20"></iconify-icon>
+        </button>
+      </div>
+    </section>
+
+    <!-- 3️⃣ Multi-Step Quote Form -->
+    <section class="sm:px-6 pr-4 pb-24 pl-4" id="quote-form-section">
+      <div class="max-w-3xl mr-auto ml-auto">
+        <!-- Form Card -->
+        <div class="overflow-hidden bg-neutral-900/30 border-neutral-800 border rounded-2xl relative shadow-2xl backdrop-blur-sm">
+          <!-- Progress Bar -->
+          <div class="h-1 bg-neutral-800 w-full relative" id="progress-container">
+            <div id="progress-bar" class="absolute top-0 left-0 h-full bg-lime-400 transition-all duration-500 ease-out w-1/4 shadow-[0_0_10px_rgba(163,230,53,0.5)]"></div>
+          </div>
+
+          <!-- Form Content Container -->
+          <div class="md:p-10 min-h-[400px] pt-6 pr-6 pb-6 pl-6">
+  <form onsubmit="event.preventDefault()" class="" id="quote-form">
+    <!-- STEP 1: Property Details -->
+    <div class="step-content active" id="step-1">
+      <div class="flex mb-6 items-start justify-between">
+        <div class="">
+          <span class="text-xs font-mono text-lime-400 uppercase mb-1 block">
+                      Step 1 of 4
+                    </span>
+          <h3 class="text-2xl font-medium text-white">
+            About Your Property
+          </h3>
+        </div>
+        <iconify-icon icon="solar:home-smile-linear" width="32" class="text-neutral-700"></iconify-icon>
+      </div>
+
+      <div class="space-y-6">
+        <div class="">
+          <label class="block text-sm font-medium text-neutral-300 mb-2">
+                      Property Type
+                    </label>
+          <select class="form-input w-full rounded-lg p-3 cursor-pointer">
+                      <option value="" disabled="" selected="">
+                        Select your property type...
+                      </option>
+                      <option value="detached">Detached House</option>
+                      <option value="semi">Semi-Detached</option>
+                      <option value="terrace">Terrace</option>
+                      <option value="bungalow">Bungalow</option>
+                      <option value="flat">Flat / Apartment</option>
+                      <option value="commercial">Small Commercial</option>
+                      <option value="other">Other</option>
+                    </select>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="">
+            <label class="block text-sm font-medium text-neutral-300 mb-2">
+                        Address
+                      </label>
+            <input type="text" placeholder="e.g. 12 High Street" class="form-input w-full rounded-lg p-3">
+          </div>
+          <div class="">
+            <label class="block text-sm font-medium text-neutral-300 mb-2">
+                        Postcode
+                      </label>
+            <input type="text" placeholder="e.g. SA1 1AA" class="form-input w-full rounded-lg p-3 uppercase">
+            <p class="text-[10px] text-neutral-500 mt-1 flex items-center gap-1">
+              <iconify-icon icon="solar:map-point-linear"></iconify-icon>
+              We cover Swansea (SA1–SA6) &amp; surrounding areas.
+            </p>
+          </div>
+        </div>
+
+        <div class="">
+          <label class="block text-sm font-medium text-neutral-300 mb-2">
+                      Any specific details?
+                      <span class="text-neutral-600 font-normal">
+                        (Optional)
+                      </span>
+                    </label>
+          <textarea rows="3" placeholder="e.g. End of terrace, difficult side access, conservatory at rear..." class="form-input w-full rounded-lg p-3"></textarea>
+        </div>
+      </div>
+
+      <div class="flex mt-8 justify-end">
+        <button type="button" onclick="nextStep(1)" class="hover:bg-lime-400 hover:text-black transition-all flex gap-2 text-sm font-bold text-black bg-white rounded-lg pt-3 pr-6 pb-3 pl-6 gap-x-2 gap-y-2 items-center">
+                    Next: Services
+                    <iconify-icon icon="solar:arrow-right-linear" stroke-width="2"></iconify-icon>
+                  </button>
+      </div>
+    </div>
+
+    <!-- STEP 2: Select Services -->
+    <div id="step-2" class="step-content">
+      <div class="flex justify-between items-start mb-6">
+        <div>
+          <span class="text-xs font-mono text-lime-400 uppercase mb-1 block">
+                      Step 2 of 4
+                    </span>
+          <h3 class="text-2xl font-medium text-white">
+            Choose Services
+          </h3>
+          <p class="text-sm text-neutral-500 mt-1">
+            Select one or multiple cleaning jobs.
+          </p>
+        </div>
+        <iconify-icon icon="solar:layers-minimalistic-linear" width="32" class="text-neutral-700"></iconify-icon>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+        <!-- Service Item -->
+        <label class="cursor-pointer group">
+                    <input type="checkbox" class="peer hidden service-checkbox" name="services" value="roof">
+                    <div class="service-card p-4 rounded-xl border border-neutral-800 bg-neutral-900/50 hover:bg-neutral-800 transition-all flex items-center justify-between group-hover:border-neutral-600">
+                      <span class="text-sm font-medium text-white">
+                        Roof Cleaning
+                      </span>
+                      <iconify-icon icon="solar:check-circle-linear" class="check-icon text-lime-400 opacity-0 transform scale-50 transition-all duration-300" width="20"></iconify-icon>
+                    </div>
+                  </label>
+        <!-- Service Item -->
+        <label class="cursor-pointer group">
+                    <input type="checkbox" class="peer hidden service-checkbox" name="services" value="driveway">
+                    <div class="service-card p-4 rounded-xl border border-neutral-800 bg-neutral-900/50 hover:bg-neutral-800 transition-all flex items-center justify-between group-hover:border-neutral-600">
+                      <span class="text-sm font-medium text-white">
+                        Driveway &amp; Patio
+                      </span>
+                      <iconify-icon icon="solar:check-circle-linear" class="check-icon text-lime-400 opacity-0 transform scale-50 transition-all duration-300" width="20"></iconify-icon>
+                    </div>
+                  </label>
+        <!-- Service Item -->
+        <label class="cursor-pointer group">
+                    <input type="checkbox" class="peer hidden service-checkbox" name="services" value="gutter">
+                    <div class="service-card p-4 rounded-xl border border-neutral-800 bg-neutral-900/50 hover:bg-neutral-800 transition-all flex items-center justify-between group-hover:border-neutral-600">
+                      <span class="text-sm font-medium text-white">
+                        Gutter Clean/Repair
+                      </span>
+                      <iconify-icon icon="solar:check-circle-linear" class="check-icon text-lime-400 opacity-0 transform scale-50 transition-all duration-300" width="20"></iconify-icon>
+                    </div>
+                  </label>
+        <!-- Service Item -->
+        <label class="cursor-pointer group">
+                    <input type="checkbox" class="peer hidden service-checkbox" name="services" value="softwash">
+                    <div class="service-card p-4 rounded-xl border border-neutral-800 bg-neutral-900/50 hover:bg-neutral-800 transition-all flex items-center justify-between group-hover:border-neutral-600">
+                      <span class="text-sm font-medium text-white">
+                        Soft Washing
+                      </span>
+                      <iconify-icon icon="solar:check-circle-linear" class="check-icon text-lime-400 opacity-0 transform scale-50 transition-all duration-300" width="20"></iconify-icon>
+                    </div>
+                  </label>
+        <!-- Service Item -->
+        <label class="cursor-pointer group">
+                    <input type="checkbox" class="peer hidden service-checkbox" name="services" value="render">
+                    <div class="service-card p-4 rounded-xl border border-neutral-800 bg-neutral-900/50 hover:bg-neutral-800 transition-all flex items-center justify-between group-hover:border-neutral-600">
+                      <span class="text-sm font-medium text-white">
+                        Render Cleaning
+                      </span>
+                      <iconify-icon icon="solar:check-circle-linear" class="check-icon text-lime-400 opacity-0 transform scale-50 transition-all duration-300" width="20"></iconify-icon>
+                    </div>
+                  </label>
+        <!-- Service Item -->
+        <label class="cursor-pointer group">
+                    <input type="checkbox" class="peer hidden service-checkbox" name="services" value="window">
+                    <div class="service-card p-4 rounded-xl border border-neutral-800 bg-neutral-900/50 hover:bg-neutral-800 transition-all flex items-center justify-between group-hover:border-neutral-600">
+                      <span class="text-sm font-medium text-white">
+                        Window Cleaning
+                      </span>
+                      <iconify-icon icon="solar:check-circle-linear" class="check-icon text-lime-400 opacity-0 transform scale-50 transition-all duration-300" width="20"></iconify-icon>
+                    </div>
+                  </label>
+        <!-- Service Item -->
+        <label class="cursor-pointer group">
+                    <input type="checkbox" class="peer hidden service-checkbox" name="services" value="solar">
+                    <div class="service-card p-4 rounded-xl border border-neutral-800 bg-neutral-900/50 hover:bg-neutral-800 transition-all flex items-center justify-between group-hover:border-neutral-600">
+                      <span class="text-sm font-medium text-white">
+                        Solar Panels
+                      </span>
+                      <iconify-icon icon="solar:check-circle-linear" class="check-icon text-lime-400 opacity-0 transform scale-50 transition-all duration-300" width="20"></iconify-icon>
+                    </div>
+                  </label>
+        <!-- Service Item -->
+        <label class="cursor-pointer group">
+                    <input type="checkbox" class="peer hidden service-checkbox" name="services" value="other">
+                    <div class="service-card p-4 rounded-xl border border-neutral-800 bg-neutral-900/50 hover:bg-neutral-800 transition-all flex items-center justify-between group-hover:border-neutral-600">
+                      <span class="text-sm font-medium text-white">
+                        Garden / Other
+                      </span>
+                      <iconify-icon icon="solar:check-circle-linear" class="check-icon text-lime-400 opacity-0 transform scale-50 transition-all duration-300" width="20"></iconify-icon>
+                    </div>
+                  </label>
+      </div>
+
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-8">
+        <p class="text-xs text-neutral-500 italic">
+          Not sure which suits you best? Pick the closest and add
+          notes later.
+        </p>
+        <button type="button" onclick="clearServices()" class="text-xs text-neutral-500 hover:text-red-400 transition-colors flex items-center gap-1.5 whitespace-nowrap">
+                    <iconify-icon icon="solar:trash-bin-trash-linear"></iconify-icon>
+                    Clear selected services
+                  </button>
+      </div>
+
+      <div class="flex justify-between items-center">
+        <button type="button" onclick="prevStep(2)" class="text-neutral-400 hover:text-white text-sm font-medium px-4 py-2 transition-colors">
+                    ← Back
+                  </button>
+        <button type="button" onclick="nextStep(2)" class="bg-white hover:bg-lime-400 hover:text-black text-black text-sm font-bold px-6 py-3 rounded-lg transition-all flex items-center gap-2">
+                    Next: Photos
+                    <iconify-icon icon="solar:arrow-right-linear" stroke-width="2"></iconify-icon>
+                  </button>
+      </div>
+    </div>
+
+    <!-- STEP 3: Photos & Details -->
+    <div id="step-3" class="step-content">
+      <div class="flex justify-between items-start mb-6">
+        <div>
+          <span class="text-xs font-mono text-lime-400 uppercase mb-1 block">
+                      Step 3 of 4
+                    </span>
+          <h3 class="text-2xl font-medium text-white">
+            Photos &amp; Details
+          </h3>
+        </div>
+        <iconify-icon icon="solar:camera-minimalistic-linear" width="32" class="text-neutral-700"></iconify-icon>
+      </div>
+
+      <div class="space-y-6">
+        <!-- Upload Area -->
+        <div>
+          <label class="block text-sm font-medium text-neutral-300 mb-2">
+                      Upload Photos
+                      <span class="text-neutral-600 font-normal">
+                        (Optional but recommended)
+                      </span>
+                    </label>
+          <div class="file-drop-area rounded-xl p-6 text-center cursor-pointer relative bg-neutral-900/20">
+            <input type="file" multiple="" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+            <div class="pointer-events-none">
+              <div class="bg-neutral-800/50 w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-3 text-lime-400">
+                <iconify-icon icon="solar:upload-minimalistic-linear" width="20"></iconify-icon>
+              </div>
+              <p class="text-sm text-neutral-300 font-medium">
+                Click to upload photos
+              </p>
+              <p class="text-xs text-neutral-500 mt-1">
+                Up to 6 images. Phone pics are perfect.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-neutral-300 mb-2">
+                        Rough Size
+                      </label>
+            <select class="form-input w-full rounded-lg p-3 cursor-pointer">
+                        <option value="small">
+                          Small (Terrace / Small Drive)
+                        </option>
+                        <option value="medium" selected="">
+                          Medium (Average Semi)
+                        </option>
+                        <option value="large">
+                          Large (Detached / Large Area)
+                        </option>
+                        <option value="other">Other</option>
+                      </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-neutral-300 mb-2">
+                        When last cleaned?
+                      </label>
+            <select class="form-input w-full rounded-lg p-3 cursor-pointer">
+                        <option value="1year">Within 1 year</option>
+                        <option value="1-3years">1–3 years ago</option>
+                        <option value="3plus">Over 3 years ago</option>
+                        <option value="unknown" selected="">Not sure</option>
+                      </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-neutral-300 mb-2">
+                      Access Notes / Other info
+                    </label>
+          <textarea rows="2" placeholder="e.g. Side gate is locked, parking on street..." class="form-input w-full rounded-lg p-3"></textarea>
+        </div>
+      </div>
+
+      <p class="text-[10px] text-neutral-500 mt-6 border-t border-neutral-800 pt-3">
+        We’ll review your details and send a price range shortly.
+        Nothing is booked or charged until confirmed.
+      </p>
+
+      <div class="mt-6 flex justify-between items-center">
+        <button type="button" onclick="prevStep(3)" class="text-neutral-400 hover:text-white text-sm font-medium px-4 py-2 transition-colors">
+                    ← Back
+                  </button>
+        <button type="button" onclick="nextStep(3)" class="bg-white hover:bg-lime-400 hover:text-black text-black text-sm font-bold px-6 py-3 rounded-lg transition-all flex items-center gap-2">
+                    Next: Contact
+                    <iconify-icon icon="solar:arrow-right-linear" stroke-width="2"></iconify-icon>
+                  </button>
+      </div>
+    </div>
+
+    <!-- STEP 4: Contact -->
+    <div id="step-4" class="step-content">
+      <div class="flex justify-between items-start mb-6">
+        <div>
+          <span class="text-xs font-mono text-lime-400 uppercase mb-1 block">
+                      Step 4 of 4
+                    </span>
+          <h3 class="text-2xl font-medium text-white">
+            Your Contact Details
+          </h3>
+          <p class="text-sm text-neutral-500 mt-1">
+            We’ll send your estimate by your preferred method.
+          </p>
+        </div>
+        <iconify-icon icon="solar:user-circle-linear" width="32" class="text-neutral-700"></iconify-icon>
+      </div>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-neutral-300 mb-2">
+                      Full Name
+                    </label>
+          <input type="text" placeholder="John Doe" class="form-input w-full rounded-lg p-3">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-neutral-300 mb-2">
+                        Email Address
+                      </label>
+            <input type="email" placeholder="john@example.com" class="form-input w-full rounded-lg p-3">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-neutral-300 mb-2">
+                        Mobile Number
+                      </label>
+            <input type="tel" placeholder="07700 900000" class="form-input w-full rounded-lg p-3">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-neutral-300 mb-2">
+                        Preferred Contact
+                      </label>
+            <select class="form-input w-full rounded-lg p-3 cursor-pointer">
+                        <option value="whatsapp">WhatsApp (Fastest)</option>
+                        <option value="email">Email</option>
+                        <option value="phone">Phone Call</option>
+                      </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-neutral-300 mb-2">
+                        Best Time
+                      </label>
+            <select class="form-input w-full rounded-lg p-3 cursor-pointer">
+                        <option value="anytime">Anytime</option>
+                        <option value="morning">Morning</option>
+                        <option value="afternoon">Afternoon</option>
+                        <option value="evening">Evening</option>
+                      </select>
+          </div>
+        </div>
+
+        <div class="pt-2">
+          <label class="flex items-start gap-3 cursor-pointer group">
+                      <input type="checkbox" id="reminders-checkbox" class="mt-1 accent-lime-400 w-4 h-4 rounded border-neutral-700 bg-neutral-800">
+                      <span class="text-xs text-neutral-400 group-hover:text-neutral-300">
+                        I'd like helpful reminders for seasonal maintenance
+                        (optional).
+                      </span>
+                    </label>
+        </div>
+      </div>
+
+      <p class="text-[10px] text-neutral-600 mt-6">
+        We’ll only use your details for quotes, scheduling, and
+        reminders you’ve asked for.
+      </p>
+
+      <div class="mt-6 flex justify-between items-center">
+        <button type="button" onclick="prevStep(4)" class="text-neutral-400 hover:text-white text-sm font-medium px-4 py-2 transition-colors">
+                    ← Back
+                  </button>
+        <button type="submit" onclick="submitForm()" class="bg-lime-400 hover:bg-lime-300 text-black text-sm font-bold px-8 py-3 rounded-lg transition-all flex items-center gap-2 shadow-[0_0_15px_rgba(163,230,53,0.3)] hover:shadow-[0_0_25px_rgba(163,230,53,0.5)]">
+                    Get My Instant Quote
+                    <iconify-icon icon="solar:plain-linear" stroke-width="2"></iconify-icon>
+                  </button>
+      </div>
+    </div>
+  </form>
+
+  <!-- SUCCESS PANEL -->
+  <div id="success-panel" class="hidden h-full flex flex-col justify-center items-center text-center py-8 animate-in fade-in zoom-in duration-500">
+    <div class="w-20 h-20 bg-lime-400 rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(163,230,53,0.3)]">
+      <iconify-icon icon="solar:check-circle-bold" class="text-black text-4xl"></iconify-icon>
+    </div>
+    <h3 class="text-3xl font-medium text-white mb-4">
+      Request Received!
+    </h3>
+    <p class="text-neutral-400 max-w-md mb-8">
+      Thank you. We’ve received your details. We’ll review your
+      photos/info, confirm a price range, and contact you shortly.
+    </p>
+
+    <div class="flex flex-col sm:flex-row gap-4 w-full justify-center">
+      <a href="https://wa.me/447934032980" class="bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold px-6 py-3 rounded-lg flex items-center justify-center gap-2 transition-colors">
+        <iconify-icon icon="solar:phone-calling-linear"></iconify-icon>
+        Chat on WhatsApp
+      </a>
+      <a href="/" class="bg-neutral-800 hover:bg-neutral-700 text-white font-medium px-6 py-3 rounded-lg transition-colors">
+        Return Home
+      </a>
+    </div>
+  </div>
+</div>
+        </div>
+
+        <!-- Optional Upsell Strip (Static) -->
+        <div class="text-center mt-8" id="upsell-strip">
+          <p class="text-neutral-500 text-sm mb-2">
+            Need more than one service?
+          </p>
+          <p class="text-neutral-400 text-xs">
+            Just tick multiple boxes in Step 2 or let us know when we contact
+            you. Many customers combine
+            <span class="text-lime-400">Gutter Cleaning</span>
+            with their Roof or Driveway clean.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6️⃣ Final CTA / Contact Strip -->
+    <section class="bg-black border-neutral-900 border-t pt-16 pb-16">
+      <div class="max-w-7xl mx-auto px-4 text-center">
+        <h2 class="text-2xl font-medium text-white mb-4">
+          Prefer to talk instead?
+        </h2>
+        <p class="text-neutral-500 mb-8">
+          You can message us directly – we usually reply quickly during the day.
+        </p>
+        <div class="flex flex-wrap justify-center gap-6 text-sm font-medium">
+          <a href="https://wa.me/447934032980" class="flex items-center gap-2 text-lime-400 hover:text-lime-300 transition-colors">
+            <iconify-icon icon="solar:chat-round-dots-linear" width="18" class=""></iconify-icon>
+            WhatsApp Chat
+          </a>
+          <a href="tel:07934032980" class="flex items-center gap-2 text-white hover:text-lime-400 transition-colors">
+            <iconify-icon icon="solar:phone-calling-linear" width="18" class=""></iconify-icon>
+            07934 032 980
+          </a>
+          <a href="mailto:reviveexteriorcleaningsolutions@gmail.com" class="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors">
+            <iconify-icon icon="solar:letter-linear" width="18"></iconify-icon>
+            Email Us
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7️⃣ Footer -->
+    <footer class="text-xs bg-black border-neutral-900 border-t pt-20 pb-10">
+      <div class="sm:px-6 lg:px-8 max-w-7xl mr-auto ml-auto pr-4 pl-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
+          <div class="col-span-1">
+            <a href="#" class="flex items-center gap-2 mb-4 hover:opacity-80 transition-opacity">
+              <div class="bg-lime-400 p-0.5 rounded text-black">
+                <iconify-icon icon="solar:waterdrops-linear" width="14" height="14"></iconify-icon>
+              </div>
+              <span class="font-bold text-white tracking-tight">REVIVE</span>
+            </a>
+            <p class="text-neutral-500 mb-4">
+              Serving Swansea, SA1–SA6 and wider South Wales.
+            </p>
+          </div>
+
+          <div class="">
+            <h5 class="font-semibold text-white mb-4">Services</h5>
+            <ul class="space-y-2 text-neutral-500">
+              <li class="">
+                <a href="/services-2" class="hover:text-lime-400 transition-colors">
+                  Roof Cleaning
+                </a>
+              </li>
+              <li class="">
+                <a href="/instant-quote-page" class="hover:text-lime-400 transition-colors">
+                  Driveway Washing
+                </a>
+              </li>
+              <li class="">
+                <a href="/services-2" class="hover:text-lime-400 transition-colors">
+                  Gutter Clearance
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <div class="">
+            <h5 class="font-semibold text-white mb-4">Company</h5>
+            <ul class="space-y-2 text-neutral-500">
+              <li class="">
+                <a href="/about" class="hover:text-lime-400 transition-colors">
+                  About
+                </a>
+              </li>
+              <li class="">
+                <a href="/before-and-after" class="hover:text-lime-400 transition-colors">
+                  Gallery
+                </a>
+              </li>
+              <li class="">
+                <a href="/legal-pages-privacy-cookies-terms" class="hover:text-lime-400 transition-colors">
+                  Terms of Service
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <div class="">
+            <h5 class="font-semibold text-white mb-4">Connect</h5>
+            <ul class="space-y-2 text-neutral-500">
+              <li class="flex items-center gap-2">
+                <a href="mailto:reviveexteriorcleaningsolutions@gmail.com" class="hover:text-lime-400 transition-colors">
+                  Email Us
+                </a>
+              </li>
+              <li class="flex items-center gap-2">
+                <a href="https://wa.me/447934032980" class="hover:text-lime-400 transition-colors">
+                  WhatsApp Support
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="border-t border-neutral-900 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-neutral-600">
+          <p>
+            © 2024 Revive Exterior Cleaning Solutions. All rights reserved.
+          </p>
+          <div class="flex gap-4">
+            <iconify-icon icon="logos:facebook" width="16" class="grayscale opacity-50 hover:grayscale-0 hover:opacity-100 cursor-pointer transition-all"></iconify-icon>
+            <iconify-icon icon="logos:instagram-icon" width="16" class="grayscale opacity-50 hover:grayscale-0 hover:opacity-100 cursor-pointer transition-all"></iconify-icon>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Form Logic Script -->
+    <script>
+      // Scroll to form helper
+      function scrollToForm() {
+          document.getElementById('quote-form-section').scrollIntoView({ behavior: 'smooth' });
+      }
+
+      // Multi-step Logic
+      let currentStep = 1;
+      const totalSteps = 4;
+      const progressBar = document.getElementById('progress-bar');
+
+      function updateProgress() {
+          const percent = (currentStep / totalSteps) * 100;
+          progressBar.style.width = percent + '%';
+      }
+
+      function showStep(stepId) {
+          // Hide all steps
+          document.querySelectorAll('.step-content').forEach(el => {
+              el.classList.remove('active');
+          });
+          // Show target step
+          document.getElementById('step-' + stepId).classList.add('active');
+          // Update internal state
+          currentStep = stepId;
+          updateProgress();
+
+          // Scroll to top of form if on mobile to keep context
+          if(window.innerWidth < 768) {
+              document.getElementById('quote-form-section').scrollIntoView({ behavior: 'smooth' });
+          }
+      }
+
+      function nextStep(current) {
+          if (current < totalSteps) {
+              showStep(current + 1);
+          }
+      }
+
+      function prevStep(current) {
+          if (current > 1) {
+              showStep(current - 1);
+          }
+      }
+
+function submitForm() {
+  console.log('submitForm called');
+  const submitBtn = document.querySelector('button[type="submit"]');
+  console.log('Submit button found:', submitBtn);
+
+  // Get all text inputs to see what we're working with
+  const allTextInputs = document.querySelectorAll('input[type="text"]');
+  console.log('Total text inputs found:', allTextInputs.length);
+
+  // Collect form data with correct structure
+  const formData = {
+    // Top-level customer fields
+    name: document.querySelectorAll('input[type="text"]')[2]?.value.trim() || '',
+    email: document.querySelector('input[type="email"]')?.value.trim() || '',
+    phone: document.querySelector('input[type="tel"]')?.value.trim() || '',
+    addressLine1: document.querySelectorAll('input[type="text"]')[0]?.value.trim() || '',
+    postcode: document.querySelectorAll('input[type="text"]')[1]?.value.trim() || '',
+
+    // Services array
+    services: Array.from(document.querySelectorAll('input[name="services"]:checked')).map(cb => cb.value),
+
+    // Preferences
+    preferredContact: document.querySelectorAll('select')[3]?.value || '',
+    bestTime: document.querySelectorAll('select')[4]?.value || '',
+    remindersOk: document.getElementById('reminders-checkbox') ? document.getElementById('reminders-checkbox').checked : false,
+    formVersion: '1.0',
+
+    // Form-specific fields wrapped in answers object
+    answers: {
+      propertyType: document.querySelector('select')?.value || '',
+      roughSize: document.querySelectorAll('select')[1]?.value || '',
+      lastCleaned: document.querySelectorAll('select')[2]?.value || '',
+      specificDetails: document.querySelector('textarea')?.value || '',
+      accessNotes: document.querySelectorAll('textarea')[1]?.value || ''
+    }
+  };
+
+  console.log('Form data collected:', formData);
+
+  // Validate required fields
+  if (!formData.name || !formData.email || !formData.phone || !formData.addressLine1 || !formData.postcode) {
+    console.log('Validation failed - missing required fields');
+    console.log('Name:', formData.name);
+    console.log('Email:', formData.email);
+    console.log('Phone:', formData.phone);
+    console.log('Address:', formData.addressLine1);
+    console.log('Postcode:', formData.postcode);
+    alert('Please fill in all required fields (name, email, phone, address, and postcode).');
+    return;
+  }
+
+  // Validate at least one service is selected
+  if (formData.services.length === 0) {
+    console.log('Validation failed - no services selected');
+    alert('Please select at least one service.');
+    showStep(1); // Go back to step 1 where services are
+    return;
+  }
+
+  // Basic email validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(formData.email)) {
+    console.log('Validation failed - invalid email format');
+    alert('Please enter a valid email address.');
+    return;
+  }
+
+  console.log('All validation passed, submitting...');
+
+  // All validation passed, show loading state
+  submitBtn.innerHTML = '<iconify-icon icon="line-md:loading-loop" width="20"></iconify-icon> Sending...';
+  submitBtn.disabled = true;
+
+  // Send to Railway backend
+  fetch('https://revive-backend-repo-production.up.railway.app/api/quote', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(formData)
+  })
+  .then(response => {
+    // Check if response is OK (status 200-299)
+    if (!response.ok) {
+      return response.json().then(errorData => {
+        throw new Error(errorData.error || 'Server error');
+      });
+    }
+    return response.json();
+  })
+  .then(data => {
+    // Check if backend returned success flag
+    if (data.success === false) {
+      throw new Error(data.error || 'Submission failed');
+    }
+
+    // Success!
+    document.getElementById('quote-form').style.display = 'none';
+    document.getElementById('progress-container').style.display = 'none';
+    document.getElementById('upsell-strip').style.display = 'none';
+    document.getElementById('success-panel').classList.remove('hidden');
+    document.getElementById('quote-form-section').scrollIntoView({ behavior: 'smooth' });
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    submitBtn.innerHTML = 'Get My Instant Quote <iconify-icon icon="solar:plain-linear" stroke-width="2"></iconify-icon>';
+    submitBtn.disabled = false;
+    alert('Sorry, there was an error submitting your quote. Please try again or contact us directly.');
+  });
+}
+
+    </script>
+  
+</body></html>

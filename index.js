@@ -839,6 +839,9 @@ app.post('/confirm-acceptance/:quoteId', async (req, res) => {
 // ADMIN ROUTES (Protected)
 // =======================
 
+// Export quotes as CSV
+app.get('/admin/export', requireAdminAuth, adminRoutes.exportQuotes);
+
 // List quotes with filtering
 app.get('/admin/quotes', requireAdminAuth, adminRoutes.listQuotes);
 

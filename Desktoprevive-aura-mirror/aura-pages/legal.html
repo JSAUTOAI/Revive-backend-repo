@@ -1,0 +1,448 @@
+<html lang="en" class="scroll-smooth antialiased scroll-pt-24"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Legal Information – Revive Exterior Cleaning</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Space+Grotesk:wght@300;400;500;600&amp;display=swap" rel="stylesheet">
+    <style>
+      body {
+          font-family: 'Inter', sans-serif;
+          background-color: #000000;
+          color: #e5e5e5;
+      }
+      h1, h2, h3, h4, h5, h6 {
+          font-family: 'Space Grotesk', sans-serif;
+      }
+      
+      /* Card Styling */
+      .legal-card {
+          transition: all 0.3s ease;
+          background: #0a0a0a; /* Neutral-950 */
+          border: 1px solid #262626; /* Neutral-800 */
+      }
+      
+      /* List Styling */
+      ul.legal-list {
+          list-style: none;
+          padding-left: 0;
+      }
+      ul.legal-list li {
+          position: relative;
+          padding-left: 1.5rem;
+          margin-bottom: 0.5rem;
+      }
+      ul.legal-list li::before {
+          content: "•";
+          color: #a3e635; /* Lime-400 */
+          position: absolute;
+          left: 0;
+          font-weight: bold;
+      }
+
+      /* Animations */
+      .animate-fade-up {
+          animation: fadeUp 0.6s ease-out forwards;
+          opacity: 0;
+          transform: translateY(20px);
+      }
+      .delay-100 { animation-delay: 0.1s; }
+      .delay-200 { animation-delay: 0.2s; }
+      .delay-300 { animation-delay: 0.3s; }
+      
+      @keyframes fadeUp {
+          to { opacity: 1; transform: translateY(0); }
+      }
+
+      ::-webkit-scrollbar { width: 8px; }
+      ::-webkit-scrollbar-track { background: #0a0a0a; }
+      ::-webkit-scrollbar-thumb { background: #262626; border-radius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: #404040; }
+    </style>
+</head>
+<body class="selection:bg-lime-500/30 selection:text-lime-200 flex flex-col min-h-screen text-neutral-300 bg-black">
+
+<!-- Background Video/Aura (Consistent with site) -->
+<div class="video-background-container fixed top-0 w-full h-screen -z-10" data-alpha-mask="80" style="mask-image: linear-gradient(to bottom, transparent, black 0%, black 80%, transparent); -webkit-mask-image: linear-gradient(to bottom, transparent, black 0%, black 80%, transparent)"><video src="https://www.youtube.com/watch?v=XZ44b103f_I" autoplay="" loop="" muted="" playsinline="" class="w-full h-full object-cover opacity-20"></video></div>
+
+    <!-- 1️⃣ Sticky Header -->
+    <header class="fixed transition-all duration-300 bg-black/80 w-full border-neutral-800 border-b top-0 left-0 backdrop-blur z-50">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+        <!-- Logo -->
+        <a href="/" class="flex items-center gap-2 group">
+          <img src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/c766f414-a5c1-47b3-9891-ea60080a5074_320w.png" class="group-hover:shadow-[0_0_15px_rgba(163,230,53,0.5)] transition-shadow w-[42px] h-[42px] object-cover border-0 rounded pt-1 pr-1 pb-1 pl-1" alt="Revive logo">
+          <span class="group-hover:text-lime-300 transition-colors text-lg font-medium text-white tracking-tight">
+                    REVIVE <span class="font-light text-neutral-500 font-poppins tracking-tight" style="transition: outline 0.1s ease-in-out;">Exterior cleaning solutions</span>
+          </span>
+        </a>
+
+        <!-- Desktop Nav -->
+        <nav class="hidden md:flex items-center gap-8 text-xs font-medium text-neutral-400">
+          <a href="/home" class="hover:text-white transition-colors">Home</a>
+          <a href="/services-2" class="hover:text-white transition-colors">Services</a>
+          <a href="/instant-quote-page" class="hover:text-white transition-colors">Instant Quote</a>
+          <a href="/before-and-after" class="hover:text-white transition-colors">Before &amp; After</a>
+          <a href="/about" class="hover:text-white transition-colors">About</a>
+          <a href="/contact-us" class="hover:text-white transition-colors">Contact Us</a>
+        </nav>
+
+        <!-- Right Actions -->
+        <div class="flex gap-4 items-center">
+          <a href="https://wa.me/447934032980" class="hidden sm:flex items-center justify-center hover:text-lime-400 transition-colors text-neutral-400" aria-label="WhatsApp">
+            <iconify-icon icon="solar:phone-calling-linear" width="20" height="20" stroke-width="1.5"></iconify-icon>
+          </a>
+          <a href="/instant-quote-page" class="hidden hover:bg-lime-400 hover:text-black transition-all items-center gap-2 sm:flex text-xs font-bold text-black bg-lime-400 rounded-full pt-2 pr-4 pb-2 pl-4">
+            <span class="">Get Quote</span>
+            <iconify-icon icon="solar:arrow-right-linear" stroke-width="2"></iconify-icon>
+          </a>
+<!-- Mobile Menu Button -->
+<div class="md:hidden relative z-50">
+  <button type="button" aria-label="Toggle menu" class="transition-colors hover:bg-neutral-900 hover:text-white group text-neutral-400 rounded-lg pt-2 pr-2 pb-2 pl-2" onclick="
+      const m = document.getElementById('mobileMenu');
+      if (!m) { console.warn('mobileMenu not found'); return; }
+
+      const i = this.querySelector('iconify-icon');
+      const opening = m.classList.contains('hidden');
+
+      if (opening) {
+        m.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        if (i) i.setAttribute('icon', 'lucide:x');
+      } else {
+        m.classList.add('hidden');
+        document.body.style.overflow = '';
+        if (i) i.setAttribute('icon', 'lucide:menu');
+      }
+    ">
+    <iconify-icon icon="lucide:menu" width="24" height="24" stroke-width="1.5" style="color: white;"></iconify-icon>
+  </button>
+</div>
+
+<div id="mobileMenu" class="hidden fixed left-0 right-0 top-16 z-40 bg-black/95 backdrop-blur-xl border-t border-neutral-800 p-6 max-h-[80vh] overflow-y-auto">
+  <nav class="flex flex-col space-y-6 mt-20">
+    <a href="/home" class="text-lg font-medium text-white">Home</a>
+    <a href="/services-2" class="text-lg font-medium text-white">Services</a>
+    <a href="/instant-quote-page" class="text-lg font-medium text-white">Instant Quote</a>
+    <a href="/before-and-after" class="text-lg font-medium text-white">Before &amp; After</a>
+    <a href="/about" class="text-lg font-medium text-white">About</a>
+    <a href="/contact-us" class="text-lg font-medium text-white">Contact</a>
+  </nav>
+</div>
+
+  <!-- Full-screen overlay -->
+  <div id="mobileMenu" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" onclick="
+      if (event.target === this) {
+        this.classList.add('hidden');
+        document.body.style.overflow='';
+        const btn = this.previousElementSibling;
+        const icon = btn.querySelector('iconify-icon');
+        icon.setAttribute('icon','lucide:menu');
+      }
+    ">
+    <!-- Slide-out panel -->
+    <div class="absolute right-0 top-0 h-full w-[85%] max-w-sm bg-black/95 border-l border-neutral-800 p-6 overflow-y-auto">
+      <nav class="flex flex-col space-y-6 mt-10">
+        <a href="/home" class="text-lg font-medium text-neutral-400 transition-colors font-poppins hover:text-lime-400 tracking-tight" onclick="document.getElementById('mobileMenu').classList.add('hidden');document.body.style.overflow='';document.querySelector('[aria-label=&quot;Toggle menu&quot;] iconify-icon').setAttribute('icon','lucide:menu');">Home</a>
+
+        <a href="/services-2" class="text-lg font-medium text-neutral-400 transition-colors font-poppins hover:text-lime-400 tracking-tight" onclick="document.getElementById('mobileMenu').classList.add('hidden');document.body.style.overflow='';document.querySelector('[aria-label=&quot;Toggle menu&quot;] iconify-icon').setAttribute('icon','lucide:menu');">Services</a>
+
+        <a href="/instant-quote-page" class="text-lg font-medium text-neutral-400 transition-colors font-poppins hover:text-lime-400 tracking-tight" onclick="document.getElementById('mobileMenu').classList.add('hidden');document.body.style.overflow='';document.querySelector('[aria-label=&quot;Toggle menu&quot;] iconify-icon').setAttribute('icon','lucide:menu');">Instant Quote</a>
+
+        <a href="/before-and-after" class="text-lg font-medium text-neutral-400 transition-colors font-poppins hover:text-lime-400 tracking-tight" onclick="document.getElementById('mobileMenu').classList.add('hidden');document.body.style.overflow='';document.querySelector('[aria-label=&quot;Toggle menu&quot;] iconify-icon').setAttribute('icon','lucide:menu');">Before &amp; After</a>
+
+        <a href="/about" class="text-lg font-medium text-neutral-400 transition-colors font-poppins hover:text-lime-400 tracking-tight" onclick="document.getElementById('mobileMenu').classList.add('hidden');document.body.style.overflow='';document.querySelector('[aria-label=&quot;Toggle menu&quot;] iconify-icon').setAttribute('icon','lucide:menu');">About</a>
+
+        <a href="/contact-us" class="text-lg font-medium text-neutral-400 transition-colors font-poppins hover:text-lime-400 tracking-tight" onclick="document.getElementById('mobileMenu').classList.add('hidden');document.body.style.overflow='';document.querySelector('[aria-label=&quot;Toggle menu&quot;] iconify-icon').setAttribute('icon','lucide:menu');">Contact us</a>
+      </nav>
+
+      <div class="flex flex-col gap-4 mt-8 pt-8 border-t border-neutral-800">
+        <a href="https://wa.me/447934032980" class="flex items-center justify-center w-full gap-2 py-3 text-sm font-medium text-white transition-colors border rounded-full border-neutral-800 bg-black/50 backdrop-blur-sm hover:bg-neutral-900">
+          <iconify-icon icon="lucide:phone" width="18" height="18"></iconify-icon>
+          <span class="font-poppins tracking-tight">WhatsApp Us</span>
+        </a>
+
+        <a href="/instant-quote-page" class="flex items-center justify-center w-full gap-2 py-3 text-sm font-semibold text-black transition-all rounded-full bg-lime-400 hover:bg-lime-300 hover:shadow-[0_0_20px_rgba(163,230,53,0.4)]">
+          <span class="font-poppins tracking-tight">Get Instant Quote</span>
+          <iconify-icon icon="lucide:arrow-right" width="18" height="18"></iconify-icon>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+            </div>
+        
+    </header>
+
+    <!-- 2️⃣ Hero / Intro Section -->
+    <section class="sm:pt-40 sm:pb-16 pt-32 pr-4 pb-12 pl-4 relative">
+        <!-- Subtle Glow -->
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-lime-500/10 blur-[120px] rounded-full pointer-events-none"></div>
+
+        <div class="max-w-3xl mx-auto text-center animate-fade-up relative z-10">
+            <h1 class="text-3xl md:text-5xl font-medium text-white tracking-tighter mb-6">
+                Legal Information
+            </h1>
+            <p class="text-base md:text-lg font-light text-neutral-400 leading-relaxed max-w-2xl mx-auto mb-10">
+                Here's how we handle your information, what cookies we use, and the terms for using our website and services. If you have questions, just get in touch.
+            </p>
+            
+            <!-- Jump Links -->
+            <div class="flex flex-wrap justify-center gap-3 md:gap-4">
+                <a href="#privacy" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-neutral-900 border border-neutral-800 text-sm font-medium text-neutral-300 hover:text-white hover:border-lime-400 transition-colors">
+                    <iconify-icon icon="solar:shield-check-linear"></iconify-icon>
+                    Privacy Policy
+                </a>
+                <a href="#cookies" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-neutral-900 border border-neutral-800 text-sm font-medium text-neutral-300 hover:text-white hover:border-lime-400 transition-colors">
+                    <iconify-icon icon="solar:cookie-linear"></iconify-icon>
+                    Cookie Policy
+                </a>
+                <a href="#terms" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-neutral-900 border border-neutral-800 text-sm font-medium text-neutral-300 hover:text-white hover:border-lime-400 transition-colors">
+                    <iconify-icon icon="solar:document-text-linear"></iconify-icon>
+                    Terms of Service
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content Container -->
+    <div class="max-w-3xl mr-auto ml-auto pr-4 pb-24 pl-4 space-y-12">
+        
+        <!-- 📄 SECTION 1 — PRIVACY POLICY -->
+        <section id="privacy" class="legal-card p-8 md:p-12 rounded-2xl animate-fade-up delay-100">
+            <div class="flex items-center gap-3 mb-8 border-b border-neutral-800 pb-6">
+                <div class="bg-lime-400/10 text-lime-400 p-2 rounded-lg">
+                    <iconify-icon icon="solar:shield-check-linear" width="24" height="24" class=""></iconify-icon>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-medium text-white">Privacy Policy</h2>
+                    <p class="text-xs text-neutral-500 mt-1">Last Updated: January 2024</p>
+                </div>
+            </div>
+
+            <div class="space-y-8 text-sm leading-relaxed text-neutral-400">
+                <div class="">
+                    <h3 class="text-white text-base font-medium mb-3">Who We Are</h3>
+                    <p class="mb-4">
+                        Revive Exterior Cleaning Solutions is a professional exterior cleaning business based in Swansea, South Wales. We're committed to protecting your privacy and being transparent about how we collect and use your personal information.
+                    </p>
+                    <div class="bg-neutral-900 border border-neutral-800 rounded-lg p-4 text-xs space-y-1">
+                        <p> Revive Exterior Cleaning Solutions</p>
+                        <p class=""> reviveexteriorcleaningsolutions@gmail.com</p>
+                        <p> 07934 032 980</p>
+                    </div>
+                </div>
+
+                <div class="">
+                    <h3 class="text-white text-base font-medium mb-3">What Information We Collect</h3>
+                    <p class="mb-2">We only collect information you give us directly when you request a quote, contact us, or book a service. This includes:</p>
+                    <ul class="legal-list">
+                        <li class="">Your name</li>
+                        <li class="">Contact details (email, phone number, address)</li>
+                        <li>Property details (type, postcode, service requirements)</li>
+                        <li>Photos you upload for quotes</li>
+                        <li class="">Any additional notes or preferences you share</li>
+                    </ul>
+                </div>
+
+                <div class="">
+                    <h3 class="text-white text-base font-medium mb-3">How We Use Your Information</h3>
+                    <p class="mb-2">We use your information to:</p>
+                    <ul class="legal-list">
+                        <li class="">Provide quotes and confirm bookings</li>
+                        <li class="">Arrange and carry out cleaning work</li>
+                        <li class="">Send appointment reminders and follow‑up messages</li>
+                        <li class="">Send photos of completed work</li>
+                        <li>Request reviews (optional)</li>
+                    </ul>
+                    <p class="mt-4 italic text-neutral-500">We do not sell or share your data with third parties for marketing purposes.</p>
+                </div>
+
+                <div class="">
+                    <h3 class="text-white text-base font-medium mb-3">Your Rights</h3>
+                    <p class="mb-2">Under UK GDPR, you have the right to:</p>
+                    <ul class="legal-list">
+                        <li>Ask what information we hold about you</li>
+                        <li>Request a copy of your data</li>
+                        <li class="">Ask us to correct or delete your information</li>
+                    </ul>
+                    <p class="mt-2">To exercise any of these rights, just contact us at <a href="mailto:reviveexteriorcleaningsolutions@gmail.com" class="text-lime-400 hover:underline">reviveexteriorcleaningsolutions@gmail.com</a>.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 🍪 SECTION 2 — COOKIE POLICY -->
+        <section id="cookies" class="legal-card p-8 md:p-12 rounded-2xl animate-fade-up delay-200">
+            <div class="flex items-center gap-3 mb-8 border-b border-neutral-800 pb-6">
+                <div class="bg-lime-400/10 text-lime-400 p-2 rounded-lg">
+                    <iconify-icon icon="solar:cookie-linear" width="24" height="24"></iconify-icon>
+                </div>
+                <div class="">
+                    <h2 class="text-2xl font-medium text-white">Cookie Policy</h2>
+                    <p class="text-xs text-neutral-500 mt-1">Last Updated: January 2024</p>
+                </div>
+            </div>
+
+            <div class="space-y-8 text-sm leading-relaxed text-neutral-400">
+                <div class="">
+                    <h3 class="text-white text-base font-medium mb-3">What Are Cookies?</h3>
+                    <p class="">
+                        Cookies are small text files stored on your device when you visit a website. They help the site remember your preferences and understand how you use it.
+                    </p>
+                </div>
+
+                <div class="">
+                    <h3 class="text-white text-base font-medium mb-3">Cookies We Use</h3>
+                    <p class="mb-4">Our website uses a small number of cookies to ensure the site works correctly and to help us understand how visitors use our pages (via Google Analytics).</p>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="bg-neutral-900 p-4 rounded-lg border border-neutral-800">
+                            
+                            <p class="text-xs text-neutral-500">Needed for the site to work properly (e.g., remembering your progress on a form).</p>
+                        </div>
+                        <div class="bg-neutral-900 p-4 rounded-lg border border-neutral-800">
+                            
+                            <p class="text-xs text-neutral-500">Help us see which pages are most popular. These are anonymous and don't identify you personally.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="">
+                    <h3 class="text-white text-base font-medium mb-3">Managing Cookies</h3>
+                    <p class="">
+                        You can control or delete cookies through your browser settings (Chrome, Safari, Firefox, etc.). Please note that disabling essential cookies may affect how our website functions.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 📋 SECTION 3 — TERMS OF SERVICE -->
+        <section id="terms" class="legal-card p-8 md:p-12 rounded-2xl animate-fade-up delay-300">
+            <div class="flex items-center gap-3 mb-8 border-b border-neutral-800 pb-6">
+                <div class="bg-lime-400/10 text-lime-400 p-2 rounded-lg">
+                    <iconify-icon icon="solar:document-text-linear" width="24" height="24"></iconify-icon>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-medium text-white">Terms of Service</h2>
+                    <p class="text-xs text-neutral-500 mt-1">Last Updated: January 2024</p>
+                </div>
+            </div>
+
+            <div class="space-y-8 text-sm leading-relaxed text-neutral-400">
+                <div class="">
+                    <h3 class="text-white text-base font-medium mb-3">Using This Website</h3>
+                    <p class="">
+                        By using this website, you agree to these terms. This site is provided for informational purposes and to help you request quotes and book services. We aim to keep information accurate, but we can't guarantee that everything is 100% correct at all times.
+                    </p>
+                </div>
+
+                <div class="">
+                    <h3 class="text-white text-base font-medium mb-3">Quotes &amp; Pricing</h3>
+                    <p class="mb-2">Prices shown on this website are guides only and may vary based on:</p>
+                    <ul class="legal-list">
+                        <li class="">Property size and access difficulty</li>
+                        <li class="">Condition of the area to be cleaned</li>
+                        <li class="">Any special requirements or safety considerations</li>
+                    </ul>
+                    <p class="mt-4">All quotes are subject to confirmation after we've reviewed your details or visited your property. No work will begin until you've agreed to a final price.</p>
+                </div>
+
+                <div class="">
+                    <h3 class="text-white text-base font-medium mb-3">Bookings &amp; Cancellations</h3>
+                    <p class="">
+                        We will always do our best to arrive on the agreed date. However, exterior cleaning is weather-dependent. If we need to reschedule due to high winds, ice, or heavy rain, we will let you know as soon as possible.
+                    </p>
+                    <p class="mt-2">If you need to cancel or reschedule, please let us know in advance — we try to be as flexible as possible.</p>
+                </div>
+
+                <div class="">
+                    <h3 class="text-white text-base font-medium mb-3">Liability</h3>
+                    <p class="">
+                        We are fully insured and conduct our work safely. However, we cannot be held responsible for pre‑existing damage (such as loose roof tiles, cracked render, or rotting wood) that becomes visible after cleaning. If you are aware of fragile surfaces, please inform us before work begins.
+                    </p>
+                </div>
+                
+                 <div class="">
+                    <h3 class="text-white text-base font-medium mb-3">Changes to These Terms</h3>
+                    <p class="">
+                        We may update these terms from time to time. Changes will be posted here with a new 'Last Updated' date.
+                    </p>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Contact Snippet -->
+        <div class="text-center pt-8 border-t border-neutral-900">
+            <h4 class="text-white font-medium mb-2">Have questions about these policies?</h4>
+            <p class="text-sm text-neutral-500 mb-4">You can reach us directly via email or phone.</p>
+            <div class="flex justify-center gap-6 text-sm">
+                <a href="mailto:reviveexteriorcleaningsolutions@gmail.com" class="text-lime-400 hover:text-white transition-colors flex items-center gap-2">
+                    <iconify-icon icon="solar:letter-linear"></iconify-icon> Email Us
+                </a>
+                <a href="tel:07934032980" class="text-lime-400 hover:text-white transition-colors flex items-center gap-2">
+                    <iconify-icon icon="solar:phone-calling-linear"></iconify-icon> 07934 032 980
+                </a>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 8️⃣ Footer -->
+    <footer class="text-xs bg-black border-neutral-900 border-t pt-20 pb-10">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
+          <div class="col-span-1">
+            <a href="/" class="flex items-center gap-2 mb-4 hover:opacity-80 transition-opacity">
+              <div class="bg-lime-400 p-0.5 rounded text-black">
+                <iconify-icon icon="solar:waterdrops-linear" width="14" height="14"></iconify-icon>
+              </div>
+              <span class="font-bold text-white tracking-tight">REVIVE</span>
+            </a>
+            <p class="text-neutral-500 mb-4">
+              Serving Swansea (SA1–SA6) and wider South Wales.
+            </p>
+          </div>
+
+          <div class="">
+            <h5 class="font-semibold text-white mb-4">Services</h5>
+            <ul class="space-y-2 text-neutral-500">
+              <li class=""><a href="/services-2" class="hover:text-lime-400 transition-colors">Roof Cleaning</a></li>
+              <li class=""><a href="/services-2" class="hover:text-lime-400 transition-colors">Driveway Washing</a></li>
+              <li class=""><a href="/services-2" class="hover:text-lime-400 transition-colors">Gutter Clearance</a></li>
+              
+            </ul>
+          </div>
+
+          <div class="">
+            <h5 class="font-semibold text-white mb-4">Company</h5>
+            <ul class="space-y-2 text-neutral-500">
+              <li class=""><a href="/about" class="hover:text-lime-400 transition-colors">About Us</a></li>
+              <li class=""><a href="/before-and-after" class="hover:text-lime-400 transition-colors">Our Work</a></li>
+              <li class=""><a href="/instant-quote-page" class="hover:text-lime-400 transition-colors">Get a Quote</a></li>
+            </ul>
+          </div>
+
+          <div class="">
+            <h5 class="font-semibold text-white mb-4">Contact</h5>
+            <ul class="space-y-2 text-neutral-500">
+              <li class="flex items-center gap-2">
+                <a href="mailto:reviveexteriorcleaningsolutions@gmail.com" class="hover:text-lime-400 transition-colors">Email Us</a>
+              </li>
+              <li class="flex items-center gap-2">
+                <a href="https://wa.me/447934032980" class="hover:text-lime-400 transition-colors">07934 032 980</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="border-t border-neutral-900 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-neutral-600">
+          <p>© 2024 Revive Exterior Cleaning Solutions. All rights reserved.</p>
+          <div class="flex gap-4">
+             <a href="#privacy" class="hover:text-white transition-colors">Privacy</a>
+             <a href="#cookies" class="hover:text-white transition-colors">Cookies</a>
+             <a href="#terms" class="hover:text-white transition-colors">Terms</a>
+          </div>
+        </div>
+      </div>
+    </footer>
+</body></html>

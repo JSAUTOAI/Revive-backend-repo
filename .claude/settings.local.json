@@ -6,7 +6,16 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(dir:*)",
-      "Bash(git config:*)"
+      "Bash(git config:*)",
+      "Bash(git remote add:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)",
+      "WebFetch(domain:revive-backend-repo-production.up.railway.app)",
+      "Bash(node:*)",
+      "Bash(clip:*)",
+      "Bash(tasklist:*)",
+      "Bash(npm install:*)",
+      "Bash(if not exist services mkdir services)"
     ]
   }
 }

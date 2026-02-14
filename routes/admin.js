@@ -5,6 +5,8 @@
  * All routes require ADMIN_TOKEN in Authorization header.
  */
 
+const { parse } = require('json2csv');
+
 // Supabase client will be passed from index.js
 let supabase;
 
@@ -264,10 +266,146 @@ async function getQuote(req, res) {
   }
 }
 
+/**
+ * GET /admin/export
+ *
+ * Export quotes as CSV file
+ *
+ * Query params:
+ * - status: Filter by qualification_status (optional)
+ * - service: Filter by service (optional)
+ * - from_date: Filter quotes created after this date (YYYY-MM-DD)
+ * - to_date: Filter quotes created before this date (YYYY-MM-DD)
+ */
+async function exportQuotes(req, res) {
+  try {
+    const { status, service, from_date, to_date } = req.query;
+
+    console.log('[Admin] Exporting quotes with filters:', { status, service, from_date, to_date });
+
+    // Build query
+    let query = supabase
+      .from('quotes')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    // Apply filters
+    if (status) {
+      query = query.eq('qualification_status', status);
+    }
+
+    if (service) {
+      query = query.contains('services', [service]);
+    }
+
+    if (from_date) {
+      query = query.gte('created_at', from_date);
+    }
+
+    if (to_date) {
+      // Add one day to include the entire to_date
+      const toDateEnd = new Date(to_date);
+      toDateEnd.setDate(toDateEnd.getDate() + 1);
+      query = query.lt('created_at', toDateEnd.toISOString());
+    }
+
+    // Execute query (no limit - get all matching quotes)
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('[Admin] Export query error:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Database query failed'
+      });
+    }
+
+    if (!data || data.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'No quotes found matching the criteria'
+      });
+    }
+
+    // Flatten quote data for CSV
+    const csvRows = data.map(quote => ({
+      // Core fields
+      id: quote.id,
+      created_at: quote.created_at,
+      name: quote.name,
+      email: quote.email,
+      phone: quote.phone,
+      address_line1: quote.address_line1,
+      postcode: quote.postcode,
+
+      // Preferences
+      preferred_contact: quote.preferred_contact || '',
+      best_time: quote.best_time || '',
+      reminders_ok: quote.reminders_ok ? 'Yes' : 'No',
+
+      // Services (array to comma-separated)
+      services: Array.isArray(quote.services) ? quote.services.join(', ') : '',
+
+      // Estimates
+      estimated_min: quote.estimated_value_min || '',
+      estimated_max: quote.estimated_value_max || '',
+      estimation_confidence: quote.estimation_confidence || '',
+      lead_score: quote.lead_score || '',
+      qualification_status: quote.qualification_status || '',
+
+      // Status tracking
+      status: quote.status || 'new',
+
+      // Acceptance tracking
+      customer_accepted: quote.customer_accepted_estimate ? 'Yes' : 'No',
+      customer_accepted_at: quote.customer_accepted_at || '',
+
+      // Admin fields
+      admin_notes: quote.admin_notes || '',
+
+      // Communication tracking
+      confirmation_email_sent_at: quote.confirmation_email_sent_at || '',
+      estimate_email_sent_at: quote.estimate_email_sent_at || '',
+
+      // Flatten common answer fields (if answers exists)
+      property_type: quote.answers?.propertyType || '',
+      rough_size: quote.answers?.roughSize || '',
+      last_cleaned: quote.answers?.lastCleaned || '',
+      specific_details: quote.answers?.specificDetails || '',
+      access_notes: quote.answers?.accessNotes || '',
+
+      // Full answers JSON as fallback (for edge cases)
+      answers_json: quote.answers ? JSON.stringify(quote.answers) : ''
+    }));
+
+    // Convert to CSV
+    const csv = parse(csvRows);
+
+    // Generate filename with timestamp
+    const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const filename = `revive-quotes-${timestamp}.csv`;
+
+    console.log(`[Admin] Exported ${csvRows.length} quotes to CSV`);
+
+    // Send as downloadable file
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csv);
+
+  } catch (error) {
+    console.error('[Admin] Export error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Export failed: ' + error.message
+    });
+  }
+}
+
 module.exports = {
   setSupabaseClient,
   listQuotes,
   updateQuoteStatus,
   updateQuoteNotes,
-  getQuote
+  getQuote,
+  exportQuotes
 };
