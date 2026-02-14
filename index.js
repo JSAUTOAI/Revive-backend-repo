@@ -332,9 +332,253 @@ app.get('/accept-estimate/:quoteId', async (req, res) => {
       `);
     }
 
+    // Show confirmation page (not auto-accept to avoid link preview issues)
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Confirm Acceptance - Revive Exterior Cleaning</title>
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 500px;
+            text-align: center;
+          }
+          h1 {
+            color: #065f46;
+            margin-bottom: 16px;
+            font-size: 28px;
+          }
+          p {
+            color: #64748b;
+            line-height: 1.6;
+            margin-bottom: 16px;
+          }
+          .estimate {
+            background: #f0fdf4;
+            padding: 20px;
+            border-radius: 12px;
+            margin: 24px 0;
+            border-left: 4px solid #10b981;
+          }
+          .estimate-amount {
+            font-size: 32px;
+            font-weight: bold;
+            color: #065f46;
+            margin: 8px 0;
+          }
+          .services {
+            text-align: left;
+            margin: 16px 0;
+          }
+          .service-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #e2e8f0;
+          }
+          .service-item:last-child {
+            border-bottom: none;
+          }
+          .disclaimer {
+            background: #f8fafc;
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #64748b;
+            line-height: 1.5;
+            margin-top: 24px;
+          }
+          .accept-button {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 16px 40px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 24px 0;
+            width: 100%;
+            transition: background 0.2s;
+          }
+          .accept-button:hover {
+            background: #059669;
+          }
+          .accept-button:active {
+            transform: scale(0.98);
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>Ready to Proceed, ${quote.name}?</h1>
+          <p>Please confirm you're happy with this estimated price range:</p>
+
+          <div class="estimate">
+            <p style="margin: 0 0 8px 0; color: #065f46; font-weight: 600;">Estimated Price Range</p>
+            <div class="estimate-amount">£${quote.estimated_value_min} - £${quote.estimated_value_max}</div>
+            <div class="services">
+              ${quote.services.map(s => `<div class="service-item">✓ ${s.charAt(0).toUpperCase() + s.slice(1)} Cleaning</div>`).join('')}
+            </div>
+          </div>
+
+          <form method="POST" action="/confirm-acceptance/${quoteId}">
+            <button type="submit" class="accept-button">
+              ✓ Yes, I Accept This Quote
+            </button>
+          </form>
+
+          <p style="font-size: 14px; color: #666; margin-top: 16px;">
+            We'll contact you ${quote.best_time ? `at your preferred time (${quote.best_time})` : 'shortly'} via ${quote.preferred_contact || 'email'} to discuss the job in detail.
+          </p>
+
+          <div class="disclaimer">
+            <strong>Please note:</strong> The price range provided is an estimate based on the information you've supplied. The final quote will be confirmed following a detailed discussion of your specific requirements and may be subject to adjustment based on site conditions, accessibility, and the full scope of work required.
+          </div>
+        </div>
+      </body>
+      </html>
+    `);
+
+  } catch (err) {
+    console.error('[Accept Route] Unexpected error:', err);
+    res.status(500).send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Error - Revive Exterior Cleaning</title>
+      </head>
+      <body>
+        <h1>An unexpected error occurred</h1>
+        <p>Please contact us directly.</p>
+      </body>
+      </html>
+    `);
+  }
+});
+
+// =======================
+// CONFIRM ACCEPTANCE ROUTE (POST)
+// =======================
+
+// Confirm acceptance - Customer clicks the button
+app.post('/confirm-acceptance/:quoteId', async (req, res) => {
+  try {
+    const { quoteId } = req.params;
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(quoteId)) {
+      return res.status(400).send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Invalid Link - Revive Exterior Cleaning</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              margin: 0;
+              padding: 20px;
+              min-height: 100vh;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+            .container {
+              background: white;
+              border-radius: 16px;
+              box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+              padding: 40px;
+              max-width: 500px;
+              text-align: center;
+            }
+            h1 { color: #dc2626; margin-bottom: 16px; }
+            p { color: #64748b; line-height: 1.6; margin-bottom: 24px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>⚠️ Invalid Link</h1>
+            <p>This acceptance link appears to be invalid or incomplete. Please use the link provided in your quote email or WhatsApp message.</p>
+            <p>If you continue to have issues, please contact us directly.</p>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+
+    // Fetch quote from database
+    const { data: quote, error } = await supabase
+      .from('quotes')
+      .select('*')
+      .eq('id', quoteId)
+      .single();
+
+    if (error || !quote) {
+      console.error('[Confirm Route] Quote not found:', quoteId, error);
+      return res.status(404).send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Quote Not Found - Revive Exterior Cleaning</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              margin: 0;
+              padding: 20px;
+              min-height: 100vh;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+            .container {
+              background: white;
+              border-radius: 16px;
+              box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+              padding: 40px;
+              max-width: 500px;
+              text-align: center;
+            }
+            h1 { color: #dc2626; margin-bottom: 16px; }
+            p { color: #64748b; line-height: 1.6; margin-bottom: 24px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>❌ Quote Not Found</h1>
+            <p>We couldn't find this quote in our system. The link may have expired or the quote may have already been processed.</p>
+            <p>Please contact us directly if you need assistance.</p>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+
     // Check if already accepted
     if (quote.customer_accepted_estimate) {
-      console.log(`[Accept Route] Quote ${quoteId} already accepted at ${quote.customer_accepted_at}`);
+      console.log(`[Confirm Route] Quote ${quoteId} already accepted at ${quote.customer_accepted_at}`);
       return res.send(`
         <!DOCTYPE html>
         <html>
