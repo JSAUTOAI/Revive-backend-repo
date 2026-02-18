@@ -21,6 +21,7 @@ const FROM_WHATSAPP = `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`;
 const TEMPLATES = {
   QUOTE_CONFIRMATION: 'HXc8939b6d34aaab6915ffc30cc36c511f',
   ESTIMATE_READY: 'HX32ba36a8fd9c1a9b0b40076188f5ef8d',
+  ADMIN_ALERT: 'HXf258a03a33e6415610cce497994ca92c',
 };
 
 /**
@@ -158,11 +159,42 @@ async function sendEstimateWhatsApp(quote) {
  * @returns {Promise<Object>} - Result object
  */
 async function sendAdminAlertWhatsApp(quote, isAcceptance = false) {
-  // Admin alerts are now sent via email only (see services/emailer.js)
-  // No WhatsApp template needed for internal notifications
-  const alertType = isAcceptance ? 'customer acceptance' : 'high-value lead';
-  console.log(`[WhatsApp] Admin alert for ${alertType} - handled via email instead`);
-  return { success: true, skipped: true, reason: 'Admin alerts sent via email' };
+  try {
+    // Skip threshold check if this is an acceptance notification
+    if (!isAcceptance) {
+      if (quote.lead_score < 80 && quote.estimated_value_max < 500) {
+        console.log('[WhatsApp] Skipping admin alert - lead score too low');
+        return { success: true, skipped: true };
+      }
+    }
+
+    const alertType = isAcceptance ? 'customer acceptance' : 'high-value lead';
+    console.log(`[WhatsApp] Sending admin alert for ${alertType}`);
+
+    const adminPhone = process.env.ADMIN_PHONE || quote.phone;
+    const toWhatsApp = formatPhoneNumber(adminPhone);
+    const servicesText = quote.services.map(s => capitalizeService(s)).join(', ');
+    const priceRange = `£${quote.estimated_value_min}-£${quote.estimated_value_max}`;
+
+    const message = await client.messages.create({
+      from: FROM_WHATSAPP,
+      to: toWhatsApp,
+      contentSid: TEMPLATES.ADMIN_ALERT,
+      contentVariables: JSON.stringify({
+        '1': quote.name,
+        '2': String(quote.lead_score || 0),
+        '3': servicesText,
+        '4': priceRange
+      })
+    });
+
+    console.log(`[WhatsApp] Admin alert sent successfully: ${message.sid}`);
+    return { success: true, messageSid: message.sid };
+
+  } catch (error) {
+    console.error('[WhatsApp] Failed to send admin alert:', error.message);
+    return { success: false, error: error.message };
+  }
 }
 
 /*
