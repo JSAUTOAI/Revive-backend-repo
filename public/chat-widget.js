@@ -24,7 +24,7 @@
   styles.textContent = `
     #revive-chat-bubble {
       position: fixed;
-      bottom: 24px;
+      bottom: 80px;
       right: 24px;
       width: 60px;
       height: 60px;
@@ -51,7 +51,7 @@
 
     #revive-chat-window {
       position: fixed;
-      bottom: 96px;
+      bottom: 152px;
       right: 24px;
       width: 380px;
       height: 520px;
@@ -271,7 +271,7 @@
         border: none;
       }
       #revive-chat-bubble {
-        bottom: 16px;
+        bottom: 72px;
         right: 16px;
       }
     }
