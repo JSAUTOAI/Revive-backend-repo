@@ -20,6 +20,9 @@ const { sendConfirmationWhatsApp } = require('./services/whatsapp');
 // Import Google Sheets service
 const { syncQuoteToSheets } = require('./services/googleSheets');
 
+// Import chatbot service
+const { chat } = require('./services/chatbot');
+
 // Import admin notification functions
 const { sendAdminAlert } = require('./services/emailer');
 const { sendAdminAlertWhatsApp } = require('./services/whatsapp');
@@ -236,6 +239,61 @@ app.post('/api/quote', async (req, res) => {
       success: false,
       error: 'An unexpected error occurred'
     });
+  }
+});
+
+// =======================
+// CHATBOT ROUTE
+// =======================
+
+// Simple in-memory rate limiter for chat
+const chatRateLimit = new Map();
+const CHAT_RATE_WINDOW = 10 * 60 * 1000; // 10 minutes
+const CHAT_RATE_MAX = 30; // max messages per window
+
+function checkChatRateLimit(ip) {
+  const now = Date.now();
+  const entry = chatRateLimit.get(ip);
+  if (!entry || now - entry.windowStart > CHAT_RATE_WINDOW) {
+    chatRateLimit.set(ip, { windowStart: now, count: 1 });
+    return true;
+  }
+  if (entry.count >= CHAT_RATE_MAX) return false;
+  entry.count++;
+  return true;
+}
+
+// Clean up rate limit map periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of chatRateLimit) {
+    if (now - entry.windowStart > CHAT_RATE_WINDOW) chatRateLimit.delete(ip);
+  }
+}, 5 * 60 * 1000);
+
+app.post('/api/chat', async (req, res) => {
+  try {
+    const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+    if (!checkChatRateLimit(ip)) {
+      return res.status(429).json({ success: false, error: 'Too many messages. Please wait a moment.' });
+    }
+
+    const { messages } = req.body;
+
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ success: false, error: 'Messages array is required' });
+    }
+
+    // Limit conversation length to prevent abuse
+    const trimmedMessages = messages.slice(-20);
+
+    const response = await chat(trimmedMessages);
+
+    res.json({ success: true, response });
+
+  } catch (err) {
+    console.error('[Chat Route] Error:', err.message);
+    res.status(500).json({ success: false, error: 'Failed to process chat message' });
   }
 });
 
