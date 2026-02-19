@@ -9,9 +9,8 @@ const { Resend } = require('resend');
 // Initialize Resend client
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Your verified sending domain (update after domain verification)
-// For now, using Resend's onboarding email
-const FROM_EMAIL = 'onboarding@resend.dev'; // TODO: Change to your verified domain
+// Email sender - set FROM_EMAIL in Railway env vars once your domain is verified with Resend
+const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
 
 /**
  * Send confirmation email immediately after quote submission
