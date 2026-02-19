@@ -271,7 +271,7 @@
         border: none;
       }
       #revive-chat-bubble {
-        bottom: 72px;
+        bottom: 110px;
         right: 16px;
       }
     }
