@@ -292,6 +292,40 @@
       </div>
     </div>
 
+    <!-- Conversion Analytics -->
+    <details id="analyticsSection" class="mb-6">
+      <summary class="bg-neutral-900 border border-neutral-800 rounded-xl px-4 py-3 text-xs font-semibold text-neutral-400 cursor-pointer hover:text-white transition-colors">Conversion Analytics</summary>
+      <div class="mt-3 space-y-3">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+            <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Quote &gt; Accept</div>
+            <div class="text-xl font-bold text-lime-400 mt-1" id="analytics-q2a-rate">-</div>
+            <div class="text-[10px] text-neutral-600 mt-1" id="analytics-q2a-detail"></div>
+          </div>
+          <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+            <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Accept &gt; Job</div>
+            <div class="text-xl font-bold text-lime-400 mt-1" id="analytics-a2j-rate">-</div>
+            <div class="text-[10px] text-neutral-600 mt-1" id="analytics-a2j-detail"></div>
+          </div>
+          <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+            <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Avg Time to Accept</div>
+            <div class="text-xl font-bold text-white mt-1" id="analytics-avg-time">-</div>
+          </div>
+          <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+            <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Follow-Up Success</div>
+            <div class="text-xl font-bold text-lime-400 mt-1" id="analytics-followup-rate">-</div>
+            <div class="text-[10px] text-neutral-600 mt-1" id="analytics-followup-detail"></div>
+          </div>
+        </div>
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+          <div class="text-neutral-500 text-[10px] uppercase tracking-wider mb-3">Revenue by Service</div>
+          <div id="analytics-revenue-bars" class="space-y-2">
+            <div class="text-neutral-600 text-xs">Loading...</div>
+          </div>
+        </div>
+      </div>
+    </details>
+
     <!-- Search + Filters -->
     <div class="flex flex-col sm:flex-row gap-3 mb-6">
       <div class="flex-1 relative">
@@ -827,10 +861,18 @@
         <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">Template</label>
         <select id="fu-template" onchange="applyTemplate()" class="w-full mt-1 bg-black border border-neutral-700 text-neutral-300 text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
           <option value="">Choose a template...</option>
-          <option value="seasonal">Seasonal Reminder</option>
-          <option value="discount">10% Discount Offer</option>
-          <option value="yearly">Yearly Upkeep</option>
-          <option value="checkin">General Check-In</option>
+          <optgroup label="Follow-Up">
+            <option value="seasonal">Seasonal Reminder</option>
+            <option value="discount">10% Discount Offer</option>
+            <option value="yearly">Yearly Upkeep</option>
+            <option value="checkin">General Check-In</option>
+          </optgroup>
+          <optgroup label="Feedback &amp; Re-engagement">
+            <option value="feedback_experience">How was the experience?</option>
+            <option value="feedback_price">Was it the price?</option>
+            <option value="feedback_general">What could we do better?</option>
+            <option value="reengagement_pricing">We've improved our pricing</option>
+          </optgroup>
         </select>
       </div>
       <div>
@@ -860,11 +902,18 @@
       <div>
         <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">Filter Customers</label>
         <select id="bulk-filter" onchange="previewBulkRecipients()" class="w-full mt-1 bg-black border border-neutral-700 text-neutral-300 text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
-          <option value="all">All Customers</option>
-          <option value="3months">Last job 3+ months ago</option>
-          <option value="6months">Last job 6+ months ago</option>
-          <option value="12months">Last job 12+ months ago</option>
-          <option value="never">Never had a job</option>
+          <optgroup label="By Job History">
+            <option value="all">All Customers</option>
+            <option value="3months">Last job 3+ months ago</option>
+            <option value="6months">Last job 6+ months ago</option>
+            <option value="12months">Last job 12+ months ago</option>
+            <option value="never">Never had a job</option>
+          </optgroup>
+          <optgroup label="By Quote Status">
+            <option value="accepted_no_job">Accepted quote, no job yet</option>
+            <option value="quoted_no_response">Quote sent, no response</option>
+            <option value="never_quoted">Never quoted</option>
+          </optgroup>
         </select>
       </div>
       <div class="bg-neutral-800/50 rounded-lg px-3 py-2 text-xs text-neutral-400">
@@ -874,10 +923,18 @@
         <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">Template</label>
         <select id="bulk-template" onchange="applyBulkTemplate()" class="w-full mt-1 bg-black border border-neutral-700 text-neutral-300 text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
           <option value="">Choose a template...</option>
-          <option value="seasonal">Seasonal Reminder</option>
-          <option value="discount">10% Discount Offer</option>
-          <option value="yearly">Yearly Upkeep</option>
-          <option value="checkin">General Check-In</option>
+          <optgroup label="Follow-Up">
+            <option value="seasonal">Seasonal Reminder</option>
+            <option value="discount">10% Discount Offer</option>
+            <option value="yearly">Yearly Upkeep</option>
+            <option value="checkin">General Check-In</option>
+          </optgroup>
+          <optgroup label="Feedback &amp; Re-engagement">
+            <option value="feedback_experience">How was the experience?</option>
+            <option value="feedback_price">Was it the price?</option>
+            <option value="feedback_general">What could we do better?</option>
+            <option value="reengagement_pricing">We've improved our pricing</option>
+          </optgroup>
         </select>
       </div>
       <div>
@@ -1502,7 +1559,7 @@ function switchTab(tab) {
   // Load tab data
   if (tab === 'schedule') { loadTeamForDropdowns(); loadSchedule(); loadRecurring(); }
   if (tab === 'team') loadTeam();
-  if (tab === 'customers') { loadCustomers(); loadCustStats(); }
+  if (tab === 'customers') { loadCustomers(); loadCustStats(); loadAnalytics(); }
 }
 
 // ============================
@@ -2442,6 +2499,54 @@ async function loadCustStats() {
   } catch (e) { console.error('Stats error:', e); }
 }
 
+async function loadAnalytics() {
+  try {
+    var res = await apiRequest('/admin/customers/analytics');
+    if (!res.success) return;
+    var a = res.analytics;
+
+    document.getElementById('analytics-q2a-rate').textContent = a.quote_to_acceptance_rate + '%';
+    document.getElementById('analytics-q2a-detail').textContent = a.quotes_accepted + ' of ' + a.quotes_with_estimate + ' quoted';
+    document.getElementById('analytics-a2j-rate').textContent = a.acceptance_to_job_rate + '%';
+    document.getElementById('analytics-a2j-detail').textContent = a.accepted_then_booked + ' of ' + a.accepted_customers + ' accepted';
+
+    var hours = a.avg_time_to_accept_hours;
+    if (hours === 0) {
+      document.getElementById('analytics-avg-time').textContent = '-';
+    } else if (hours >= 24) {
+      document.getElementById('analytics-avg-time').textContent = Math.round(hours / 24 * 10) / 10 + ' days';
+    } else {
+      document.getElementById('analytics-avg-time').textContent = hours + ' hrs';
+    }
+
+    document.getElementById('analytics-followup-rate').textContent = a.followup_effectiveness + '%';
+    document.getElementById('analytics-followup-detail').textContent = a.followed_up_then_booked + ' of ' + a.followed_up_count + ' followed up';
+
+    var bars = document.getElementById('analytics-revenue-bars');
+    bars.innerHTML = '';
+    var services = Object.entries(a.revenue_by_service).sort(function(x, y) { return y[1] - x[1]; });
+    var maxVal = services.length > 0 ? services[0][1] : 1;
+    services.forEach(function(entry) {
+      var name = entry[0];
+      var val = entry[1];
+      var pct = Math.round((val / maxVal) * 100);
+      var row = document.createElement('div');
+      row.className = 'flex items-center gap-3';
+      row.innerHTML =
+        '<div class="w-28 text-xs text-neutral-400 text-right truncate capitalize">' + esc(name) + '</div>' +
+        '<div class="flex-1 bg-neutral-800 rounded-full h-4 overflow-hidden">' +
+          '<div class="bg-lime-400 h-full rounded-full transition-all" style="width:' + pct + '%"></div>' +
+        '</div>' +
+        '<div class="w-20 text-xs text-lime-400 font-medium">\u00A3' + Math.round(val).toLocaleString() + '</div>';
+      bars.appendChild(row);
+    });
+
+    if (services.length === 0) {
+      bars.innerHTML = '<div class="text-neutral-600 text-xs">No revenue data yet</div>';
+    }
+  } catch (e) { console.error('Analytics error:', e); }
+}
+
 async function loadCustomers() {
   try {
     var search = document.getElementById('custSearch').value.trim();
@@ -2766,6 +2871,22 @@ var followUpTemplates = {
   checkin: {
     subject: 'Just checking in - Revive Exterior Cleaning',
     body: 'Hi {name},\n\nHope you\'re well! We just wanted to check in and see if there\'s anything we can help with.\n\nWhether it\'s a one-off clean or regular maintenance, we\'re here to help keep your property in top shape.\n\nFeel free to get in touch anytime.'
+  },
+  feedback_experience: {
+    subject: 'How was your experience with Revive?',
+    body: 'Hi {name},\n\nWe hope you were happy with the work we carried out. Your feedback means the world to us and helps us continually improve.\n\nWould you mind letting us know how we did? Just reply to this email with a quick note - we read every response.\n\nThank you for choosing Revive!'
+  },
+  feedback_price: {
+    subject: 'Was it the price? We\'d love your honest feedback',
+    body: 'Hi {name},\n\nWe noticed you received a quote from us but didn\'t go ahead. No worries at all - but we\'d love to understand why.\n\nWas it the price? The timing? Or something else entirely?\n\nYour honest feedback helps us serve our customers better. Just hit reply and let us know - even a one-line response would be appreciated.'
+  },
+  feedback_general: {
+    subject: 'Quick question - what could we have done better?',
+    body: 'Hi {name},\n\nWe\'re always looking for ways to improve our service. We noticed you enquired with us recently and we\'d love to know if there\'s anything we could have done differently.\n\nWhether it\'s our response time, pricing, communication, or anything else - your feedback helps us get better.\n\nThanks for your time, and we hope to work with you in the future!'
+  },
+  reengagement_pricing: {
+    subject: 'Great news - we\'ve updated our pricing!',
+    body: 'Hi {name},\n\nWe wanted to reach out because we\'ve recently updated our pricing to offer even better value.\n\nIf price was a factor when you last enquired, we\'d love the chance to provide you with a fresh quote.\n\nAs a returning enquiry, we can also offer a special discount. Just reply to this email or give us a call and we\'ll get you sorted.'
   }
 };
 
@@ -2841,25 +2962,11 @@ function applyBulkTemplate() {
 async function previewBulkRecipients() {
   try {
     var filter = document.getElementById('bulk-filter').value;
-    // Fetch all customers to filter client-side
-    var res = await apiRequest('/admin/customers?limit=200');
+    var res = await apiRequest('/admin/customers/bulk-preview?filter=' + filter);
     if (!res.success) return;
-
-    var now = new Date();
-    var filtered = res.data.filter(function(c) {
-      if (!c.email) return false;
-      if (filter === 'all') return true;
-      if (filter === 'never') return !c.last_job_date;
-      var months = filter === '3months' ? 3 : filter === '6months' ? 6 : 12;
-      if (!c.last_job_date) return true;
-      var cutoff = new Date();
-      cutoff.setMonth(cutoff.getMonth() - months);
-      return new Date(c.last_job_date) < cutoff;
-    });
-
-    custState.bulkCustomerIds = filtered.map(function(c) { return c.id; });
-    document.getElementById('bulk-count').textContent = filtered.length;
-    document.getElementById('bulk-send-btn').textContent = 'Send to ' + filtered.length + ' customers';
+    custState.bulkCustomerIds = res.customer_ids;
+    document.getElementById('bulk-count').textContent = res.count;
+    document.getElementById('bulk-send-btn').textContent = 'Send to ' + res.count + ' customers';
   } catch (e) {
     document.getElementById('bulk-count').textContent = '0';
   }

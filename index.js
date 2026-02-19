@@ -974,6 +974,8 @@ app.get('/admin/customers', requireAdminAuth, customerRoutes.listCustomers);
 app.get('/admin/customers/search', requireAdminAuth, customerRoutes.searchCustomers);
 app.get('/admin/customers/stats', requireAdminAuth, customerRoutes.getStats);
 app.post('/admin/customers/bulk-followup', requireAdminAuth, customerRoutes.sendBulkFollowUp);
+app.get('/admin/customers/bulk-preview', requireAdminAuth, customerRoutes.getBulkPreview);
+app.get('/admin/customers/analytics', requireAdminAuth, customerRoutes.getConversionAnalytics);
 app.get('/admin/customers/:id', requireAdminAuth, customerRoutes.getCustomer);
 app.patch('/admin/customers/:id', requireAdminAuth, customerRoutes.updateCustomer);
 app.post('/admin/customers/:id/followup', requireAdminAuth, customerRoutes.sendFollowUp);

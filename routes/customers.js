@@ -352,6 +352,197 @@ async function sendBulkFollowUp(req, res) {
 }
 
 // ========================
+// BULK PREVIEW (Server-side filtering)
+// ========================
+
+/**
+ * GET /admin/customers/bulk-preview?filter=<type>
+ * Returns customer IDs matching the filter for bulk follow-up
+ * Supports both job-history and quote-status filters
+ */
+async function getBulkPreview(req, res) {
+  try {
+    const { filter } = req.query;
+    let customerIds = [];
+
+    if (filter === 'accepted_no_job' || filter === 'quoted_no_response' || filter === 'never_quoted') {
+      // Quote-status filters require joining quotes data
+      const { data: quotes } = await supabase
+        .from('quotes')
+        .select('customer_id, customer_accepted_estimate, estimate_email_sent_at')
+        .not('customer_id', 'is', null);
+
+      if (!quotes || quotes.length === 0) {
+        return res.json({ success: true, customer_ids: [], count: 0 });
+      }
+
+      if (filter === 'accepted_no_job') {
+        // Customers who accepted a quote but have no completed job
+        const acceptedIds = [...new Set(
+          quotes.filter(q => q.customer_accepted_estimate === true).map(q => q.customer_id)
+        )];
+        if (acceptedIds.length === 0) {
+          return res.json({ success: true, customer_ids: [], count: 0 });
+        }
+        const { data: jobs } = await supabase
+          .from('jobs')
+          .select('customer_id')
+          .eq('status', 'completed')
+          .in('customer_id', acceptedIds);
+        const completedIds = new Set((jobs || []).map(j => j.customer_id));
+        customerIds = acceptedIds.filter(id => !completedIds.has(id));
+
+      } else if (filter === 'quoted_no_response') {
+        // Customers who received an estimate email but haven't accepted
+        customerIds = [...new Set(
+          quotes
+            .filter(q => q.estimate_email_sent_at && !q.customer_accepted_estimate)
+            .map(q => q.customer_id)
+        )];
+
+      } else if (filter === 'never_quoted') {
+        // Customers who submitted but never received an estimate
+        const quotedIds = new Set(
+          quotes.filter(q => q.estimate_email_sent_at).map(q => q.customer_id)
+        );
+        const allQuoteCustomerIds = [...new Set(quotes.map(q => q.customer_id))];
+        customerIds = allQuoteCustomerIds.filter(id => !quotedIds.has(id));
+      }
+
+      // Filter to only those with a valid email
+      if (customerIds.length > 0) {
+        const { data: customers } = await supabase
+          .from('customers')
+          .select('id')
+          .in('id', customerIds)
+          .not('email', 'is', null)
+          .neq('email', '');
+        customerIds = (customers || []).map(c => c.id);
+      }
+
+    } else {
+      // Job-history filters - query customers table directly
+      let query = supabase
+        .from('customers')
+        .select('id, last_job_date')
+        .not('email', 'is', null)
+        .neq('email', '');
+
+      const { data: customers } = await query;
+      if (!customers) {
+        return res.json({ success: true, customer_ids: [], count: 0 });
+      }
+
+      const now = new Date();
+      customerIds = customers.filter(c => {
+        if (filter === 'all') return true;
+        if (filter === 'never') return !c.last_job_date;
+        const months = filter === '3months' ? 3 : filter === '6months' ? 6 : filter === '12months' ? 12 : 0;
+        if (months === 0) return true;
+        if (!c.last_job_date) return true; // Include those with no job in time-based filters
+        const cutoff = new Date(now);
+        cutoff.setMonth(cutoff.getMonth() - months);
+        return new Date(c.last_job_date) < cutoff;
+      }).map(c => c.id);
+    }
+
+    res.json({ success: true, customer_ids: customerIds, count: customerIds.length });
+  } catch (error) {
+    console.error('[Customers] Bulk preview error:', error);
+    res.status(500).json({ success: false, error: 'Failed to preview recipients' });
+  }
+}
+
+// ========================
+// CONVERSION ANALYTICS
+// ========================
+
+/**
+ * GET /admin/customers/analytics
+ * Compute conversion funnel metrics from quotes, jobs, and customers
+ */
+async function getConversionAnalytics(req, res) {
+  try {
+    // Fetch data in parallel
+    const [quotesRes, jobsRes, customersRes] = await Promise.all([
+      supabase.from('quotes').select('id, customer_id, customer_accepted_estimate, customer_accepted_at, estimate_email_sent_at, services, created_at'),
+      supabase.from('jobs').select('id, customer_id, status, job_value, payment_status, service, scheduled_date'),
+      supabase.from('customers').select('id, last_followup_sent_at')
+    ]);
+
+    const quotes = quotesRes.data || [];
+    const jobs = jobsRes.data || [];
+    const customers = customersRes.data || [];
+
+    // 1. Quote-to-acceptance rate
+    const quotesWithEstimate = quotes.filter(q => q.estimate_email_sent_at);
+    const quotesAccepted = quotesWithEstimate.filter(q => q.customer_accepted_estimate === true);
+    const quoteToAcceptanceRate = quotesWithEstimate.length > 0
+      ? Math.round((quotesAccepted.length / quotesWithEstimate.length) * 100)
+      : 0;
+
+    // 2. Acceptance-to-job rate
+    const acceptedCustomerIds = [...new Set(quotesAccepted.filter(q => q.customer_id).map(q => q.customer_id))];
+    const completedJobCustomerIds = [...new Set(jobs.filter(j => j.status === 'completed' && j.customer_id).map(j => j.customer_id))];
+    const acceptedThenBooked = acceptedCustomerIds.filter(id => completedJobCustomerIds.includes(id));
+    const acceptanceToJobRate = acceptedCustomerIds.length > 0
+      ? Math.round((acceptedThenBooked.length / acceptedCustomerIds.length) * 100)
+      : 0;
+
+    // 3. Average time from estimate to acceptance (hours)
+    const timeDiffs = quotesAccepted
+      .filter(q => q.customer_accepted_at && q.estimate_email_sent_at)
+      .map(q => new Date(q.customer_accepted_at) - new Date(q.estimate_email_sent_at));
+    const avgTimeToAcceptHours = timeDiffs.length > 0
+      ? Math.round(timeDiffs.reduce((a, b) => a + b, 0) / timeDiffs.length / (1000 * 60 * 60) * 10) / 10
+      : 0;
+
+    // 4. Revenue by service type
+    const paidJobs = jobs.filter(j => j.status === 'completed' && j.payment_status === 'paid');
+    const revenueByService = {};
+    paidJobs.forEach(j => {
+      const svc = j.service || 'Unknown';
+      revenueByService[svc] = (revenueByService[svc] || 0) + Number(j.job_value || 0);
+    });
+
+    // 5. Follow-up effectiveness
+    const followedUpCustomers = customers.filter(c => c.last_followup_sent_at);
+    const followedUpThenBooked = followedUpCustomers.filter(c => {
+      return jobs.some(j =>
+        j.customer_id === c.id &&
+        j.status === 'completed' &&
+        new Date(j.scheduled_date) > new Date(c.last_followup_sent_at)
+      );
+    });
+    const followUpEffectiveness = followedUpCustomers.length > 0
+      ? Math.round((followedUpThenBooked.length / followedUpCustomers.length) * 100)
+      : 0;
+
+    res.json({
+      success: true,
+      analytics: {
+        quote_to_acceptance_rate: quoteToAcceptanceRate,
+        quotes_with_estimate: quotesWithEstimate.length,
+        quotes_accepted: quotesAccepted.length,
+        acceptance_to_job_rate: acceptanceToJobRate,
+        accepted_customers: acceptedCustomerIds.length,
+        accepted_then_booked: acceptedThenBooked.length,
+        avg_time_to_accept_hours: avgTimeToAcceptHours,
+        revenue_by_service: revenueByService,
+        total_revenue: paidJobs.reduce((sum, j) => sum + Number(j.job_value || 0), 0),
+        followup_effectiveness: followUpEffectiveness,
+        followed_up_count: followedUpCustomers.length,
+        followed_up_then_booked: followedUpThenBooked.length,
+        total_quotes: quotes.length
+      }
+    });
+  } catch (error) {
+    console.error('[Customers] Analytics error:', error);
+    res.status(500).json({ success: false, error: 'Failed to compute analytics' });
+  }
+}
+
+// ========================
 // CUSTOMER AGGREGATES
 // ========================
 
@@ -483,6 +674,8 @@ module.exports = {
   updateCustomer,
   sendFollowUp,
   sendBulkFollowUp,
+  getBulkPreview,
+  getConversionAnalytics,
   refreshCustomerAggregates,
   findOrCreateCustomer
 };
