@@ -629,6 +629,136 @@ async function updateTeamMember(req, res) {
   }
 }
 
+// ========================
+// TEAM MEMBER SCHEDULE (Public - UUID acts as access key)
+// ========================
+
+/**
+ * GET /api/my-schedule/:memberId
+ * Get team member profile + their jobs for a date range
+ */
+async function getMySchedule(req, res) {
+  try {
+    const { memberId } = req.params;
+    const { date, from_date, to_date } = req.query;
+
+    // Verify team member exists
+    const { data: member, error: memberError } = await supabase
+      .from('team_members')
+      .select('*')
+      .eq('id', memberId)
+      .single();
+
+    if (memberError || !member) {
+      return res.status(404).json({ success: false, error: 'Team member not found' });
+    }
+
+    // Build jobs query
+    let query = supabase
+      .from('jobs')
+      .select('*')
+      .eq('assigned_to', member.name)
+      .order('scheduled_date', { ascending: true })
+      .order('time_slot', { ascending: true });
+
+    if (date) {
+      query = query.eq('scheduled_date', date);
+    } else if (from_date && to_date) {
+      query = query.gte('scheduled_date', from_date).lte('scheduled_date', to_date);
+    } else {
+      // Default: today + next 7 days
+      const today = new Date();
+      const nextWeek = new Date(today);
+      nextWeek.setDate(today.getDate() + 7);
+      query = query.gte('scheduled_date', today.toISOString().split('T')[0])
+                    .lte('scheduled_date', nextWeek.toISOString().split('T')[0]);
+    }
+
+    const { data: jobs, error: jobsError } = await query;
+
+    if (jobsError) {
+      console.error('[MySchedule] Query error:', jobsError);
+      return res.status(500).json({ success: false, error: 'Failed to fetch schedule' });
+    }
+
+    res.json({
+      success: true,
+      member: { id: member.id, name: member.name, color: member.color },
+      data: jobs
+    });
+  } catch (error) {
+    console.error('[MySchedule] Error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+/**
+ * PATCH /api/my-schedule/:memberId/jobs/:jobId
+ * Team member updates their own job (limited fields: status, payment, notes)
+ */
+async function updateMyJob(req, res) {
+  try {
+    const { memberId, jobId } = req.params;
+    const updates = req.body;
+
+    // Verify team member exists
+    const { data: member, error: memberError } = await supabase
+      .from('team_members')
+      .select('name')
+      .eq('id', memberId)
+      .single();
+
+    if (memberError || !member) {
+      return res.status(404).json({ success: false, error: 'Team member not found' });
+    }
+
+    // Verify the job is assigned to this team member
+    const { data: job, error: jobError } = await supabase
+      .from('jobs')
+      .select('assigned_to')
+      .eq('id', jobId)
+      .single();
+
+    if (jobError || !job) {
+      return res.status(404).json({ success: false, error: 'Job not found' });
+    }
+
+    if (job.assigned_to !== member.name) {
+      return res.status(403).json({ success: false, error: 'This job is not assigned to you' });
+    }
+
+    // Only allow limited fields for team members
+    const allowed = ['status', 'payment_status', 'payment_method', 'amount_paid', 'notes'];
+    const filtered = {};
+    for (const key of allowed) {
+      if (updates[key] !== undefined) {
+        filtered[key] = updates[key];
+      }
+    }
+
+    if (Object.keys(filtered).length === 0) {
+      return res.status(400).json({ success: false, error: 'No valid fields to update' });
+    }
+
+    const { data, error } = await supabase
+      .from('jobs')
+      .update(filtered)
+      .eq('id', jobId)
+      .select();
+
+    if (error) {
+      console.error('[MySchedule] Update error:', error);
+      return res.status(500).json({ success: false, error: 'Failed to update job' });
+    }
+
+    console.log(`[MySchedule] ${member.name} updated job ${jobId}:`, Object.keys(filtered).join(', '));
+    res.json({ success: true, data: data[0] });
+  } catch (error) {
+    console.error('[MySchedule] Update error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
 module.exports = {
   setSupabaseClient,
   listJobs,
@@ -642,5 +772,7 @@ module.exports = {
   generateFromRecurring,
   listTeam,
   createTeamMember,
-  updateTeamMember
+  updateTeamMember,
+  getMySchedule,
+  updateMyJob
 };

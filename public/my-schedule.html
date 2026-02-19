@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Schedule - Revive</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Poppins', sans-serif; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #0a0a0a; }
+    ::-webkit-scrollbar-thumb { background: #262626; border-radius: 2px; }
+    .fade-in { animation: fadeIn 0.3s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    /* Prevent zoom on iOS inputs */
+    select, input { font-size: 16px !important; }
+  </style>
+</head>
+<body class="bg-black text-neutral-300 min-h-screen">
+
+<!-- ===== LOADING / ERROR ===== -->
+<div id="loadingScreen" class="min-h-screen flex items-center justify-center">
+  <div class="text-center">
+    <div class="w-12 h-12 rounded-full bg-lime-400 flex items-center justify-center text-black font-bold text-xl mx-auto mb-4">R</div>
+    <div class="text-neutral-500 text-sm">Loading schedule...</div>
+  </div>
+</div>
+
+<div id="errorScreen" class="hidden min-h-screen flex items-center justify-center p-4">
+  <div class="text-center">
+    <div class="text-red-400 text-lg font-semibold mb-2">Schedule Not Found</div>
+    <div class="text-neutral-500 text-sm">This link may be invalid. Please ask your manager for a new one.</div>
+  </div>
+</div>
+
+<!-- ===== MAIN SCHEDULE ===== -->
+<div id="scheduleApp" class="hidden">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-40 bg-black/95 backdrop-blur-xl border-b border-neutral-800">
+    <div class="max-w-lg mx-auto px-4 py-3">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full flex items-center justify-center text-black font-bold text-sm" id="memberAvatar">R</div>
+          <div>
+            <div class="text-white text-sm font-semibold" id="memberName"></div>
+            <div class="text-neutral-500 text-[10px] uppercase tracking-wider">My Schedule</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="setView('today')" id="btn-today" class="view-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-lime-400 text-black">Today</button>
+          <button onclick="setView('week')" id="btn-week" class="view-btn px-3 py-1.5 rounded-lg text-xs font-medium text-neutral-500 bg-neutral-900">Week</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Date Nav -->
+  <div class="max-w-lg mx-auto px-4 py-3 flex items-center justify-between">
+    <button onclick="navPrev()" class="text-neutral-500 hover:text-white p-2 -ml-2">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+    </button>
+    <div class="text-white font-semibold text-sm text-center" id="dateTitle"></div>
+    <button onclick="navNext()" class="text-neutral-500 hover:text-white p-2 -mr-2">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+    </button>
+  </div>
+
+  <!-- Job Stats -->
+  <div class="max-w-lg mx-auto px-4 pb-3">
+    <div class="grid grid-cols-3 gap-2">
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-3 text-center">
+        <div class="text-[10px] text-neutral-500 uppercase">Jobs</div>
+        <div class="text-lg font-bold text-white" id="statJobs">0</div>
+      </div>
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-3 text-center">
+        <div class="text-[10px] text-neutral-500 uppercase">Earned</div>
+        <div class="text-lg font-bold text-lime-400" id="statEarned">£0</div>
+      </div>
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-3 text-center">
+        <div class="text-[10px] text-neutral-500 uppercase">Done</div>
+        <div class="text-lg font-bold text-green-400" id="statDone">0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Jobs List -->
+  <div class="max-w-lg mx-auto px-4 pb-8">
+    <div id="jobsList" class="space-y-3"></div>
+    <div id="noJobs" class="hidden text-center py-16">
+      <div class="text-neutral-600 text-4xl mb-3">&#9786;</div>
+      <div class="text-neutral-500 text-sm">No jobs scheduled</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== JOB ACTION SHEET ===== -->
+<div id="actionSheet" class="hidden fixed inset-0 z-50" onclick="if(event.target===this)closeAction()">
+  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+  <div class="absolute bottom-0 left-0 right-0 bg-neutral-900 border-t border-neutral-800 rounded-t-2xl max-w-lg mx-auto fade-in safe-bottom">
+    <!-- Handle bar -->
+    <div class="flex justify-center pt-3 pb-1"><div class="w-10 h-1 rounded-full bg-neutral-700"></div></div>
+
+    <div class="px-5 pb-2">
+      <h3 class="text-white font-semibold text-sm mb-1" id="action-title"></h3>
+      <div class="text-xs text-neutral-500" id="action-subtitle"></div>
+    </div>
+
+    <div class="px-5 pb-5 space-y-4">
+      <!-- Customer Actions -->
+      <div class="flex gap-2">
+        <a id="action-call" href="#" class="flex-1 bg-green-900/60 hover:bg-green-800 text-green-300 text-center py-3 rounded-xl text-sm font-medium transition-colors">
+          Call Customer
+        </a>
+        <a id="action-maps" href="#" target="_blank" class="flex-1 bg-blue-900/60 hover:bg-blue-800 text-blue-300 text-center py-3 rounded-xl text-sm font-medium transition-colors">
+          Open Maps
+        </a>
+      </div>
+
+      <!-- Status Buttons -->
+      <div>
+        <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mb-2">Status</div>
+        <div class="grid grid-cols-2 gap-2" id="action-statusBtns"></div>
+      </div>
+
+      <!-- Payment (shown when completed) -->
+      <div id="action-paymentWrap" class="hidden">
+        <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mb-2">Payment</div>
+        <div class="grid grid-cols-3 gap-2 mb-2" id="action-payBtns"></div>
+        <div id="action-methodWrap" class="hidden">
+          <div class="grid grid-cols-3 gap-2 mb-2" id="action-methodBtns"></div>
+          <div id="action-partialWrap" class="hidden mb-2">
+            <input type="number" id="action-amount" step="0.01" min="0" placeholder="Amount paid £" class="w-full bg-black border border-neutral-700 text-white text-sm px-3 py-2.5 rounded-xl focus:border-lime-400 focus:outline-none">
+          </div>
+          <button onclick="saveMyPayment()" class="w-full bg-lime-400 hover:bg-lime-300 text-black font-semibold py-3 rounded-xl text-sm transition-colors">Save Payment</button>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div>
+        <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mb-2">Notes</div>
+        <textarea id="action-notes" rows="2" class="w-full bg-black border border-neutral-700 text-white text-sm px-3 py-2.5 rounded-xl resize-none focus:border-lime-400 focus:outline-none" placeholder="Add a note..."></textarea>
+        <button onclick="saveMyNotes()" class="mt-2 w-full bg-neutral-800 hover:bg-neutral-700 text-white font-medium py-2.5 rounded-xl text-sm transition-colors">Save Notes</button>
+      </div>
+    </div>
+
+    <!-- Safe area padding for iOS -->
+    <div class="h-6"></div>
+  </div>
+</div>
+
+<!-- ===== TOAST ===== -->
+<div id="toast" class="fixed top-4 left-4 right-4 z-[60] hidden fade-in max-w-lg mx-auto">
+  <div class="bg-neutral-900 border border-neutral-700 rounded-xl px-4 py-3 shadow-xl flex items-center gap-3">
+    <div id="toast-icon"></div>
+    <div id="toast-msg" class="text-sm text-neutral-300"></div>
+  </div>
+</div>
+
+<script>
+// ============================
+// STATE
+// ============================
+var memberId = null;
+var memberInfo = null;
+var jobs = [];
+var currentDate = new Date();
+var currentView = 'today'; // 'today' or 'week'
+var activeJob = null;
+var activePay = '';
+var activeMethod = '';
+
+var API_BASE = window.location.origin;
+
+// ============================
+// INIT
+// ============================
+function init() {
+  // Get member ID from URL
+  var params = new URLSearchParams(window.location.search);
+  memberId = params.get('id');
+
+  if (!memberId) {
+    showError();
+    return;
+  }
+
+  loadSchedule();
+}
+
+function showError() {
+  document.getElementById('loadingScreen').classList.add('hidden');
+  document.getElementById('errorScreen').classList.remove('hidden');
+}
+
+function showApp() {
+  document.getElementById('loadingScreen').classList.add('hidden');
+  document.getElementById('scheduleApp').classList.remove('hidden');
+}
+
+// ============================
+// DATA LOADING
+// ============================
+async function loadSchedule() {
+  try {
+    var params = '';
+    if (currentView === 'today') {
+      params = '?date=' + toDateStr(currentDate);
+    } else {
+      var mon = getMonday(currentDate);
+      var sun = new Date(mon);
+      sun.setDate(mon.getDate() + 6);
+      params = '?from_date=' + toDateStr(mon) + '&to_date=' + toDateStr(sun);
+    }
+
+    var res = await fetch(API_BASE + '/api/my-schedule/' + memberId + params);
+    if (!res.ok) {
+      if (res.status === 404) { showError(); return; }
+      throw new Error('Failed');
+    }
+
+    var data = await res.json();
+    if (!data.success) { showError(); return; }
+
+    memberInfo = data.member;
+    jobs = data.data;
+
+    // Update header
+    document.getElementById('memberName').textContent = memberInfo.name;
+    document.getElementById('memberAvatar').textContent = memberInfo.name.charAt(0).toUpperCase();
+    document.getElementById('memberAvatar').style.background = memberInfo.color || '#a3e635';
+
+    showApp();
+    updateDateTitle();
+    renderJobs();
+  } catch (e) {
+    console.error('Load error:', e);
+    showError();
+  }
+}
+
+// ============================
+// NAVIGATION
+// ============================
+function setView(v) {
+  currentView = v;
+  document.querySelectorAll('.view-btn').forEach(function(btn) {
+    btn.className = 'view-btn px-3 py-1.5 rounded-lg text-xs font-medium ' +
+      (btn.id === 'btn-' + v ? 'bg-lime-400 text-black' : 'text-neutral-500 bg-neutral-900');
+  });
+  if (v === 'today') currentDate = new Date();
+  loadSchedule();
+}
+
+function navPrev() {
+  if (currentView === 'today') {
+    currentDate.setDate(currentDate.getDate() - 1);
+  } else {
+    currentDate.setDate(currentDate.getDate() - 7);
+  }
+  loadSchedule();
+}
+
+function navNext() {
+  if (currentView === 'today') {
+    currentDate.setDate(currentDate.getDate() + 1);
+  } else {
+    currentDate.setDate(currentDate.getDate() + 7);
+  }
+  loadSchedule();
+}
+
+function updateDateTitle() {
+  var title = document.getElementById('dateTitle');
+  if (currentView === 'today') {
+    var todayStr = toDateStr(new Date());
+    var dateStr = toDateStr(currentDate);
+    if (dateStr === todayStr) {
+      title.textContent = 'Today - ' + formatDateFull(currentDate);
+    } else {
+      title.textContent = formatDateFull(currentDate);
+    }
+  } else {
+    var mon = getMonday(currentDate);
+    var sun = new Date(mon);
+    sun.setDate(mon.getDate() + 6);
+    title.textContent = formatDateShort(mon) + ' - ' + formatDateShort(sun);
+  }
+}
+
+// ============================
+// RENDER JOBS
+// ============================
+function renderJobs() {
+  var container = document.getElementById('jobsList');
+  var empty = document.getElementById('noJobs');
+  container.innerHTML = '';
+
+  // Update stats
+  var totalValue = 0, completed = 0;
+  jobs.forEach(function(j) {
+    totalValue += Number(j.job_value || 0);
+    if (j.status === 'completed') completed++;
+  });
+  document.getElementById('statJobs').textContent = jobs.length;
+  document.getElementById('statEarned').textContent = '\u00A3' + totalValue.toFixed(0);
+  document.getElementById('statDone').textContent = completed + '/' + jobs.length;
+
+  if (jobs.length === 0) {
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  // Group by date if week view
+  if (currentView === 'week') {
+    var grouped = {};
+    jobs.forEach(function(j) {
+      if (!grouped[j.scheduled_date]) grouped[j.scheduled_date] = [];
+      grouped[j.scheduled_date].push(j);
+    });
+
+    Object.keys(grouped).sort().forEach(function(dateStr) {
+      var dayLabel = document.createElement('div');
+      dayLabel.className = 'text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mt-4 mb-1 flex items-center gap-2';
+      var d = new Date(dateStr + 'T00:00:00');
+      var isToday = dateStr === toDateStr(new Date());
+      dayLabel.innerHTML = (isToday ? '<span class="w-1.5 h-1.5 rounded-full bg-lime-400"></span>' : '') + formatDateFull(d);
+      container.appendChild(dayLabel);
+
+      grouped[dateStr].sort(function(a, b) { return (a.time_slot || '').localeCompare(b.time_slot || ''); });
+      grouped[dateStr].forEach(function(j) { container.appendChild(createJobCard(j)); });
+    });
+  } else {
+    jobs.sort(function(a, b) { return (a.time_slot || '').localeCompare(b.time_slot || ''); });
+    jobs.forEach(function(j) { container.appendChild(createJobCard(j)); });
+  }
+}
+
+function createJobCard(j) {
+  var card = document.createElement('div');
+  card.className = 'bg-neutral-900 border border-neutral-800 rounded-xl p-4 cursor-pointer active:bg-neutral-800 transition-colors fade-in';
+  card.onclick = function() { openAction(j); };
+
+  var statusColors = {
+    scheduled: 'text-blue-300 bg-blue-900/60',
+    in_progress: 'text-yellow-300 bg-yellow-900/60',
+    completed: 'text-green-300 bg-green-900/60',
+    cancelled: 'text-red-300 bg-red-900/60'
+  };
+  var statusLabels = { scheduled: 'Scheduled', in_progress: 'In Progress', completed: 'Done', cancelled: 'Cancelled' };
+  var sc = statusColors[j.status] || statusColors.scheduled;
+  var sl = statusLabels[j.status] || j.status;
+
+  var payBadge = '';
+  if (j.status === 'completed') {
+    if (j.payment_status === 'paid') payBadge = '<span class="px-2 py-0.5 rounded-lg text-[10px] font-medium text-green-300 bg-green-900/60">Paid</span>';
+    else if (j.payment_status === 'outstanding') payBadge = '<span class="px-2 py-0.5 rounded-lg text-[10px] font-medium text-red-300 bg-red-900/60">Owed</span>';
+    else if (j.payment_status === 'partial') payBadge = '<span class="px-2 py-0.5 rounded-lg text-[10px] font-medium text-orange-300 bg-orange-900/60">Partial</span>';
+  }
+
+  card.innerHTML =
+    '<div class="flex items-center justify-between mb-2">' +
+      '<div class="flex items-center gap-2">' +
+        '<span class="text-white font-bold text-xs bg-neutral-800 px-2 py-0.5 rounded">' + esc(j.time_slot || '') + '</span>' +
+        '<span class="text-white font-medium">' + esc(j.customer_name) + '</span>' +
+      '</div>' +
+      '<span class="text-lime-400 font-bold">' + (j.job_value ? '\u00A3' + Number(j.job_value).toFixed(0) : '') + '</span>' +
+    '</div>' +
+    '<div class="text-xs text-neutral-500 mb-2">' + esc(j.service) + '</div>' +
+    '<div class="flex items-center justify-between">' +
+      '<div class="text-xs text-neutral-600">' + esc(j.address || '') + ' ' + esc(j.postcode || '') + '</div>' +
+      '<div class="flex items-center gap-1.5">' +
+        '<span class="px-2 py-0.5 rounded-lg text-[10px] font-medium ' + sc + '">' + sl + '</span>' +
+        payBadge +
+      '</div>' +
+    '</div>' +
+    (j.estimated_duration ? '<div class="text-[10px] text-neutral-600 mt-1">~' + esc(j.estimated_duration) + '</div>' : '') +
+    (j.notes ? '<div class="text-xs text-neutral-500 mt-2 bg-black/50 px-3 py-2 rounded-lg">' + esc(j.notes) + '</div>' : '');
+
+  return card;
+}
+
+// ============================
+// ACTION SHEET
+// ============================
+function openAction(job) {
+  activeJob = job;
+  activePay = job.payment_status || 'pending';
+  activeMethod = job.payment_method || '';
+
+  document.getElementById('actionSheet').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+
+  document.getElementById('action-title').textContent = job.customer_name + ' - ' + job.service;
+  document.getElementById('action-subtitle').textContent = (job.time_slot || '') + ' | ' + (job.address || '') + ' ' + (job.postcode || '') + (job.estimated_duration ? ' | ~' + job.estimated_duration : '');
+
+  // Call button
+  var callBtn = document.getElementById('action-call');
+  if (job.customer_phone) {
+    callBtn.href = 'tel:' + job.customer_phone;
+    callBtn.style.display = '';
+  } else {
+    callBtn.style.display = 'none';
+  }
+
+  // Maps button
+  var mapsBtn = document.getElementById('action-maps');
+  var addr = encodeURIComponent((job.address || '') + ' ' + (job.postcode || ''));
+  mapsBtn.href = 'https://www.google.com/maps/search/?api=1&query=' + addr;
+
+  // Status buttons
+  renderMyStatusBtns(job.status);
+
+  // Payment
+  renderMyPayment(job);
+
+  // Notes
+  document.getElementById('action-notes').value = job.notes || '';
+}
+
+function closeAction() {
+  document.getElementById('actionSheet').classList.add('hidden');
+  document.body.style.overflow = '';
+  activeJob = null;
+}
+
+function renderMyStatusBtns(current) {
+  var statuses = ['scheduled', 'in_progress', 'completed', 'cancelled'];
+  var labels = { scheduled: 'Scheduled', in_progress: 'In Progress', completed: 'Completed', cancelled: 'Cancelled' };
+  var colors = {
+    scheduled: 'bg-blue-900/60 text-blue-300',
+    in_progress: 'bg-yellow-900/60 text-yellow-300',
+    completed: 'bg-green-900/60 text-green-300',
+    cancelled: 'bg-red-900/60 text-red-300'
+  };
+  var activeRing = {
+    scheduled: 'ring-2 ring-blue-400',
+    in_progress: 'ring-2 ring-yellow-400',
+    completed: 'ring-2 ring-green-400',
+    cancelled: 'ring-2 ring-red-400'
+  };
+
+  var container = document.getElementById('action-statusBtns');
+  container.innerHTML = '';
+
+  statuses.forEach(function(s) {
+    var isActive = s === current;
+    var btn = document.createElement('button');
+    btn.className = 'py-2.5 rounded-xl text-sm font-medium transition-all ' + colors[s] + (isActive ? ' ' + activeRing[s] : ' opacity-60');
+    btn.textContent = labels[s];
+    if (!isActive) {
+      btn.onclick = function() { updateMyStatus(s); };
+    }
+    container.appendChild(btn);
+  });
+}
+
+async function updateMyStatus(newStatus) {
+  if (!activeJob) return;
+  try {
+    var res = await fetch(API_BASE + '/api/my-schedule/' + memberId + '/jobs/' + activeJob.id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus })
+    });
+    var data = await res.json();
+    if (data.success) {
+      activeJob.status = newStatus;
+      activeJob = data.data;
+      renderMyStatusBtns(newStatus);
+      renderMyPayment(activeJob);
+      loadSchedule();
+      showToast('Status updated', 'success');
+    }
+  } catch (e) {
+    showToast('Failed to update', 'error');
+  }
+}
+
+// ============================
+// PAYMENT
+// ============================
+function renderMyPayment(job) {
+  var wrap = document.getElementById('action-paymentWrap');
+  if (job.status !== 'completed') {
+    wrap.classList.add('hidden');
+    return;
+  }
+  wrap.classList.remove('hidden');
+
+  var payStatuses = ['paid', 'outstanding', 'partial'];
+  var payColors = { paid: 'bg-green-900/60 text-green-300', outstanding: 'bg-red-900/60 text-red-300', partial: 'bg-orange-900/60 text-orange-300' };
+  var payRing = { paid: 'ring-2 ring-green-400', outstanding: 'ring-2 ring-red-400', partial: 'ring-2 ring-orange-400' };
+
+  var container = document.getElementById('action-payBtns');
+  container.innerHTML = '';
+  payStatuses.forEach(function(s) {
+    var isActive = s === activePay;
+    var btn = document.createElement('button');
+    btn.className = 'py-2.5 rounded-xl text-sm font-medium transition-all ' + payColors[s] + (isActive ? ' ' + payRing[s] : ' opacity-60');
+    btn.textContent = s.charAt(0).toUpperCase() + s.slice(1);
+    btn.onclick = function() { activePay = s; renderMyPayment(Object.assign({}, activeJob, { payment_status: s, status: 'completed' })); };
+    container.appendChild(btn);
+  });
+
+  var methodWrap = document.getElementById('action-methodWrap');
+  if (activePay && activePay !== 'pending') {
+    methodWrap.classList.remove('hidden');
+
+    var methods = ['cash', 'transfer', 'card'];
+    var methodContainer = document.getElementById('action-methodBtns');
+    methodContainer.innerHTML = '';
+    methods.forEach(function(m) {
+      var isActive = m === activeMethod;
+      var btn = document.createElement('button');
+      btn.className = 'py-2.5 rounded-xl text-sm font-medium transition-all ' + (isActive ? 'bg-lime-400 text-black ring-2 ring-lime-300' : 'bg-neutral-800 text-neutral-300 opacity-60');
+      btn.textContent = m.charAt(0).toUpperCase() + m.slice(1);
+      btn.onclick = function() { activeMethod = m; renderMyPayment(Object.assign({}, activeJob, { payment_status: activePay, payment_method: m, status: 'completed' })); };
+      methodContainer.appendChild(btn);
+    });
+
+    var partialWrap = document.getElementById('action-partialWrap');
+    if (activePay === 'partial') {
+      partialWrap.classList.remove('hidden');
+      document.getElementById('action-amount').value = activeJob.amount_paid || '';
+    } else {
+      partialWrap.classList.add('hidden');
+    }
+  } else {
+    methodWrap.classList.add('hidden');
+  }
+}
+
+async function saveMyPayment() {
+  if (!activeJob) return;
+  var body = {
+    payment_status: activePay,
+    payment_method: activeMethod || null
+  };
+  if (activePay === 'partial') {
+    body.amount_paid = parseFloat(document.getElementById('action-amount').value) || 0;
+  } else if (activePay === 'paid') {
+    body.amount_paid = activeJob.job_value;
+  }
+
+  try {
+    var res = await fetch(API_BASE + '/api/my-schedule/' + memberId + '/jobs/' + activeJob.id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    var data = await res.json();
+    if (data.success) {
+      activeJob = data.data;
+      loadSchedule();
+      showToast('Payment saved', 'success');
+    }
+  } catch (e) {
+    showToast('Failed to save payment', 'error');
+  }
+}
+
+async function saveMyNotes() {
+  if (!activeJob) return;
+  var notes = document.getElementById('action-notes').value;
+  try {
+    var res = await fetch(API_BASE + '/api/my-schedule/' + memberId + '/jobs/' + activeJob.id, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes: notes })
+    });
+    var data = await res.json();
+    if (data.success) {
+      activeJob.notes = notes;
+      showToast('Notes saved', 'success');
+    }
+  } catch (e) {
+    showToast('Failed to save notes', 'error');
+  }
+}
+
+// ============================
+// TOAST
+// ============================
+function showToast(msg, type) {
+  var toast = document.getElementById('toast');
+  var icon = document.getElementById('toast-icon');
+  var msgEl = document.getElementById('toast-msg');
+
+  if (type === 'success') {
+    icon.innerHTML = '<svg class="w-4 h-4 text-lime-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>';
+  } else {
+    icon.innerHTML = '<svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>';
+  }
+
+  msgEl.textContent = msg;
+  toast.classList.remove('hidden');
+
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(function() { toast.classList.add('hidden'); }, 2500);
+}
+
+// ============================
+// HELPERS
+// ============================
+function esc(str) {
+  if (!str) return '';
+  var div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function toDateStr(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function getMonday(d) {
+  var day = d.getDay();
+  var diff = day === 0 ? -6 : 1 - day;
+  var mon = new Date(d);
+  mon.setDate(d.getDate() + diff);
+  return mon;
+}
+
+function formatDateFull(d) {
+  var days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return days[d.getDay()] + ' ' + d.getDate() + ' ' + months[d.getMonth()];
+}
+
+function formatDateShort(d) {
+  var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return d.getDate() + ' ' + months[d.getMonth()];
+}
+
+// ============================
+// START
+// ============================
+init();
+</script>
+
+</body>
+</html>

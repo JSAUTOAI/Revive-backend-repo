@@ -2055,6 +2055,7 @@ async function loadTeam() {
     res.data.forEach(function(m) {
       var card = document.createElement('div');
       card.className = 'bg-neutral-900 border border-neutral-800 rounded-xl p-5 flex items-center justify-between';
+      var schedLink = window.location.origin + '/my-schedule.html?id=' + m.id;
       card.innerHTML =
         '<div class="flex items-center gap-3">' +
           '<div class="w-10 h-10 rounded-full flex items-center justify-center text-black font-bold text-lg" style="background:' + esc(m.color) + '">' + esc(m.name.charAt(0).toUpperCase()) + '</div>' +
@@ -2063,7 +2064,11 @@ async function loadTeam() {
             '<div class="text-xs ' + (m.is_active ? 'text-green-400' : 'text-red-400') + '">' + (m.is_active ? 'Active' : 'Inactive') + '</div>' +
           '</div>' +
         '</div>' +
-        '<button onclick="toggleTeamActive(\'' + m.id + '\', ' + !m.is_active + ')" class="text-xs px-3 py-1.5 rounded-lg transition-colors ' + (m.is_active ? 'bg-red-900/60 text-red-300 hover:bg-red-800' : 'bg-green-900/60 text-green-300 hover:bg-green-800') + '">' + (m.is_active ? 'Deactivate' : 'Activate') + '</button>';
+        '<div class="flex items-center gap-2">' +
+          '<button onclick="copyScheduleLink(\'' + m.id + '\', \'' + esc(m.name) + '\')" class="text-xs px-3 py-1.5 rounded-lg transition-colors bg-lime-900/60 text-lime-300 hover:bg-lime-800" title="Copy schedule link">Copy Link</button>' +
+          '<a href="' + schedLink + '" target="_blank" class="text-xs px-3 py-1.5 rounded-lg transition-colors bg-neutral-800 text-neutral-300 hover:bg-neutral-700">View</a>' +
+          '<button onclick="toggleTeamActive(\'' + m.id + '\', ' + !m.is_active + ')" class="text-xs px-3 py-1.5 rounded-lg transition-colors ' + (m.is_active ? 'bg-red-900/60 text-red-300 hover:bg-red-800' : 'bg-green-900/60 text-green-300 hover:bg-green-800') + '">' + (m.is_active ? 'Deactivate' : 'Activate') + '</button>' +
+        '</div>';
       list.appendChild(card);
     });
   } catch (e) {
@@ -2130,6 +2135,22 @@ async function submitTeamMember() {
   } catch (e) {
     showToast('Failed to add team member', 'error');
   }
+}
+
+function copyScheduleLink(id, name) {
+  var link = window.location.origin + '/my-schedule.html?id=' + id;
+  navigator.clipboard.writeText(link).then(function() {
+    showToast('Schedule link for ' + name + ' copied!', 'success');
+  }).catch(function() {
+    // Fallback for older browsers
+    var ta = document.createElement('textarea');
+    ta.value = link;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('Schedule link for ' + name + ' copied!', 'success');
+  });
 }
 
 async function toggleTeamActive(id, active) {

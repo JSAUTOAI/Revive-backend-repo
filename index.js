@@ -958,6 +958,13 @@ app.post('/admin/team', requireAdminAuth, jobRoutes.createTeamMember);
 app.patch('/admin/team/:id', requireAdminAuth, jobRoutes.updateTeamMember);
 
 // =======================
+// TEAM MEMBER SCHEDULE (Public - UUID as access key)
+// =======================
+
+app.get('/api/my-schedule/:memberId', jobRoutes.getMySchedule);
+app.patch('/api/my-schedule/:memberId/jobs/:jobId', jobRoutes.updateMyJob);
+
+// =======================
 // ERROR HANDLING
 // =======================
 
