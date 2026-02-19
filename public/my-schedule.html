@@ -96,46 +96,77 @@
 
 </div>
 
-<!-- ===== JOB ACTION SHEET ===== -->
-<div id="actionSheet" class="hidden fixed inset-0 z-50" onclick="if(event.target===this)closeAction()">
-  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
-  <div class="absolute bottom-0 left-0 right-0 bg-neutral-900 border-t border-neutral-800 rounded-t-2xl max-w-lg mx-auto fade-in safe-bottom">
-    <!-- Handle bar -->
-    <div class="flex justify-center pt-3 pb-1"><div class="w-10 h-1 rounded-full bg-neutral-700"></div></div>
+<!-- ===== JOB DETAIL MODAL ===== -->
+<div id="actionSheet" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" onclick="if(event.target===this)closeAction()">
+  <div class="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
+  <div class="relative bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto fade-in">
 
-    <div class="px-5 pb-2">
-      <h3 class="text-white font-semibold text-sm mb-1" id="action-title"></h3>
-      <div class="text-xs text-neutral-500" id="action-subtitle"></div>
+    <!-- Close button -->
+    <button onclick="closeAction()" class="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-white transition-colors">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+
+    <!-- Job Info Header -->
+    <div class="p-5 pb-4 border-b border-neutral-800">
+      <div class="flex items-start justify-between pr-8">
+        <h3 class="text-white font-bold text-base leading-tight" id="action-customer"></h3>
+        <span class="text-lime-400 font-bold text-lg shrink-0 ml-3" id="action-price"></span>
+      </div>
+      <div class="text-lime-400/80 text-sm font-medium mt-1" id="action-service"></div>
+      <div class="flex flex-col gap-1.5 mt-3">
+        <div class="flex items-center gap-2 text-xs text-neutral-400">
+          <svg class="w-3.5 h-3.5 shrink-0 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          <span id="action-address"></span>
+        </div>
+        <div class="flex items-center gap-2 text-xs text-neutral-400">
+          <svg class="w-3.5 h-3.5 shrink-0 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span id="action-time"></span>
+        </div>
+        <div id="action-phone-row" class="flex items-center gap-2 text-xs text-neutral-400">
+          <svg class="w-3.5 h-3.5 shrink-0 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+          <span id="action-phone"></span>
+        </div>
+      </div>
     </div>
 
-    <div class="px-5 pb-5 space-y-4">
-      <!-- Customer Actions -->
-      <div class="flex gap-2">
-        <a id="action-call" href="#" class="flex-1 bg-green-900/60 hover:bg-green-800 text-green-300 text-center py-3 rounded-xl text-sm font-medium transition-colors">
-          Call Customer
-        </a>
-        <a id="action-maps" href="#" target="_blank" class="flex-1 bg-blue-900/60 hover:bg-blue-800 text-blue-300 text-center py-3 rounded-xl text-sm font-medium transition-colors">
-          Open Maps
-        </a>
-      </div>
+    <!-- Quick Actions -->
+    <div class="px-5 py-3 border-b border-neutral-800 flex gap-2">
+      <a id="action-call" href="#" class="flex-1 flex items-center justify-center gap-2 bg-green-900/40 hover:bg-green-900/70 text-green-400 py-2.5 rounded-xl text-xs font-medium transition-colors">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+        Call
+      </a>
+      <a id="action-maps" href="#" target="_blank" class="flex-1 flex items-center justify-center gap-2 bg-blue-900/40 hover:bg-blue-900/70 text-blue-400 py-2.5 rounded-xl text-xs font-medium transition-colors">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        Maps
+      </a>
+    </div>
 
-      <!-- Status Buttons -->
+    <div class="p-5 space-y-5">
+
+      <!-- Status -->
       <div>
-        <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mb-2">Status</div>
-        <div class="grid grid-cols-2 gap-2" id="action-statusBtns"></div>
+        <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mb-2">Job Status</div>
+        <div class="grid grid-cols-3 gap-2" id="action-statusBtns"></div>
       </div>
 
       <!-- Payment (shown when completed) -->
       <div id="action-paymentWrap" class="hidden">
         <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mb-2">Payment</div>
-        <div class="grid grid-cols-3 gap-2 mb-2" id="action-payBtns"></div>
-        <div id="action-methodWrap" class="hidden">
-          <div class="grid grid-cols-3 gap-2 mb-2" id="action-methodBtns"></div>
-          <div id="action-partialWrap" class="hidden mb-2">
-            <input type="number" id="action-amount" step="0.01" min="0" placeholder="Amount paid £" class="w-full bg-black border border-neutral-700 text-white text-sm px-3 py-2.5 rounded-xl focus:border-lime-400 focus:outline-none">
-          </div>
-          <button onclick="saveMyPayment()" class="w-full bg-lime-400 hover:bg-lime-300 text-black font-semibold py-3 rounded-xl text-sm transition-colors">Save Payment</button>
+        <div class="grid grid-cols-3 gap-2" id="action-payBtns"></div>
+        <!-- Method row (shown for paid/partial) -->
+        <div id="action-methodWrap" class="hidden mt-3">
+          <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mb-2">Method</div>
+          <div class="grid grid-cols-3 gap-2" id="action-methodBtns"></div>
         </div>
+        <!-- Partial amount (shown for partial only) -->
+        <div id="action-partialWrap" class="hidden mt-3">
+          <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mb-2">Amount Paid</div>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-sm font-medium">£</span>
+            <input type="number" id="action-amount" step="0.01" min="0" placeholder="0.00" class="w-full bg-black border border-neutral-700 text-white text-sm pl-7 pr-3 py-2.5 rounded-xl focus:border-lime-400 focus:outline-none">
+          </div>
+        </div>
+        <button onclick="saveMyPayment()" class="mt-3 w-full bg-lime-400 hover:bg-lime-300 text-black font-semibold py-3 rounded-xl text-sm transition-colors">Save Payment</button>
       </div>
 
       <!-- Notes -->
@@ -144,10 +175,8 @@
         <textarea id="action-notes" rows="2" class="w-full bg-black border border-neutral-700 text-white text-sm px-3 py-2.5 rounded-xl resize-none focus:border-lime-400 focus:outline-none" placeholder="Add a note..."></textarea>
         <button onclick="saveMyNotes()" class="mt-2 w-full bg-neutral-800 hover:bg-neutral-700 text-white font-medium py-2.5 rounded-xl text-sm transition-colors">Save Notes</button>
       </div>
-    </div>
 
-    <!-- Safe area padding for iOS -->
-    <div class="h-6"></div>
+    </div>
   </div>
 </div>
 
@@ -341,18 +370,28 @@ function renderJobs() {
 
 function createJobCard(j) {
   var card = document.createElement('div');
-  card.className = 'bg-neutral-900 border border-neutral-800 rounded-xl p-4 cursor-pointer active:bg-neutral-800 transition-colors fade-in';
   card.onclick = function() { openAction(j); };
 
   var statusColors = {
+    scheduled: 'border-l-blue-500',
+    in_progress: 'border-l-yellow-500',
+    completed: 'border-l-green-500',
+    cancelled: 'border-l-red-500',
+    not_available: 'border-l-orange-500'
+  };
+  var statusLabels = { scheduled: 'Scheduled', in_progress: 'In Progress', completed: 'Done', cancelled: 'Cancelled', not_available: 'No Access' };
+  var statusBadgeColors = {
     scheduled: 'text-blue-300 bg-blue-900/60',
     in_progress: 'text-yellow-300 bg-yellow-900/60',
     completed: 'text-green-300 bg-green-900/60',
-    cancelled: 'text-red-300 bg-red-900/60'
+    cancelled: 'text-red-300 bg-red-900/60',
+    not_available: 'text-orange-300 bg-orange-900/60'
   };
-  var statusLabels = { scheduled: 'Scheduled', in_progress: 'In Progress', completed: 'Done', cancelled: 'Cancelled' };
-  var sc = statusColors[j.status] || statusColors.scheduled;
+  var borderColor = statusColors[j.status] || statusColors.scheduled;
   var sl = statusLabels[j.status] || j.status;
+  var sbc = statusBadgeColors[j.status] || statusBadgeColors.scheduled;
+
+  card.className = 'bg-neutral-900 border border-neutral-800 border-l-[3px] ' + borderColor + ' rounded-xl cursor-pointer active:bg-neutral-800/80 transition-colors fade-in overflow-hidden';
 
   var payBadge = '';
   if (j.status === 'completed') {
@@ -362,23 +401,32 @@ function createJobCard(j) {
   }
 
   card.innerHTML =
-    '<div class="flex items-center justify-between mb-2">' +
-      '<div class="flex items-center gap-2">' +
-        '<span class="text-white font-bold text-xs bg-neutral-800 px-2 py-0.5 rounded">' + esc(j.time_slot || '') + '</span>' +
-        '<span class="text-white font-medium">' + esc(j.customer_name) + '</span>' +
+    '<div class="p-4">' +
+      // Row 1: Customer name + price
+      '<div class="flex items-start justify-between mb-1.5">' +
+        '<div class="text-white font-semibold text-sm leading-tight">' + esc(j.customer_name) + '</div>' +
+        '<span class="text-lime-400 font-bold text-sm shrink-0 ml-2">' + (j.job_value ? '\u00A3' + Number(j.job_value).toFixed(0) : '') + '</span>' +
       '</div>' +
-      '<span class="text-lime-400 font-bold">' + (j.job_value ? '\u00A3' + Number(j.job_value).toFixed(0) : '') + '</span>' +
-    '</div>' +
-    '<div class="text-xs text-neutral-500 mb-2">' + esc(j.service) + '</div>' +
-    '<div class="flex items-center justify-between">' +
-      '<div class="text-xs text-neutral-600">' + esc(j.address || '') + ' ' + esc(j.postcode || '') + '</div>' +
+      // Row 2: Service
+      '<div class="text-lime-400/70 text-xs font-medium mb-2.5">' + esc(j.service) + '</div>' +
+      // Row 3: Address
+      '<div class="flex items-center gap-1.5 text-[11px] text-neutral-500 mb-1.5">' +
+        '<svg class="w-3 h-3 shrink-0 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>' +
+        esc(j.address || '') + ' ' + esc(j.postcode || '') +
+      '</div>' +
+      // Row 4: Time + duration
+      '<div class="flex items-center gap-1.5 text-[11px] text-neutral-500 mb-3">' +
+        '<svg class="w-3 h-3 shrink-0 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' +
+        esc(j.time_slot || 'TBC') + (j.estimated_duration ? ' &middot; ~' + esc(j.estimated_duration) : '') +
+      '</div>' +
+      // Row 5: Status + payment badges
       '<div class="flex items-center gap-1.5">' +
-        '<span class="px-2 py-0.5 rounded-lg text-[10px] font-medium ' + sc + '">' + sl + '</span>' +
+        '<span class="px-2.5 py-1 rounded-lg text-[10px] font-semibold ' + sbc + '">' + sl + '</span>' +
         payBadge +
       '</div>' +
     '</div>' +
-    (j.estimated_duration ? '<div class="text-[10px] text-neutral-600 mt-1">~' + esc(j.estimated_duration) + '</div>' : '') +
-    (j.notes ? '<div class="text-xs text-neutral-500 mt-2 bg-black/50 px-3 py-2 rounded-lg">' + esc(j.notes) + '</div>' : '');
+    // Notes preview (if any)
+    (j.notes ? '<div class="border-t border-neutral-800/60 px-4 py-2.5"><div class="text-[11px] text-neutral-500 leading-snug truncate">' + esc(j.notes) + '</div></div>' : '');
 
   return card;
 }
@@ -394,8 +442,21 @@ function openAction(job) {
   document.getElementById('actionSheet').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
 
-  document.getElementById('action-title').textContent = job.customer_name + ' - ' + job.service;
-  document.getElementById('action-subtitle').textContent = (job.time_slot || '') + ' | ' + (job.address || '') + ' ' + (job.postcode || '') + (job.estimated_duration ? ' | ~' + job.estimated_duration : '');
+  // Populate header info
+  document.getElementById('action-customer').textContent = job.customer_name;
+  document.getElementById('action-price').textContent = job.job_value ? '\u00A3' + Number(job.job_value).toFixed(0) : '';
+  document.getElementById('action-service').textContent = job.service;
+  document.getElementById('action-address').textContent = (job.address || '') + ' ' + (job.postcode || '');
+  document.getElementById('action-time').textContent = (job.time_slot || 'TBC') + (job.estimated_duration ? ' \u00B7 ~' + job.estimated_duration : '');
+
+  // Phone
+  var phoneRow = document.getElementById('action-phone-row');
+  if (job.customer_phone) {
+    phoneRow.style.display = '';
+    document.getElementById('action-phone').textContent = job.customer_phone;
+  } else {
+    phoneRow.style.display = 'none';
+  }
 
   // Call button
   var callBtn = document.getElementById('action-call');
@@ -428,19 +489,17 @@ function closeAction() {
 }
 
 function renderMyStatusBtns(current) {
-  var statuses = ['scheduled', 'in_progress', 'completed', 'cancelled'];
-  var labels = { scheduled: 'Scheduled', in_progress: 'In Progress', completed: 'Completed', cancelled: 'Cancelled' };
+  var statuses = ['completed', 'cancelled', 'not_available'];
+  var labels = { completed: 'Completed', cancelled: 'Cancelled', not_available: 'Not Available' };
   var colors = {
-    scheduled: 'bg-blue-900/60 text-blue-300',
-    in_progress: 'bg-yellow-900/60 text-yellow-300',
     completed: 'bg-green-900/60 text-green-300',
-    cancelled: 'bg-red-900/60 text-red-300'
+    cancelled: 'bg-red-900/60 text-red-300',
+    not_available: 'bg-orange-900/60 text-orange-300'
   };
   var activeRing = {
-    scheduled: 'ring-2 ring-blue-400',
-    in_progress: 'ring-2 ring-yellow-400',
     completed: 'ring-2 ring-green-400',
-    cancelled: 'ring-2 ring-red-400'
+    cancelled: 'ring-2 ring-red-400',
+    not_available: 'ring-2 ring-orange-400'
   };
 
   var container = document.getElementById('action-statusBtns');
@@ -451,9 +510,9 @@ function renderMyStatusBtns(current) {
     var btn = document.createElement('button');
     btn.className = 'py-2.5 rounded-xl text-sm font-medium transition-all ' + colors[s] + (isActive ? ' ' + activeRing[s] : ' opacity-60');
     btn.textContent = labels[s];
-    if (!isActive) {
-      btn.onclick = function() { updateMyStatus(s); };
-    }
+    btn.onclick = function() {
+      if (!isActive) updateMyStatus(s);
+    };
     container.appendChild(btn);
   });
 }
@@ -474,6 +533,11 @@ async function updateMyStatus(newStatus) {
       renderMyPayment(activeJob);
       loadSchedule();
       showToast('Status updated', 'success');
+
+      // Close modal for cancelled/not_available (no further action needed)
+      if (newStatus === 'cancelled' || newStatus === 'not_available') {
+        setTimeout(function() { closeAction(); }, 600);
+      }
     }
   } catch (e) {
     showToast('Failed to update', 'error');
@@ -492,6 +556,7 @@ function renderMyPayment(job) {
   wrap.classList.remove('hidden');
 
   var payStatuses = ['paid', 'outstanding', 'partial'];
+  var payLabels = { paid: 'Paid', outstanding: 'Outstanding', partial: 'Partial' };
   var payColors = { paid: 'bg-green-900/60 text-green-300', outstanding: 'bg-red-900/60 text-red-300', partial: 'bg-orange-900/60 text-orange-300' };
   var payRing = { paid: 'ring-2 ring-green-400', outstanding: 'ring-2 ring-red-400', partial: 'ring-2 ring-orange-400' };
 
@@ -501,15 +566,30 @@ function renderMyPayment(job) {
     var isActive = s === activePay;
     var btn = document.createElement('button');
     btn.className = 'py-2.5 rounded-xl text-sm font-medium transition-all ' + payColors[s] + (isActive ? ' ' + payRing[s] : ' opacity-60');
-    btn.textContent = s.charAt(0).toUpperCase() + s.slice(1);
-    btn.onclick = function() { activePay = s; renderMyPayment(Object.assign({}, activeJob, { payment_status: s, status: 'completed' })); };
+    btn.textContent = payLabels[s];
+    btn.onclick = function() {
+      activePay = s;
+      // Reset method when switching payment status
+      if (s === 'outstanding') activeMethod = '';
+      renderPaymentDetails();
+    };
     container.appendChild(btn);
   });
 
-  var methodWrap = document.getElementById('action-methodWrap');
-  if (activePay && activePay !== 'pending') {
-    methodWrap.classList.remove('hidden');
+  renderPaymentDetails();
+}
 
+function renderPaymentDetails() {
+  var methodWrap = document.getElementById('action-methodWrap');
+  var partialWrap = document.getElementById('action-partialWrap');
+
+  // Outstanding = no method needed, just show save button
+  // Paid = show method selection
+  // Partial = show method selection + amount input
+  var needsMethod = (activePay === 'paid' || activePay === 'partial');
+
+  if (needsMethod) {
+    methodWrap.classList.remove('hidden');
     var methods = ['cash', 'transfer', 'card'];
     var methodContainer = document.getElementById('action-methodBtns');
     methodContainer.innerHTML = '';
@@ -518,27 +598,40 @@ function renderMyPayment(job) {
       var btn = document.createElement('button');
       btn.className = 'py-2.5 rounded-xl text-sm font-medium transition-all ' + (isActive ? 'bg-lime-400 text-black ring-2 ring-lime-300' : 'bg-neutral-800 text-neutral-300 opacity-60');
       btn.textContent = m.charAt(0).toUpperCase() + m.slice(1);
-      btn.onclick = function() { activeMethod = m; renderMyPayment(Object.assign({}, activeJob, { payment_status: activePay, payment_method: m, status: 'completed' })); };
+      btn.onclick = function() { activeMethod = m; renderPaymentDetails(); };
       methodContainer.appendChild(btn);
     });
-
-    var partialWrap = document.getElementById('action-partialWrap');
-    if (activePay === 'partial') {
-      partialWrap.classList.remove('hidden');
-      document.getElementById('action-amount').value = activeJob.amount_paid || '';
-    } else {
-      partialWrap.classList.add('hidden');
-    }
   } else {
     methodWrap.classList.add('hidden');
+  }
+
+  if (activePay === 'partial') {
+    partialWrap.classList.remove('hidden');
+    document.getElementById('action-amount').value = activeJob.amount_paid || '';
+  } else {
+    partialWrap.classList.add('hidden');
   }
 }
 
 async function saveMyPayment() {
   if (!activeJob) return;
+
+  // Validate: paid/partial need a method selected
+  if ((activePay === 'paid' || activePay === 'partial') && !activeMethod) {
+    showToast('Please select a payment method', 'error');
+    return;
+  }
+  if (activePay === 'partial') {
+    var amt = parseFloat(document.getElementById('action-amount').value);
+    if (!amt || amt <= 0) {
+      showToast('Please enter the amount paid', 'error');
+      return;
+    }
+  }
+
   var body = {
     payment_status: activePay,
-    payment_method: activeMethod || null
+    payment_method: (activePay === 'outstanding') ? null : (activeMethod || null)
   };
   if (activePay === 'partial') {
     body.amount_paid = parseFloat(document.getElementById('action-amount').value) || 0;
@@ -557,6 +650,7 @@ async function saveMyPayment() {
       activeJob = data.data;
       loadSchedule();
       showToast('Payment saved', 'success');
+      closeAction();
     }
   } catch (e) {
     showToast('Failed to save payment', 'error');
@@ -575,7 +669,9 @@ async function saveMyNotes() {
     var data = await res.json();
     if (data.success) {
       activeJob.notes = notes;
+      loadSchedule();
       showToast('Notes saved', 'success');
+      closeAction();
     }
   } catch (e) {
     showToast('Failed to save notes', 'error');

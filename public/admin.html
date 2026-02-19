@@ -1446,7 +1446,8 @@ function getJobStatusColor(status) {
     scheduled: 'text-blue-300 bg-blue-900/60',
     in_progress: 'text-yellow-300 bg-yellow-900/60',
     completed: 'text-green-300 bg-green-900/60',
-    cancelled: 'text-red-300 bg-red-900/60'
+    cancelled: 'text-red-300 bg-red-900/60',
+    not_available: 'text-orange-300 bg-orange-900/60'
   };
   return map[status] || 'text-neutral-300 bg-neutral-700';
 }
@@ -1558,20 +1559,22 @@ function closeJobDetail() {
 }
 
 function renderJobStatusButtons(currentStatus) {
-  var statuses = ['scheduled', 'in_progress', 'completed', 'cancelled'];
+  var statuses = ['scheduled', 'in_progress', 'completed', 'cancelled', 'not_available'];
   var colors = {
     scheduled: 'bg-blue-900 hover:bg-blue-800',
     in_progress: 'bg-yellow-900 hover:bg-yellow-800',
     completed: 'bg-green-900 hover:bg-green-800',
-    cancelled: 'bg-red-900 hover:bg-red-800'
+    cancelled: 'bg-red-900 hover:bg-red-800',
+    not_available: 'bg-orange-900 hover:bg-orange-800'
   };
   var activeColors = {
     scheduled: 'bg-blue-700 ring-2 ring-blue-400',
     in_progress: 'bg-yellow-700 ring-2 ring-yellow-400',
     completed: 'bg-green-700 ring-2 ring-green-400',
-    cancelled: 'bg-red-700 ring-2 ring-red-400'
+    cancelled: 'bg-red-700 ring-2 ring-red-400',
+    not_available: 'bg-orange-700 ring-2 ring-orange-400'
   };
-  var labels = { scheduled: 'Scheduled', in_progress: 'In Progress', completed: 'Completed', cancelled: 'Cancelled' };
+  var labels = { scheduled: 'Scheduled', in_progress: 'In Progress', completed: 'Completed', cancelled: 'Cancelled', not_available: 'Not Available' };
 
   var container = document.getElementById('jd-statusButtons');
   container.innerHTML = '';
