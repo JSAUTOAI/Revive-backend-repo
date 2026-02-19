@@ -31,6 +31,7 @@ const { sendAdminAlertWhatsApp } = require('./services/whatsapp');
 const { requireAdminAuth } = require('./middleware/auth');
 const adminRoutes = require('./routes/admin');
 const jobRoutes = require('./routes/jobs');
+const customerRoutes = require('./routes/customers');
 
 // Create Express app
 const app = express();
@@ -44,9 +45,10 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// Pass Supabase client to admin routes and job routes
+// Pass Supabase client to admin routes, job routes, and customer routes
 adminRoutes.setSupabaseClient(supabase);
 jobRoutes.setSupabaseClient(supabase);
+customerRoutes.setSupabaseClient(supabase);
 
 // =======================
 // MIDDLEWARE
@@ -200,6 +202,13 @@ app.post('/api/quote', async (req, res) => {
     console.log('-------------------------');
 
     const savedQuote = data[0];
+
+    // Auto-link to customer profile (find existing or create new)
+    const customerId = await customerRoutes.findOrCreateCustomer(savedQuote);
+    if (customerId) {
+      await supabase.from('quotes').update({ customer_id: customerId }).eq('id', savedQuote.id);
+      savedQuote.customer_id = customerId;
+    }
 
     // Sync to Google Sheets (non-blocking)
     syncQuoteToSheets(savedQuote).catch(err => {
@@ -956,6 +965,18 @@ app.post('/admin/recurring/:id/generate', requireAdminAuth, jobRoutes.generateFr
 app.get('/admin/team', requireAdminAuth, jobRoutes.listTeam);
 app.post('/admin/team', requireAdminAuth, jobRoutes.createTeamMember);
 app.patch('/admin/team/:id', requireAdminAuth, jobRoutes.updateTeamMember);
+
+// =======================
+// CUSTOMER ROUTES (Protected)
+// =======================
+
+app.get('/admin/customers', requireAdminAuth, customerRoutes.listCustomers);
+app.get('/admin/customers/search', requireAdminAuth, customerRoutes.searchCustomers);
+app.get('/admin/customers/stats', requireAdminAuth, customerRoutes.getStats);
+app.post('/admin/customers/bulk-followup', requireAdminAuth, customerRoutes.sendBulkFollowUp);
+app.get('/admin/customers/:id', requireAdminAuth, customerRoutes.getCustomer);
+app.patch('/admin/customers/:id', requireAdminAuth, customerRoutes.updateCustomer);
+app.post('/admin/customers/:id/followup', requireAdminAuth, customerRoutes.sendFollowUp);
 
 // =======================
 // TEAM MEMBER SCHEDULE (Public - UUID as access key)

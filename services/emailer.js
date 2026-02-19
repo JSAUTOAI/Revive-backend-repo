@@ -279,8 +279,78 @@ async function sendAdminAlert(quote, isAcceptance = false) {
   }
 }
 
+/**
+ * Send follow-up email to a customer
+ *
+ * @param {Object} customer - Customer data from database
+ * @param {string} subject - Email subject line
+ * @param {string} body - Email body text (plain text, converted to HTML)
+ * @returns {Promise<Object>} - Resend API response
+ */
+async function sendFollowUpEmail(customer, subject, body) {
+  try {
+    console.log(`[Email] Sending follow-up to ${customer.email}`);
+
+    // Convert plain text body to HTML paragraphs
+    const htmlBody = body.split('\n').filter(l => l.trim()).map(l => `<p style="margin: 0 0 12px 0;">${l}</p>`).join('');
+
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: customer.email,
+      subject: subject,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background-color: #84cc16; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+            <h1 style="margin: 0; font-size: 22px;">Revive Exterior Cleaning</h1>
+          </div>
+
+          <div style="background-color: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px;">
+            <div style="font-size: 15px; color: #333;">
+              ${htmlBody}
+            </div>
+
+            <div style="margin-top: 25px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+              <p style="font-size: 14px; color: #666;">
+                Want to book or have questions? Just reply to this email or give us a call.
+              </p>
+              <p style="font-size: 14px; color: #666;">
+                Best regards,<br>
+                <strong>The Revive Team</strong>
+              </p>
+            </div>
+          </div>
+
+          <div style="text-align: center; padding: 20px; font-size: 12px; color: #999;">
+            <p>Revive Exterior Cleaning - Professional Property Care</p>
+          </div>
+        </body>
+        </html>
+      `
+    });
+
+    if (error) {
+      console.error('[Email] Follow-up send error:', error);
+      throw error;
+    }
+
+    console.log('[Email] Follow-up sent successfully:', data.id);
+    return { success: true, emailId: data.id };
+
+  } catch (error) {
+    console.error('[Email] Failed to send follow-up:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   sendConfirmationEmail,
   sendEstimateEmail,
-  sendAdminAlert
+  sendAdminAlert,
+  sendFollowUpEmail
 };

@@ -83,6 +83,7 @@
       <button onclick="switchTab('quotes')" id="tab-quotes" class="tab-btn px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors bg-neutral-900 text-lime-400 border border-neutral-800 border-b-0">Quotes</button>
       <button onclick="switchTab('schedule')" id="tab-schedule" class="tab-btn px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300">Schedule</button>
       <button onclick="switchTab('team')" id="tab-team" class="tab-btn px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300">Team</button>
+      <button onclick="switchTab('customers')" id="tab-customers" class="tab-btn px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300">Customers</button>
     </div>
   </header>
 
@@ -268,6 +269,58 @@
     <div id="teamEmpty" class="hidden text-center py-16 text-neutral-600 text-sm">No team members added yet</div>
   </div>
 
+  <!-- ===== CUSTOMERS TAB ===== -->
+  <div id="content-customers" class="tab-content hidden max-w-7xl mx-auto px-4 sm:px-6 py-6">
+
+    <!-- Stats -->
+    <div id="custStatsBar" class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+        <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Customers</div>
+        <div class="text-xl font-bold text-white mt-1" id="cust-stat-total">-</div>
+      </div>
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+        <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Active (6mo)</div>
+        <div class="text-xl font-bold text-lime-400 mt-1" id="cust-stat-active">-</div>
+      </div>
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+        <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Total Revenue</div>
+        <div class="text-xl font-bold text-lime-400 mt-1" id="cust-stat-revenue">-</div>
+      </div>
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+        <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Avg Spend</div>
+        <div class="text-xl font-bold text-white mt-1" id="cust-stat-avg">-</div>
+      </div>
+    </div>
+
+    <!-- Search + Filters -->
+    <div class="flex flex-col sm:flex-row gap-3 mb-6">
+      <div class="flex-1 relative">
+        <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        <input type="text" id="custSearch" placeholder="Search by name, email, phone, postcode..." class="w-full bg-neutral-900 border border-neutral-800 text-white text-sm pl-10 pr-3 py-2.5 rounded-lg focus:border-lime-400 focus:outline-none" oninput="debouncedCustSearch()">
+      </div>
+      <select id="custSort" onchange="loadCustomers()" class="bg-neutral-900 border border-neutral-800 text-neutral-300 text-sm px-3 py-2.5 rounded-lg focus:border-lime-400 focus:outline-none">
+        <option value="created_at">Newest First</option>
+        <option value="total_spent">Highest Spend</option>
+        <option value="last_job_date">Last Job</option>
+        <option value="name">Name A-Z</option>
+      </select>
+      <button onclick="openBulkFollowUpModal()" class="bg-neutral-900 border border-neutral-700 hover:border-lime-400 text-neutral-300 hover:text-white px-4 py-2.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap">Send Bulk Email</button>
+    </div>
+
+    <!-- Customer List -->
+    <div id="custList" class="space-y-3"></div>
+    <div id="custEmpty" class="hidden text-center py-16 text-neutral-600 text-sm">No customers found</div>
+
+    <!-- Pagination -->
+    <div id="custPagination" class="hidden flex items-center justify-between mt-6">
+      <div class="text-xs text-neutral-500" id="custPaginationInfo"></div>
+      <div class="flex gap-2">
+        <button onclick="custPrevPage()" id="custPrevBtn" class="bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-white px-3 py-1.5 rounded-lg text-xs">Prev</button>
+        <button onclick="custNextPage()" id="custNextBtn" class="bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-white px-3 py-1.5 rounded-lg text-xs">Next</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <!-- ============ QUOTE DETAIL MODAL ============ -->
@@ -376,6 +429,13 @@
 
     <!-- Manual Tab -->
     <div id="jobContent-manual" class="p-6 space-y-4">
+      <!-- Customer Search -->
+      <div class="relative">
+        <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">Search Existing Customer</label>
+        <input type="text" id="job-cust-search" placeholder="Type name, email, phone..." class="w-full mt-1 bg-neutral-800 border border-neutral-700 text-white text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none" oninput="debouncedJobCustSearch()" autocomplete="off">
+        <div id="job-cust-results" class="hidden absolute left-0 right-0 top-full mt-1 bg-neutral-800 border border-neutral-700 rounded-lg max-h-48 overflow-y-auto z-20"></div>
+        <input type="hidden" id="job-customer-id" value="">
+      </div>
       <div class="grid grid-cols-2 gap-3">
         <div class="col-span-2">
           <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">Customer Name *</label>
@@ -651,6 +711,186 @@
       </div>
     </div>
     <button onclick="submitTeamMember()" class="w-full bg-lime-400 hover:bg-lime-300 text-black font-semibold py-3 rounded-lg text-sm transition-colors">Add Member</button>
+  </div>
+</div>
+
+<!-- ============ CUSTOMER PROFILE MODAL ============ -->
+<div id="custProfileModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-8 overflow-y-auto" onclick="if(event.target===this)closeCustProfile()">
+  <div class="bg-neutral-900 border border-neutral-800 rounded-2xl max-w-2xl w-full fade-in my-4">
+    <div class="sticky top-0 bg-neutral-900 border-b border-neutral-800 px-6 py-4 rounded-t-2xl flex items-center justify-between z-10">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full bg-lime-400 flex items-center justify-center text-black font-bold text-sm" id="cp-avatar"></div>
+        <div>
+          <h2 class="text-white font-semibold text-sm" id="cp-name"></h2>
+          <div class="text-neutral-500 text-[10px]" id="cp-since"></div>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="text-lime-400 font-bold text-lg" id="cp-total-spent"></span>
+        <button onclick="closeCustProfile()" class="text-neutral-500 hover:text-white transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="p-6 space-y-6">
+      <!-- Contact Details -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <h3 class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mb-3">Contact</h3>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between"><span class="text-neutral-500">Email</span><a class="text-lime-400 hover:underline" id="cp-email"></a></div>
+            <div class="flex justify-between"><span class="text-neutral-500">Phone</span><a class="text-lime-400 hover:underline" id="cp-phone"></a></div>
+            <div class="flex justify-between"><span class="text-neutral-500">Address</span><span class="text-white" id="cp-address"></span></div>
+            <div class="flex justify-between"><span class="text-neutral-500">Postcode</span><span class="text-white" id="cp-postcode"></span></div>
+          </div>
+        </div>
+        <div>
+          <h3 class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mb-3">Stats</h3>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between"><span class="text-neutral-500">Total Jobs</span><span class="text-white" id="cp-total-jobs"></span></div>
+            <div class="flex justify-between"><span class="text-neutral-500">Last Job</span><span class="text-white" id="cp-last-job"></span></div>
+            <div class="flex justify-between"><span class="text-neutral-500">Last Follow-Up</span><span class="text-white" id="cp-last-followup"></span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tags -->
+      <div>
+        <h3 class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mb-2">Tags</h3>
+        <div class="flex flex-wrap gap-2" id="cp-tags"></div>
+        <div class="flex gap-2 mt-2">
+          <input type="text" id="cp-new-tag" placeholder="Add tag..." class="bg-black border border-neutral-700 text-white text-xs px-3 py-1.5 rounded-lg focus:border-lime-400 focus:outline-none" onkeydown="if(event.key==='Enter')addCustTag()">
+          <button onclick="addCustTag()" class="bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs px-3 py-1.5 rounded-lg">Add</button>
+        </div>
+      </div>
+
+      <!-- Job History -->
+      <div>
+        <h3 class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mb-3">Job History</h3>
+        <div id="cp-jobs" class="space-y-2 max-h-60 overflow-y-auto"></div>
+        <div id="cp-no-jobs" class="hidden text-neutral-600 text-xs">No jobs yet</div>
+      </div>
+
+      <!-- Quote History -->
+      <div>
+        <h3 class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mb-3">Quote History</h3>
+        <div id="cp-quotes" class="space-y-2 max-h-40 overflow-y-auto"></div>
+        <div id="cp-no-quotes" class="hidden text-neutral-600 text-xs">No quotes yet</div>
+      </div>
+
+      <!-- Notes -->
+      <div>
+        <h3 class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mb-2">Notes</h3>
+        <textarea id="cp-notes" rows="3" class="w-full bg-black border border-neutral-700 text-white text-sm px-3 py-2.5 rounded-xl resize-none focus:border-lime-400 focus:outline-none" placeholder="Add notes about this customer..."></textarea>
+        <button onclick="saveCustNotes()" class="mt-2 bg-neutral-800 hover:bg-neutral-700 text-white font-medium py-2 px-4 rounded-lg text-xs transition-colors">Save Notes</button>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex flex-wrap gap-2 pt-2 border-t border-neutral-800">
+        <button onclick="addJobFromCustomer()" class="bg-lime-400 hover:bg-lime-300 text-black font-semibold px-4 py-2 rounded-lg text-xs transition-colors">+ Add Job</button>
+        <button onclick="openFollowUpModal()" class="bg-neutral-800 hover:bg-neutral-700 text-white font-medium px-4 py-2 rounded-lg text-xs transition-colors">Send Follow-Up Email</button>
+        <button onclick="toggleEditCustomer()" class="bg-neutral-800 hover:bg-neutral-700 text-white font-medium px-4 py-2 rounded-lg text-xs transition-colors">Edit Details</button>
+      </div>
+
+      <!-- Edit Details (hidden by default) -->
+      <div id="cp-edit-section" class="hidden border-t border-neutral-800 pt-4 space-y-3">
+        <h3 class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">Edit Contact Details</h3>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="col-span-2"><input type="text" id="cp-edit-name" class="w-full bg-black border border-neutral-700 text-white text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none" placeholder="Name"></div>
+          <div><input type="email" id="cp-edit-email" class="w-full bg-black border border-neutral-700 text-white text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none" placeholder="Email"></div>
+          <div><input type="text" id="cp-edit-phone" class="w-full bg-black border border-neutral-700 text-white text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none" placeholder="Phone"></div>
+          <div class="col-span-2"><input type="text" id="cp-edit-address" class="w-full bg-black border border-neutral-700 text-white text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none" placeholder="Address"></div>
+          <div><input type="text" id="cp-edit-postcode" class="w-full bg-black border border-neutral-700 text-white text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none" placeholder="Postcode"></div>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="saveEditCustomer()" class="bg-lime-400 hover:bg-lime-300 text-black font-semibold px-4 py-2 rounded-lg text-xs transition-colors">Save Changes</button>
+          <button onclick="toggleEditCustomer()" class="bg-neutral-800 hover:bg-neutral-700 text-white font-medium px-4 py-2 rounded-lg text-xs transition-colors">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ FOLLOW-UP EMAIL MODAL ============ -->
+<div id="followUpModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[55] flex items-center justify-center p-4" onclick="if(event.target===this)closeFollowUp()">
+  <div class="bg-neutral-900 border border-neutral-800 rounded-2xl max-w-lg w-full fade-in">
+    <div class="border-b border-neutral-800 px-6 py-4 flex items-center justify-between">
+      <h2 class="text-white font-semibold text-sm">Send Follow-Up Email</h2>
+      <button onclick="closeFollowUp()" class="text-neutral-500 hover:text-white transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="p-6 space-y-4">
+      <div class="text-xs text-neutral-500">Sending to: <span class="text-lime-400" id="fu-recipient"></span></div>
+      <div>
+        <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">Template</label>
+        <select id="fu-template" onchange="applyTemplate()" class="w-full mt-1 bg-black border border-neutral-700 text-neutral-300 text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+          <option value="">Choose a template...</option>
+          <option value="seasonal">Seasonal Reminder</option>
+          <option value="discount">10% Discount Offer</option>
+          <option value="yearly">Yearly Upkeep</option>
+          <option value="checkin">General Check-In</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">Subject</label>
+        <input type="text" id="fu-subject" class="w-full mt-1 bg-black border border-neutral-700 text-white text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none" placeholder="Email subject line">
+      </div>
+      <div>
+        <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">Message</label>
+        <textarea id="fu-body" rows="6" class="w-full mt-1 bg-black border border-neutral-700 text-white text-sm px-3 py-2.5 rounded-xl resize-none focus:border-lime-400 focus:outline-none" placeholder="Write your message..."></textarea>
+        <div class="text-[10px] text-neutral-600 mt-1">Use {name} to insert customer name</div>
+      </div>
+      <button onclick="sendFollowUpFromModal()" class="w-full bg-lime-400 hover:bg-lime-300 text-black font-semibold py-3 rounded-lg text-sm transition-colors">Send Email</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ BULK FOLLOW-UP MODAL ============ -->
+<div id="bulkFollowUpModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[55] flex items-center justify-center p-4" onclick="if(event.target===this)closeBulkFollowUp()">
+  <div class="bg-neutral-900 border border-neutral-800 rounded-2xl max-w-lg w-full fade-in">
+    <div class="border-b border-neutral-800 px-6 py-4 flex items-center justify-between">
+      <h2 class="text-white font-semibold text-sm">Send Bulk Follow-Up</h2>
+      <button onclick="closeBulkFollowUp()" class="text-neutral-500 hover:text-white transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="p-6 space-y-4">
+      <div>
+        <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">Filter Customers</label>
+        <select id="bulk-filter" onchange="previewBulkRecipients()" class="w-full mt-1 bg-black border border-neutral-700 text-neutral-300 text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+          <option value="all">All Customers</option>
+          <option value="3months">Last job 3+ months ago</option>
+          <option value="6months">Last job 6+ months ago</option>
+          <option value="12months">Last job 12+ months ago</option>
+          <option value="never">Never had a job</option>
+        </select>
+      </div>
+      <div class="bg-neutral-800/50 rounded-lg px-3 py-2 text-xs text-neutral-400">
+        This will email <span class="text-lime-400 font-bold" id="bulk-count">0</span> customers
+      </div>
+      <div>
+        <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">Template</label>
+        <select id="bulk-template" onchange="applyBulkTemplate()" class="w-full mt-1 bg-black border border-neutral-700 text-neutral-300 text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+          <option value="">Choose a template...</option>
+          <option value="seasonal">Seasonal Reminder</option>
+          <option value="discount">10% Discount Offer</option>
+          <option value="yearly">Yearly Upkeep</option>
+          <option value="checkin">General Check-In</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">Subject</label>
+        <input type="text" id="bulk-subject" class="w-full mt-1 bg-black border border-neutral-700 text-white text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+      </div>
+      <div>
+        <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">Message</label>
+        <textarea id="bulk-body" rows="5" class="w-full mt-1 bg-black border border-neutral-700 text-white text-sm px-3 py-2.5 rounded-xl resize-none focus:border-lime-400 focus:outline-none"></textarea>
+        <div class="text-[10px] text-neutral-600 mt-1">Use {name} to personalise for each customer</div>
+      </div>
+      <button onclick="sendBulkFollowUp()" id="bulk-send-btn" class="w-full bg-lime-400 hover:bg-lime-300 text-black font-semibold py-3 rounded-lg text-sm transition-colors">Send to All</button>
+    </div>
   </div>
 </div>
 
@@ -1262,6 +1502,7 @@ function switchTab(tab) {
   // Load tab data
   if (tab === 'schedule') { loadTeamForDropdowns(); loadSchedule(); loadRecurring(); }
   if (tab === 'team') loadTeam();
+  if (tab === 'customers') { loadCustomers(); loadCustStats(); }
 }
 
 // ============================
@@ -1781,9 +2022,11 @@ function closeJobModal() {
   document.getElementById('jobModal').classList.add('hidden');
   document.body.style.overflow = '';
   // Reset form
-  ['job-name','job-phone','job-email','job-address','job-postcode','job-value','job-notes'].forEach(function(id) {
+  ['job-name','job-phone','job-email','job-address','job-postcode','job-value','job-notes','job-cust-search'].forEach(function(id) {
     document.getElementById(id).value = '';
   });
+  document.getElementById('job-customer-id').value = '';
+  document.getElementById('job-cust-results').classList.add('hidden');
   document.getElementById('job-service').value = '';
   document.getElementById('job-recurring-toggle').checked = false;
   document.getElementById('recurringFields').classList.add('hidden');
@@ -1819,6 +2062,7 @@ async function submitJob() {
   var isRecurring = document.getElementById('job-recurring-toggle').checked;
 
   var body = {
+    customer_id: document.getElementById('job-customer-id').value || null,
     customer_name: name,
     customer_phone: document.getElementById('job-phone').value.trim() || null,
     customer_email: document.getElementById('job-email').value.trim() || null,
@@ -2167,6 +2411,555 @@ async function toggleTeamActive(id, active) {
     showToast('Failed to update member', 'error');
   }
 }
+
+// ============================
+// CUSTOMERS
+// ============================
+var custState = {
+  customers: [],
+  total: 0,
+  offset: 0,
+  limit: 30,
+  currentCustomer: null,
+  bulkCustomerIds: []
+};
+
+var _custSearchTimer = null;
+function debouncedCustSearch() {
+  clearTimeout(_custSearchTimer);
+  _custSearchTimer = setTimeout(function() { custState.offset = 0; loadCustomers(); }, 300);
+}
+
+async function loadCustStats() {
+  try {
+    var res = await apiRequest('/admin/customers/stats');
+    if (res.success) {
+      document.getElementById('cust-stat-total').textContent = res.stats.total_customers;
+      document.getElementById('cust-stat-active').textContent = res.stats.active_customers;
+      document.getElementById('cust-stat-revenue').textContent = '\u00A3' + Math.round(res.stats.total_revenue).toLocaleString();
+      document.getElementById('cust-stat-avg').textContent = '\u00A3' + Math.round(res.stats.avg_spend);
+    }
+  } catch (e) { console.error('Stats error:', e); }
+}
+
+async function loadCustomers() {
+  try {
+    var search = document.getElementById('custSearch').value.trim();
+    var sort = document.getElementById('custSort').value;
+    var order = (sort === 'name') ? 'asc' : 'desc';
+
+    var params = '?limit=' + custState.limit + '&offset=' + custState.offset + '&sort=' + sort + '&order=' + order;
+    if (search) params += '&search=' + encodeURIComponent(search);
+
+    var res = await apiRequest('/admin/customers' + params);
+    if (!res.success) return;
+
+    custState.customers = res.data;
+    custState.total = res.total;
+
+    var list = document.getElementById('custList');
+    var empty = document.getElementById('custEmpty');
+    list.innerHTML = '';
+
+    if (res.data.length === 0) {
+      empty.classList.remove('hidden');
+      document.getElementById('custPagination').classList.add('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+
+    res.data.forEach(function(c) {
+      var card = document.createElement('div');
+      card.className = 'bg-neutral-900 border border-neutral-800 rounded-xl p-4 fade-in';
+
+      var tags = (c.tags || []).map(function(t) {
+        return '<span class="px-2 py-0.5 rounded text-[10px] font-medium bg-lime-400/10 text-lime-400">' + esc(t) + '</span>';
+      }).join('');
+
+      var lastJob = c.last_job_date ? formatDateNice(c.last_job_date) : 'None';
+
+      card.innerHTML =
+        '<div class="flex items-start justify-between mb-2">' +
+          '<div class="text-white font-semibold text-sm">' + esc(c.name) + '</div>' +
+          '<div class="text-lime-400 font-bold text-sm">\u00A3' + Number(c.total_spent || 0).toFixed(0) + '</div>' +
+        '</div>' +
+        '<div class="text-xs text-neutral-500 mb-1">' +
+          (c.phone ? esc(c.phone) : '') +
+          (c.phone && c.email ? ' | ' : '') +
+          (c.email ? esc(c.email) : '') +
+        '</div>' +
+        '<div class="text-xs text-neutral-600 mb-2">' + esc(c.address || '') + ' ' + esc(c.postcode || '') + '</div>' +
+        '<div class="flex items-center justify-between">' +
+          '<div class="flex items-center gap-2">' +
+            '<span class="text-[10px] text-neutral-500">' + (c.total_jobs || 0) + ' jobs | Last: ' + lastJob + '</span>' +
+            (tags ? '<div class="flex gap-1 ml-2">' + tags + '</div>' : '') +
+          '</div>' +
+          '<div class="flex gap-2">' +
+            '<button onclick="openCustProfile(\'' + c.id + '\')" class="bg-neutral-800 hover:bg-neutral-700 text-neutral-300 px-3 py-1.5 rounded-lg text-xs transition-colors">View Profile</button>' +
+            '<button onclick="quickAddJobFromCust(\'' + c.id + '\')" class="bg-lime-400/10 hover:bg-lime-400/20 text-lime-400 px-3 py-1.5 rounded-lg text-xs transition-colors">+ Job</button>' +
+          '</div>' +
+        '</div>';
+
+      list.appendChild(card);
+    });
+
+    // Pagination
+    var pag = document.getElementById('custPagination');
+    if (custState.total > custState.limit) {
+      pag.classList.remove('hidden');
+      var from = custState.offset + 1;
+      var to = Math.min(custState.offset + custState.limit, custState.total);
+      document.getElementById('custPaginationInfo').textContent = from + '-' + to + ' of ' + custState.total;
+      document.getElementById('custPrevBtn').disabled = custState.offset === 0;
+      document.getElementById('custNextBtn').disabled = (custState.offset + custState.limit) >= custState.total;
+    } else {
+      pag.classList.add('hidden');
+    }
+  } catch (e) {
+    console.error('Load customers error:', e);
+  }
+}
+
+function custPrevPage() { custState.offset = Math.max(0, custState.offset - custState.limit); loadCustomers(); }
+function custNextPage() { custState.offset += custState.limit; loadCustomers(); }
+
+function formatDateNice(dateStr) {
+  if (!dateStr) return '-';
+  var d = new Date(dateStr + 'T00:00:00');
+  var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+// ============================
+// CUSTOMER PROFILE
+// ============================
+async function openCustProfile(id) {
+  try {
+    var res = await apiRequest('/admin/customers/' + id);
+    if (!res.success) return;
+
+    custState.currentCustomer = res.data;
+    var c = res.data;
+
+    document.getElementById('custProfileModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+
+    document.getElementById('cp-avatar').textContent = (c.name || '?').charAt(0).toUpperCase();
+    document.getElementById('cp-name').textContent = c.name;
+    document.getElementById('cp-since').textContent = 'Customer since ' + formatDateNice(c.created_at ? c.created_at.split('T')[0] : null);
+    document.getElementById('cp-total-spent').textContent = '\u00A3' + Number(c.total_spent || 0).toFixed(0);
+
+    document.getElementById('cp-email').textContent = c.email || '-';
+    document.getElementById('cp-email').href = c.email ? 'mailto:' + c.email : '#';
+    document.getElementById('cp-phone').textContent = c.phone || '-';
+    document.getElementById('cp-phone').href = c.phone ? 'tel:' + c.phone : '#';
+    document.getElementById('cp-address').textContent = c.address || '-';
+    document.getElementById('cp-postcode').textContent = c.postcode || '-';
+    document.getElementById('cp-total-jobs').textContent = c.total_jobs || 0;
+    document.getElementById('cp-last-job').textContent = formatDateNice(c.last_job_date);
+    document.getElementById('cp-last-followup').textContent = c.last_followup_sent_at ? formatDateNice(c.last_followup_sent_at.split('T')[0]) : 'Never';
+
+    // Tags
+    renderCustTags(c.tags || []);
+
+    // Job history
+    var jobsEl = document.getElementById('cp-jobs');
+    var noJobs = document.getElementById('cp-no-jobs');
+    jobsEl.innerHTML = '';
+    if (c.jobs && c.jobs.length > 0) {
+      noJobs.classList.add('hidden');
+      c.jobs.forEach(function(j) {
+        var payBadge = '';
+        if (j.status === 'completed') {
+          if (j.payment_status === 'paid') payBadge = '<span class="text-green-400 text-[10px]">Paid</span>';
+          else if (j.payment_status === 'outstanding') payBadge = '<span class="text-red-400 text-[10px]">Owed</span>';
+          else if (j.payment_status === 'partial') payBadge = '<span class="text-orange-400 text-[10px]">Partial</span>';
+        }
+        var row = document.createElement('div');
+        row.className = 'flex items-center justify-between bg-black/30 rounded-lg px-3 py-2';
+        row.innerHTML =
+          '<div class="flex items-center gap-3 text-xs">' +
+            '<span class="text-neutral-500">' + formatDateNice(j.scheduled_date) + '</span>' +
+            '<span class="text-white">' + esc(j.service) + '</span>' +
+          '</div>' +
+          '<div class="flex items-center gap-3 text-xs">' +
+            '<span class="text-lime-400 font-medium">' + (j.job_value ? '\u00A3' + Number(j.job_value).toFixed(0) : '') + '</span>' +
+            '<span class="px-2 py-0.5 rounded text-[10px] ' + getJobStatusColor(j.status) + '">' + (j.status || 'scheduled') + '</span>' +
+            payBadge +
+          '</div>';
+        jobsEl.appendChild(row);
+      });
+    } else {
+      noJobs.classList.remove('hidden');
+    }
+
+    // Quote history
+    var quotesEl = document.getElementById('cp-quotes');
+    var noQuotes = document.getElementById('cp-no-quotes');
+    quotesEl.innerHTML = '';
+    if (c.quotes && c.quotes.length > 0) {
+      noQuotes.classList.add('hidden');
+      c.quotes.forEach(function(q) {
+        var row = document.createElement('div');
+        row.className = 'flex items-center justify-between bg-black/30 rounded-lg px-3 py-2';
+        row.innerHTML =
+          '<div class="flex items-center gap-3 text-xs">' +
+            '<span class="text-neutral-500">' + formatDateNice(q.created_at ? q.created_at.split('T')[0] : null) + '</span>' +
+            '<span class="text-white">' + (q.services || []).join(', ') + '</span>' +
+          '</div>' +
+          '<div class="text-xs">' +
+            (q.customer_accepted_estimate ? '<span class="text-green-400">Accepted</span>' : '<span class="text-neutral-500">' + (q.status || 'new') + '</span>') +
+          '</div>';
+        quotesEl.appendChild(row);
+      });
+    } else {
+      noQuotes.classList.remove('hidden');
+    }
+
+    // Notes
+    document.getElementById('cp-notes').value = c.admin_notes || '';
+
+    // Hide edit section
+    document.getElementById('cp-edit-section').classList.add('hidden');
+
+  } catch (e) {
+    showToast('Failed to load customer', 'error');
+  }
+}
+
+function closeCustProfile() {
+  document.getElementById('custProfileModal').classList.add('hidden');
+  document.body.style.overflow = '';
+  custState.currentCustomer = null;
+}
+
+function renderCustTags(tags) {
+  var container = document.getElementById('cp-tags');
+  container.innerHTML = '';
+  tags.forEach(function(t) {
+    var span = document.createElement('span');
+    span.className = 'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium bg-lime-400/10 text-lime-400';
+    span.innerHTML = esc(t) + ' <button onclick="removeCustTag(\'' + esc(t) + '\')" class="text-lime-400/60 hover:text-red-400 ml-0.5">&times;</button>';
+    container.appendChild(span);
+  });
+}
+
+async function addCustTag() {
+  if (!custState.currentCustomer) return;
+  var input = document.getElementById('cp-new-tag');
+  var tag = input.value.trim().toLowerCase();
+  if (!tag) return;
+
+  var tags = (custState.currentCustomer.tags || []).slice();
+  if (tags.indexOf(tag) >= 0) { input.value = ''; return; }
+  tags.push(tag);
+
+  var res = await apiRequest('/admin/customers/' + custState.currentCustomer.id, { method: 'PATCH', body: { tags: tags } });
+  if (res.success) {
+    custState.currentCustomer.tags = tags;
+    renderCustTags(tags);
+    input.value = '';
+    showToast('Tag added', 'success');
+  }
+}
+
+async function removeCustTag(tag) {
+  if (!custState.currentCustomer) return;
+  var tags = (custState.currentCustomer.tags || []).filter(function(t) { return t !== tag; });
+  var res = await apiRequest('/admin/customers/' + custState.currentCustomer.id, { method: 'PATCH', body: { tags: tags } });
+  if (res.success) {
+    custState.currentCustomer.tags = tags;
+    renderCustTags(tags);
+    showToast('Tag removed', 'success');
+  }
+}
+
+async function saveCustNotes() {
+  if (!custState.currentCustomer) return;
+  var notes = document.getElementById('cp-notes').value;
+  var res = await apiRequest('/admin/customers/' + custState.currentCustomer.id, { method: 'PATCH', body: { admin_notes: notes } });
+  if (res.success) {
+    custState.currentCustomer.admin_notes = notes;
+    showToast('Notes saved', 'success');
+  }
+}
+
+function toggleEditCustomer() {
+  var section = document.getElementById('cp-edit-section');
+  var isHidden = section.classList.contains('hidden');
+  section.classList.toggle('hidden');
+  if (isHidden && custState.currentCustomer) {
+    var c = custState.currentCustomer;
+    document.getElementById('cp-edit-name').value = c.name || '';
+    document.getElementById('cp-edit-email').value = c.email || '';
+    document.getElementById('cp-edit-phone').value = c.phone || '';
+    document.getElementById('cp-edit-address').value = c.address || '';
+    document.getElementById('cp-edit-postcode').value = c.postcode || '';
+  }
+}
+
+async function saveEditCustomer() {
+  if (!custState.currentCustomer) return;
+  var body = {
+    name: document.getElementById('cp-edit-name').value.trim(),
+    email: document.getElementById('cp-edit-email').value.trim(),
+    phone: document.getElementById('cp-edit-phone').value.trim(),
+    address: document.getElementById('cp-edit-address').value.trim(),
+    postcode: document.getElementById('cp-edit-postcode').value.trim()
+  };
+  var res = await apiRequest('/admin/customers/' + custState.currentCustomer.id, { method: 'PATCH', body: body });
+  if (res.success) {
+    showToast('Customer updated', 'success');
+    closeCustProfile();
+    loadCustomers();
+  }
+}
+
+function addJobFromCustomer() {
+  if (!custState.currentCustomer) return;
+  var c = custState.currentCustomer;
+  closeCustProfile();
+  switchTab('schedule');
+  setTimeout(function() {
+    openAddJobModal();
+    document.getElementById('job-customer-id').value = c.id;
+    document.getElementById('job-name').value = c.name || '';
+    document.getElementById('job-phone').value = c.phone || '';
+    document.getElementById('job-email').value = c.email || '';
+    document.getElementById('job-address').value = c.address || '';
+    document.getElementById('job-postcode').value = c.postcode || '';
+  }, 200);
+}
+
+function quickAddJobFromCust(custId) {
+  // Find customer in loaded list
+  var c = custState.customers.find(function(cu) { return cu.id === custId; });
+  if (!c) return;
+  switchTab('schedule');
+  setTimeout(function() {
+    openAddJobModal();
+    document.getElementById('job-customer-id').value = c.id;
+    document.getElementById('job-name').value = c.name || '';
+    document.getElementById('job-phone').value = c.phone || '';
+    document.getElementById('job-email').value = c.email || '';
+    document.getElementById('job-address').value = c.address || '';
+    document.getElementById('job-postcode').value = c.postcode || '';
+  }, 200);
+}
+
+// ============================
+// FOLLOW-UP EMAILS
+// ============================
+var followUpTemplates = {
+  seasonal: {
+    subject: 'Time for a property refresh?',
+    body: 'Hi {name},\n\nIt\'s been a while since your last clean and we wanted to check in.\n\nYour property could benefit from a seasonal refresh - our team is available and ready to bring back that like-new look.\n\nWould you like us to pop round for a quick assessment? Just reply to this email or give us a call.'
+  },
+  discount: {
+    subject: 'Exclusive 10% off for valued customers',
+    body: 'Hi {name},\n\nAs a valued customer, we\'d like to offer you 10% off your next service.\n\nWhether it\'s a roof clean, driveway wash, or gutter clearance - mention code REVIVE10 when you book.\n\nThis offer is valid for the next 30 days. We\'d love to help keep your property looking its best!'
+  },
+  yearly: {
+    subject: 'Your annual property maintenance is due',
+    body: 'Hi {name},\n\nIt\'s that time of year again! Regular exterior cleaning keeps your property protected and looking great.\n\nWe recommend an annual clean to prevent build-up of moss, algae, and grime that can cause long-term damage.\n\nWould you like us to schedule your annual service? Just let us know a good time.'
+  },
+  checkin: {
+    subject: 'Just checking in - Revive Exterior Cleaning',
+    body: 'Hi {name},\n\nHope you\'re well! We just wanted to check in and see if there\'s anything we can help with.\n\nWhether it\'s a one-off clean or regular maintenance, we\'re here to help keep your property in top shape.\n\nFeel free to get in touch anytime.'
+  }
+};
+
+function openFollowUpModal() {
+  if (!custState.currentCustomer) return;
+  document.getElementById('followUpModal').classList.remove('hidden');
+  document.getElementById('fu-recipient').textContent = custState.currentCustomer.name + ' (' + (custState.currentCustomer.email || 'no email') + ')';
+  document.getElementById('fu-template').value = '';
+  document.getElementById('fu-subject').value = '';
+  document.getElementById('fu-body').value = '';
+}
+
+function closeFollowUp() {
+  document.getElementById('followUpModal').classList.add('hidden');
+}
+
+function applyTemplate() {
+  var key = document.getElementById('fu-template').value;
+  if (!key || !followUpTemplates[key]) return;
+  var tmpl = followUpTemplates[key];
+  var name = custState.currentCustomer ? custState.currentCustomer.name : '{name}';
+  document.getElementById('fu-subject').value = tmpl.subject;
+  document.getElementById('fu-body').value = tmpl.body.replace(/\{name\}/g, name);
+}
+
+async function sendFollowUpFromModal() {
+  if (!custState.currentCustomer) return;
+  var subject = document.getElementById('fu-subject').value.trim();
+  var body = document.getElementById('fu-body').value.trim();
+  if (!subject || !body) { showToast('Please fill in subject and message', 'error'); return; }
+
+  try {
+    var res = await apiRequest('/admin/customers/' + custState.currentCustomer.id + '/followup', {
+      method: 'POST',
+      body: { subject: subject, body: body }
+    });
+    if (res.success) {
+      showToast('Follow-up email sent!', 'success');
+      closeFollowUp();
+      // Refresh profile to show updated last_followup
+      openCustProfile(custState.currentCustomer.id);
+    } else {
+      showToast('Failed to send email', 'error');
+    }
+  } catch (e) {
+    showToast('Failed to send email', 'error');
+  }
+}
+
+// ============================
+// BULK FOLLOW-UP
+// ============================
+function openBulkFollowUpModal() {
+  document.getElementById('bulkFollowUpModal').classList.remove('hidden');
+  document.getElementById('bulk-template').value = '';
+  document.getElementById('bulk-subject').value = '';
+  document.getElementById('bulk-body').value = '';
+  document.getElementById('bulk-filter').value = 'all';
+  previewBulkRecipients();
+}
+
+function closeBulkFollowUp() {
+  document.getElementById('bulkFollowUpModal').classList.add('hidden');
+}
+
+function applyBulkTemplate() {
+  var key = document.getElementById('bulk-template').value;
+  if (!key || !followUpTemplates[key]) return;
+  document.getElementById('bulk-subject').value = followUpTemplates[key].subject;
+  document.getElementById('bulk-body').value = followUpTemplates[key].body;
+}
+
+async function previewBulkRecipients() {
+  try {
+    var filter = document.getElementById('bulk-filter').value;
+    // Fetch all customers to filter client-side
+    var res = await apiRequest('/admin/customers?limit=200');
+    if (!res.success) return;
+
+    var now = new Date();
+    var filtered = res.data.filter(function(c) {
+      if (!c.email) return false;
+      if (filter === 'all') return true;
+      if (filter === 'never') return !c.last_job_date;
+      var months = filter === '3months' ? 3 : filter === '6months' ? 6 : 12;
+      if (!c.last_job_date) return true;
+      var cutoff = new Date();
+      cutoff.setMonth(cutoff.getMonth() - months);
+      return new Date(c.last_job_date) < cutoff;
+    });
+
+    custState.bulkCustomerIds = filtered.map(function(c) { return c.id; });
+    document.getElementById('bulk-count').textContent = filtered.length;
+    document.getElementById('bulk-send-btn').textContent = 'Send to ' + filtered.length + ' customers';
+  } catch (e) {
+    document.getElementById('bulk-count').textContent = '0';
+  }
+}
+
+async function sendBulkFollowUp() {
+  if (custState.bulkCustomerIds.length === 0) {
+    showToast('No customers match the filter', 'error');
+    return;
+  }
+  var subject = document.getElementById('bulk-subject').value.trim();
+  var body = document.getElementById('bulk-body').value.trim();
+  if (!subject || !body) { showToast('Please fill in subject and message', 'error'); return; }
+
+  document.getElementById('bulk-send-btn').textContent = 'Sending...';
+  document.getElementById('bulk-send-btn').disabled = true;
+
+  try {
+    var res = await apiRequest('/admin/customers/bulk-followup', {
+      method: 'POST',
+      body: {
+        customer_ids: custState.bulkCustomerIds,
+        subject: subject,
+        body: body
+      }
+    });
+    if (res.success) {
+      showToast('Sent ' + res.results.sent + ' emails' + (res.results.failed > 0 ? ', ' + res.results.failed + ' failed' : ''), 'success');
+      closeBulkFollowUp();
+      loadCustomers();
+    }
+  } catch (e) {
+    showToast('Failed to send bulk emails', 'error');
+  }
+  document.getElementById('bulk-send-btn').textContent = 'Send to All';
+  document.getElementById('bulk-send-btn').disabled = false;
+}
+
+// ============================
+// JOB CUSTOMER SEARCH (in Add Job modal)
+// ============================
+var _jobCustTimer = null;
+function debouncedJobCustSearch() {
+  clearTimeout(_jobCustTimer);
+  _jobCustTimer = setTimeout(jobCustSearch, 250);
+}
+
+async function jobCustSearch() {
+  var q = document.getElementById('job-cust-search').value.trim();
+  var results = document.getElementById('job-cust-results');
+
+  if (q.length < 2) {
+    results.classList.add('hidden');
+    return;
+  }
+
+  try {
+    var res = await apiRequest('/admin/customers/search?q=' + encodeURIComponent(q));
+    if (!res.success || res.data.length === 0) {
+      results.classList.add('hidden');
+      return;
+    }
+
+    results.innerHTML = '';
+    results.classList.remove('hidden');
+
+    res.data.forEach(function(c) {
+      var item = document.createElement('div');
+      item.className = 'px-3 py-2 hover:bg-neutral-700 cursor-pointer border-b border-neutral-700/50 last:border-0';
+      item.innerHTML =
+        '<div class="text-sm text-white">' + esc(c.name) + '</div>' +
+        '<div class="text-[10px] text-neutral-500">' +
+          (c.phone || '') + (c.phone && c.email ? ' | ' : '') + (c.email || '') +
+          ' | ' + (c.address || '') + ' ' + (c.postcode || '') +
+        '</div>';
+      item.onclick = function() {
+        document.getElementById('job-customer-id').value = c.id;
+        document.getElementById('job-name').value = c.name || '';
+        document.getElementById('job-phone').value = c.phone || '';
+        document.getElementById('job-email').value = c.email || '';
+        document.getElementById('job-address').value = c.address || '';
+        document.getElementById('job-postcode').value = c.postcode || '';
+        document.getElementById('job-cust-search').value = c.name;
+        results.classList.add('hidden');
+      };
+      results.appendChild(item);
+    });
+  } catch (e) {
+    results.classList.add('hidden');
+  }
+}
+
+// Close customer search dropdown when clicking elsewhere
+document.addEventListener('click', function(e) {
+  var results = document.getElementById('job-cust-results');
+  var search = document.getElementById('job-cust-search');
+  if (results && search && !results.contains(e.target) && e.target !== search) {
+    results.classList.add('hidden');
+  }
+});
 
 // ============================
 // INIT

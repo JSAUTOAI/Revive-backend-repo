@@ -1,0 +1,488 @@
+/**
+ * Customer Routes
+ *
+ * Protected endpoints for managing customer profiles and follow-ups.
+ * All routes require ADMIN_TOKEN in Authorization header.
+ */
+
+// Supabase client will be passed from index.js
+let supabase;
+
+function setSupabaseClient(client) {
+  supabase = client;
+}
+
+// ========================
+// CUSTOMER CRUD
+// ========================
+
+/**
+ * GET /admin/customers
+ * List customers with search, filter, sort, pagination
+ */
+async function listCustomers(req, res) {
+  try {
+    const { search, tag, sort, order, limit, offset } = req.query;
+
+    let query = supabase
+      .from('customers')
+      .select('*', { count: 'exact' });
+
+    // Search by name, email, phone, or postcode
+    if (search) {
+      query = query.or(
+        `name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%,postcode.ilike.%${search}%`
+      );
+    }
+
+    // Filter by tag
+    if (tag) {
+      query = query.contains('tags', [tag]);
+    }
+
+    // Sort
+    const sortField = sort || 'created_at';
+    const sortOrder = order === 'asc' ? { ascending: true } : { ascending: false };
+    query = query.order(sortField, sortOrder);
+
+    // Pagination
+    const lim = Math.min(parseInt(limit) || 50, 200);
+    const off = parseInt(offset) || 0;
+    query = query.range(off, off + lim - 1);
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      console.error('[Customers] List error:', error);
+      return res.status(500).json({ success: false, error: 'Failed to fetch customers' });
+    }
+
+    res.json({ success: true, data, total: count });
+  } catch (error) {
+    console.error('[Customers] List error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+/**
+ * GET /admin/customers/search?q=
+ * Quick search for typeahead (returns max 10 results)
+ */
+async function searchCustomers(req, res) {
+  try {
+    const { q } = req.query;
+
+    if (!q || q.length < 2) {
+      return res.json({ success: true, data: [] });
+    }
+
+    const { data, error } = await supabase
+      .from('customers')
+      .select('id, name, email, phone, address, postcode, total_jobs, total_spent')
+      .or(
+        `name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%,postcode.ilike.%${q}%`
+      )
+      .order('total_jobs', { ascending: false })
+      .limit(10);
+
+    if (error) {
+      console.error('[Customers] Search error:', error);
+      return res.status(500).json({ success: false, error: 'Search failed' });
+    }
+
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('[Customers] Search error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+/**
+ * GET /admin/customers/stats
+ * Overview statistics
+ */
+async function getStats(req, res) {
+  try {
+    const { data, error, count } = await supabase
+      .from('customers')
+      .select('total_spent, total_jobs, last_job_date', { count: 'exact' });
+
+    if (error) {
+      console.error('[Customers] Stats error:', error);
+      return res.status(500).json({ success: false, error: 'Failed to fetch stats' });
+    }
+
+    const totalCustomers = count || 0;
+    const totalSpent = data.reduce((sum, c) => sum + Number(c.total_spent || 0), 0);
+    const avgSpend = totalCustomers > 0 ? totalSpent / totalCustomers : 0;
+    const activeCustomers = data.filter(c => {
+      if (!c.last_job_date) return false;
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      return new Date(c.last_job_date) >= sixMonthsAgo;
+    }).length;
+
+    res.json({
+      success: true,
+      stats: {
+        total_customers: totalCustomers,
+        active_customers: activeCustomers,
+        total_revenue: totalSpent,
+        avg_spend: Math.round(avgSpend * 100) / 100
+      }
+    });
+  } catch (error) {
+    console.error('[Customers] Stats error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+/**
+ * GET /admin/customers/:id
+ * Full customer profile with their quotes and jobs
+ */
+async function getCustomer(req, res) {
+  try {
+    const { id } = req.params;
+
+    // Get customer
+    const { data: customer, error: custError } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (custError || !customer) {
+      return res.status(404).json({ success: false, error: 'Customer not found' });
+    }
+
+    // Get their quotes
+    const { data: quotes } = await supabase
+      .from('quotes')
+      .select('id, created_at, services, status, qualification_status, estimated_value_min, estimated_value_max, customer_accepted_estimate')
+      .eq('customer_id', id)
+      .order('created_at', { ascending: false });
+
+    // Get their jobs
+    const { data: jobs } = await supabase
+      .from('jobs')
+      .select('id, scheduled_date, service, job_value, status, payment_status, payment_method, assigned_to, time_slot')
+      .eq('customer_id', id)
+      .order('scheduled_date', { ascending: false });
+
+    res.json({
+      success: true,
+      data: {
+        ...customer,
+        quotes: quotes || [],
+        jobs: jobs || []
+      }
+    });
+  } catch (error) {
+    console.error('[Customers] Get error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+/**
+ * PATCH /admin/customers/:id
+ * Update customer details, tags, notes
+ */
+async function updateCustomer(req, res) {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    const allowed = ['name', 'email', 'phone', 'address', 'postcode', 'tags', 'admin_notes'];
+    const filtered = {};
+    for (const key of allowed) {
+      if (updates[key] !== undefined) {
+        filtered[key] = updates[key];
+      }
+    }
+
+    if (Object.keys(filtered).length === 0) {
+      return res.status(400).json({ success: false, error: 'No valid fields to update' });
+    }
+
+    const { data, error } = await supabase
+      .from('customers')
+      .update(filtered)
+      .eq('id', id)
+      .select();
+
+    if (error) {
+      console.error('[Customers] Update error:', error);
+      return res.status(500).json({ success: false, error: 'Failed to update customer' });
+    }
+
+    if (!data || data.length === 0) {
+      return res.status(404).json({ success: false, error: 'Customer not found' });
+    }
+
+    console.log(`[Customers] Updated ${id}:`, Object.keys(filtered).join(', '));
+    res.json({ success: true, data: data[0] });
+  } catch (error) {
+    console.error('[Customers] Update error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+// ========================
+// FOLLOW-UP EMAILS
+// ========================
+
+// Lazy-load emailer to avoid circular dependency
+let emailer = null;
+function getEmailer() {
+  if (!emailer) {
+    emailer = require('../services/emailer');
+  }
+  return emailer;
+}
+
+/**
+ * POST /admin/customers/:id/followup
+ * Send a follow-up email to a single customer
+ * Body: { template, subject, body }
+ */
+async function sendFollowUp(req, res) {
+  try {
+    const { id } = req.params;
+    const { subject, body } = req.body;
+
+    if (!subject || !body) {
+      return res.status(400).json({ success: false, error: 'Subject and body are required' });
+    }
+
+    // Get customer
+    const { data: customer, error: custError } = await supabase
+      .from('customers')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (custError || !customer) {
+      return res.status(404).json({ success: false, error: 'Customer not found' });
+    }
+
+    if (!customer.email) {
+      return res.status(400).json({ success: false, error: 'Customer has no email address' });
+    }
+
+    // Send email via Resend
+    const result = await getEmailer().sendFollowUpEmail(customer, subject, body);
+
+    if (!result.success) {
+      return res.status(500).json({ success: false, error: 'Failed to send email' });
+    }
+
+    // Update last_followup_sent_at
+    await supabase
+      .from('customers')
+      .update({ last_followup_sent_at: new Date().toISOString() })
+      .eq('id', id);
+
+    console.log(`[Customers] Follow-up sent to ${customer.email}`);
+    res.json({ success: true, emailId: result.emailId });
+  } catch (error) {
+    console.error('[Customers] Follow-up error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+/**
+ * POST /admin/customers/bulk-followup
+ * Send follow-up email to multiple customers
+ * Body: { customer_ids: [], subject, body }
+ */
+async function sendBulkFollowUp(req, res) {
+  try {
+    const { customer_ids, subject, body } = req.body;
+
+    if (!customer_ids || !Array.isArray(customer_ids) || customer_ids.length === 0) {
+      return res.status(400).json({ success: false, error: 'customer_ids array is required' });
+    }
+    if (!subject || !body) {
+      return res.status(400).json({ success: false, error: 'Subject and body are required' });
+    }
+
+    // Get all selected customers
+    const { data: customers, error } = await supabase
+      .from('customers')
+      .select('*')
+      .in('id', customer_ids);
+
+    if (error) {
+      return res.status(500).json({ success: false, error: 'Failed to fetch customers' });
+    }
+
+    const results = { sent: 0, failed: 0, skipped: 0 };
+
+    for (const customer of customers) {
+      if (!customer.email) {
+        results.skipped++;
+        continue;
+      }
+
+      // Personalise body with customer name
+      const personalBody = body.replace(/\{name\}/g, customer.name);
+      const personalSubject = subject.replace(/\{name\}/g, customer.name);
+
+      const result = await getEmailer().sendFollowUpEmail(customer, personalSubject, personalBody);
+
+      if (result.success) {
+        results.sent++;
+        // Update last_followup_sent_at
+        await supabase
+          .from('customers')
+          .update({ last_followup_sent_at: new Date().toISOString() })
+          .eq('id', customer.id);
+      } else {
+        results.failed++;
+      }
+    }
+
+    console.log(`[Customers] Bulk follow-up: ${results.sent} sent, ${results.failed} failed, ${results.skipped} skipped`);
+    res.json({ success: true, results });
+  } catch (error) {
+    console.error('[Customers] Bulk follow-up error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+// ========================
+// CUSTOMER AGGREGATES
+// ========================
+
+/**
+ * Refresh a customer's aggregate fields (total_spent, total_jobs, last_job_date)
+ * Called after job status/payment changes
+ */
+async function refreshCustomerAggregates(customerId) {
+  if (!customerId) return;
+
+  try {
+    // Get all completed jobs for this customer
+    const { data: jobs } = await supabase
+      .from('jobs')
+      .select('job_value, payment_status, scheduled_date, status')
+      .eq('customer_id', customerId);
+
+    if (!jobs) return;
+
+    const completedJobs = jobs.filter(j => j.status === 'completed');
+    const paidJobs = completedJobs.filter(j => j.payment_status === 'paid');
+
+    const totalSpent = paidJobs.reduce((sum, j) => sum + Number(j.job_value || 0), 0);
+    const totalJobs = completedJobs.length;
+
+    let lastJobDate = null;
+    if (completedJobs.length > 0) {
+      lastJobDate = completedJobs
+        .map(j => j.scheduled_date)
+        .sort()
+        .reverse()[0];
+    }
+
+    await supabase
+      .from('customers')
+      .update({
+        total_spent: totalSpent,
+        total_jobs: totalJobs,
+        last_job_date: lastJobDate
+      })
+      .eq('id', customerId);
+
+    console.log(`[Customers] Refreshed aggregates for ${customerId}: £${totalSpent}, ${totalJobs} jobs`);
+  } catch (error) {
+    console.error('[Customers] Aggregate refresh error:', error);
+  }
+}
+
+// ========================
+// FIND OR CREATE CUSTOMER
+// ========================
+
+/**
+ * Find existing customer by email/phone or create a new one
+ * Returns the customer_id
+ */
+async function findOrCreateCustomer(quoteData) {
+  try {
+    const { name, email, phone, address_line1, postcode, created_at } = quoteData;
+
+    // Try to find existing customer by email or phone
+    let existing = null;
+
+    if (email) {
+      const { data } = await supabase
+        .from('customers')
+        .select('id')
+        .ilike('email', email)
+        .limit(1);
+      if (data && data.length > 0) existing = data[0];
+    }
+
+    if (!existing && phone) {
+      const { data } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('phone', phone)
+        .limit(1);
+      if (data && data.length > 0) existing = data[0];
+    }
+
+    if (existing) {
+      // Update address/name if it's changed
+      await supabase
+        .from('customers')
+        .update({
+          name: name,
+          address: address_line1,
+          postcode: postcode
+        })
+        .eq('id', existing.id);
+
+      console.log(`[Customers] Linked to existing customer ${existing.id}`);
+      return existing.id;
+    }
+
+    // Create new customer
+    const { data, error } = await supabase
+      .from('customers')
+      .insert([{
+        name,
+        email: email || null,
+        phone: phone || null,
+        address: address_line1 || null,
+        postcode: postcode || null,
+        first_contact_date: created_at || new Date().toISOString()
+      }])
+      .select();
+
+    if (error) {
+      console.error('[Customers] Create error:', error);
+      return null;
+    }
+
+    console.log(`[Customers] Created new customer ${data[0].id} for ${name}`);
+    return data[0].id;
+  } catch (error) {
+    console.error('[Customers] findOrCreate error:', error);
+    return null;
+  }
+}
+
+module.exports = {
+  setSupabaseClient,
+  listCustomers,
+  searchCustomers,
+  getStats,
+  getCustomer,
+  updateCustomer,
+  sendFollowUp,
+  sendBulkFollowUp,
+  refreshCustomerAggregates,
+  findOrCreateCustomer
+};

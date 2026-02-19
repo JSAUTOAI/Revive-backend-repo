@@ -67,6 +67,7 @@ async function createJob(req, res) {
   try {
     const {
       quote_id,
+      customer_id,
       customer_name,
       customer_phone,
       customer_email,
@@ -97,10 +98,28 @@ async function createJob(req, res) {
       });
     }
 
+    // Resolve customer_id if not provided but we have email/phone
+    let resolvedCustomerId = customer_id || null;
+    if (!resolvedCustomerId && (customer_email || customer_phone)) {
+      try {
+        const customerRoutes = require('./customers');
+        resolvedCustomerId = await customerRoutes.findOrCreateCustomer({
+          name: customer_name,
+          email: customer_email,
+          phone: customer_phone,
+          address_line1: address,
+          postcode: postcode
+        });
+      } catch (e) {
+        console.error('[Jobs] Customer resolution failed, continuing:', e.message);
+      }
+    }
+
     const { data, error } = await supabase
       .from('jobs')
       .insert([{
         quote_id: quote_id || null,
+        customer_id: resolvedCustomerId,
         customer_name,
         customer_phone: customer_phone || null,
         customer_email: customer_email || null,
@@ -175,6 +194,17 @@ async function updateJob(req, res) {
     }
 
     console.log(`[Jobs] Updated job ${id}:`, Object.keys(filtered).join(', '));
+
+    // Refresh customer aggregates if status or payment changed
+    if ((filtered.status || filtered.payment_status) && data[0].customer_id) {
+      try {
+        const customerRoutes = require('./customers');
+        customerRoutes.refreshCustomerAggregates(data[0].customer_id);
+      } catch (e) {
+        console.error('[Jobs] Customer aggregate refresh failed:', e.message);
+      }
+    }
+
     res.json({ success: true, data: data[0] });
   } catch (error) {
     console.error('[Jobs] Update error:', error);
@@ -752,6 +782,17 @@ async function updateMyJob(req, res) {
     }
 
     console.log(`[MySchedule] ${member.name} updated job ${jobId}:`, Object.keys(filtered).join(', '));
+
+    // Refresh customer aggregates if status or payment changed
+    if ((filtered.status || filtered.payment_status) && data[0].customer_id) {
+      try {
+        const customerRoutes = require('./customers');
+        customerRoutes.refreshCustomerAggregates(data[0].customer_id);
+      } catch (e) {
+        console.error('[MySchedule] Customer aggregate refresh failed:', e.message);
+      }
+    }
+
     res.json({ success: true, data: data[0] });
   } catch (error) {
     console.error('[MySchedule] Update error:', error);
