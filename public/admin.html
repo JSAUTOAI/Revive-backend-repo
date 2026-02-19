@@ -6,7 +6,26 @@
   <title>Revive Admin Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <style>
+    /* Flatpickr dark theme overrides */
+    .flatpickr-calendar { background: #171717 !important; border: 1px solid #262626 !important; box-shadow: 0 20px 60px rgba(0,0,0,0.5) !important; font-family: 'Poppins', sans-serif !important; border-radius: 12px !important; }
+    .flatpickr-months .flatpickr-month { background: #171717 !important; color: #fff !important; }
+    .flatpickr-current-month .flatpickr-monthDropdown-months { background: #171717 !important; color: #fff !important; }
+    .flatpickr-current-month input.cur-year { color: #fff !important; }
+    .flatpickr-months .flatpickr-prev-month, .flatpickr-months .flatpickr-next-month { color: #a3e635 !important; fill: #a3e635 !important; }
+    .flatpickr-months .flatpickr-prev-month:hover svg, .flatpickr-months .flatpickr-next-month:hover svg { fill: #fff !important; }
+    span.flatpickr-weekday { color: #737373 !important; font-weight: 600 !important; }
+    .flatpickr-day { color: #d4d4d4 !important; border-radius: 8px !important; }
+    .flatpickr-day:hover { background: #262626 !important; border-color: #262626 !important; }
+    .flatpickr-day.selected { background: #a3e635 !important; border-color: #a3e635 !important; color: #000 !important; font-weight: 600 !important; }
+    .flatpickr-day.today { border-color: #a3e635 !important; }
+    .flatpickr-day.today:hover { background: #a3e635 !important; color: #000 !important; }
+    .flatpickr-day.prevMonthDay, .flatpickr-day.nextMonthDay { color: #404040 !important; }
+    .flatpickr-day.flatpickr-disabled { color: #262626 !important; }
+    .dayContainer { padding: 4px !important; }
+    .flatpickr-innerContainer { padding-bottom: 4px !important; }
     * { font-family: 'Poppins', sans-serif; }
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: #0a0a0a; }
@@ -209,25 +228,8 @@
     </div>
 
     <!-- Day View -->
-    <div id="schedDayView" class="space-y-4">
-      <div id="schedMorning">
-        <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mb-2 flex items-center gap-2">
-          <span class="w-1.5 h-1.5 rounded-full bg-yellow-400"></span>Morning
-        </div>
-        <div id="schedMorningJobs" class="space-y-2"></div>
-      </div>
-      <div id="schedAfternoon">
-        <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mb-2 flex items-center gap-2">
-          <span class="w-1.5 h-1.5 rounded-full bg-orange-400"></span>Afternoon
-        </div>
-        <div id="schedAfternoonJobs" class="space-y-2"></div>
-      </div>
-      <div id="schedUnscheduled">
-        <div class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mb-2 flex items-center gap-2">
-          <span class="w-1.5 h-1.5 rounded-full bg-neutral-500"></span>Other
-        </div>
-        <div id="schedOtherJobs" class="space-y-2"></div>
-      </div>
+    <div id="schedDayView" class="space-y-2">
+      <div id="schedDayJobs" class="space-y-2"></div>
       <div id="schedDayEmpty" class="hidden text-center py-12 text-neutral-600 text-sm">No jobs scheduled for this day</div>
     </div>
 
@@ -416,14 +418,34 @@
         </div>
         <div>
           <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">Date *</label>
-          <input type="date" id="job-date" class="w-full mt-1 bg-black border border-neutral-700 text-neutral-300 text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+          <input type="text" id="job-date" placeholder="Select date" readonly class="w-full mt-1 bg-black border border-neutral-700 text-neutral-300 text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none cursor-pointer">
         </div>
         <div>
-          <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">Time Slot</label>
+          <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">Time</label>
           <select id="job-timeslot" class="w-full mt-1 bg-black border border-neutral-700 text-neutral-300 text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
-            <option value="morning">Morning</option>
-            <option value="afternoon">Afternoon</option>
-            <option value="all_day">All Day</option>
+            <option value="07:00">07:00</option>
+            <option value="07:30">07:30</option>
+            <option value="08:00">08:00</option>
+            <option value="08:30">08:30</option>
+            <option value="09:00" selected>09:00</option>
+            <option value="09:30">09:30</option>
+            <option value="10:00">10:00</option>
+            <option value="10:30">10:30</option>
+            <option value="11:00">11:00</option>
+            <option value="11:30">11:30</option>
+            <option value="12:00">12:00</option>
+            <option value="12:30">12:30</option>
+            <option value="13:00">13:00</option>
+            <option value="13:30">13:30</option>
+            <option value="14:00">14:00</option>
+            <option value="14:30">14:30</option>
+            <option value="15:00">15:00</option>
+            <option value="15:30">15:30</option>
+            <option value="16:00">16:00</option>
+            <option value="16:30">16:30</option>
+            <option value="17:00">17:00</option>
+            <option value="17:30">17:30</option>
+            <option value="18:00">18:00</option>
           </select>
         </div>
         <div>
@@ -476,7 +498,7 @@
           </div>
           <div>
             <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">End Date (optional)</label>
-            <input type="date" id="job-enddate" class="w-full mt-1 bg-black border border-neutral-700 text-neutral-300 text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+            <input type="text" id="job-enddate" placeholder="No end date" readonly class="w-full mt-1 bg-black border border-neutral-700 text-neutral-300 text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none cursor-pointer">
           </div>
         </div>
       </div>
@@ -497,14 +519,34 @@
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">Date *</label>
-            <input type="date" id="qp-date" class="w-full mt-1 bg-black border border-neutral-700 text-neutral-300 text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+            <input type="text" id="qp-date" placeholder="Select date" readonly class="w-full mt-1 bg-black border border-neutral-700 text-neutral-300 text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none cursor-pointer">
           </div>
           <div>
-            <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">Time Slot</label>
+            <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">Time</label>
             <select id="qp-timeslot" class="w-full mt-1 bg-black border border-neutral-700 text-neutral-300 text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
-              <option value="morning">Morning</option>
-              <option value="afternoon">Afternoon</option>
-              <option value="all_day">All Day</option>
+              <option value="07:00">07:00</option>
+              <option value="07:30">07:30</option>
+              <option value="08:00">08:00</option>
+              <option value="08:30">08:30</option>
+              <option value="09:00" selected>09:00</option>
+              <option value="09:30">09:30</option>
+              <option value="10:00">10:00</option>
+              <option value="10:30">10:30</option>
+              <option value="11:00">11:00</option>
+              <option value="11:30">11:30</option>
+              <option value="12:00">12:00</option>
+              <option value="12:30">12:30</option>
+              <option value="13:00">13:00</option>
+              <option value="13:30">13:30</option>
+              <option value="14:00">14:00</option>
+              <option value="14:30">14:30</option>
+              <option value="15:00">15:00</option>
+              <option value="15:30">15:30</option>
+              <option value="16:00">16:00</option>
+              <option value="16:30">16:30</option>
+              <option value="17:00">17:00</option>
+              <option value="17:30">17:30</option>
+              <option value="18:00">18:00</option>
             </select>
           </div>
           <div>
@@ -1335,17 +1377,14 @@ async function loadSchedule() {
 // RENDER DAY VIEW
 // ============================
 function renderDayView(jobs) {
-  var morning = jobs.filter(function(j) { return j.time_slot === 'morning'; });
-  var afternoon = jobs.filter(function(j) { return j.time_slot === 'afternoon'; });
-  var other = jobs.filter(function(j) { return j.time_slot !== 'morning' && j.time_slot !== 'afternoon'; });
+  // Sort jobs by time_slot (e.g. "07:00", "09:30", "14:00")
+  jobs.sort(function(a, b) {
+    var ta = a.time_slot || '99:99';
+    var tb = b.time_slot || '99:99';
+    return ta.localeCompare(tb);
+  });
 
-  renderJobCards('schedMorningJobs', morning);
-  renderJobCards('schedAfternoonJobs', afternoon);
-  renderJobCards('schedOtherJobs', other);
-
-  document.getElementById('schedMorning').style.display = morning.length ? '' : 'none';
-  document.getElementById('schedAfternoon').style.display = afternoon.length ? '' : 'none';
-  document.getElementById('schedUnscheduled').style.display = other.length ? '' : 'none';
+  renderJobCards('schedDayJobs', jobs);
   document.getElementById('schedDayEmpty').classList.toggle('hidden', jobs.length > 0);
 
   updateScheduleTotals(jobs);
@@ -1365,10 +1404,13 @@ function renderJobCards(containerId, jobs) {
     var payBadge = getPaymentBadge(j);
     var statusColor = getJobStatusColor(j.status);
 
+    var timeDisplay = j.time_slot || '';
+
     card.innerHTML =
       '<div class="flex items-center justify-between mb-2">' +
         '<div class="flex items-center gap-2">' +
           '<span class="w-2.5 h-2.5 rounded-full flex-shrink-0" style="background:' + dotColor + '"></span>' +
+          '<span class="text-white font-bold text-xs bg-neutral-800 px-2 py-0.5 rounded">' + esc(timeDisplay) + '</span>' +
           '<span class="text-sm text-white font-medium">' + esc(j.customer_name) + '</span>' +
           '<span class="text-xs text-neutral-600">' + esc(j.postcode) + '</span>' +
         '</div>' +
@@ -1448,8 +1490,9 @@ function renderWeekView(jobs, monday) {
       mini.innerHTML =
         '<div class="flex items-center gap-1 mb-0.5">' +
           '<span class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background:' + dotColor + '"></span>' +
-          '<span class="text-white font-medium truncate">' + esc(j.customer_name.split(' ').pop()) + '</span>' +
+          '<span class="text-neutral-400 font-semibold">' + esc(j.time_slot || '') + '</span>' +
         '</div>' +
+        '<div class="text-white font-medium truncate">' + esc(j.customer_name.split(' ').pop()) + '</div>' +
         '<div class="text-neutral-500 truncate">' + esc(j.service.split(' ')[0]) + '</div>' +
         (j.job_value ? '<div class="text-lime-400 font-semibold">\u00A3' + Number(j.job_value).toFixed(0) + '</div>' : '') +
         (j.assigned_to ? '<div class="text-neutral-600 truncate">' + esc(j.assigned_to) + '</div>' : '');
@@ -1688,13 +1731,35 @@ async function deleteCurrentJob() {
 // ============================
 // ADD JOB MODAL
 // ============================
+function initFlatpickr() {
+  var fpConfig = {
+    dateFormat: 'Y-m-d',
+    altInput: true,
+    altFormat: 'D j M Y',
+    disableMobile: true,
+    theme: 'dark'
+  };
+
+  if (window._fpJobDate) window._fpJobDate.destroy();
+  if (window._fpQpDate) window._fpQpDate.destroy();
+  if (window._fpEndDate) window._fpEndDate.destroy();
+
+  window._fpJobDate = flatpickr('#job-date', Object.assign({}, fpConfig));
+  window._fpQpDate = flatpickr('#qp-date', Object.assign({}, fpConfig));
+  window._fpEndDate = flatpickr('#job-enddate', Object.assign({}, fpConfig, { altFormat: 'D j M Y', allowInput: false }));
+}
+
 function openAddJobModal(recurring) {
   document.getElementById('jobModal').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
   document.getElementById('jobModalTitle').textContent = recurring ? 'Add Recurring Job' : 'Add Job';
 
+  // Init flatpickr calendars
+  initFlatpickr();
+
   // Set default date to current schedule date
-  document.getElementById('job-date').value = toDateStr(schedState.currentDate);
+  var dateStr = toDateStr(schedState.currentDate);
+  if (window._fpJobDate) window._fpJobDate.setDate(dateStr, true);
 
   // Pre-check recurring toggle if opened as recurring
   if (recurring) {
@@ -1854,7 +1919,7 @@ function selectQuoteForJob(q) {
   document.getElementById('qp-name').textContent = q.name;
   var services = Array.isArray(q.services) ? q.services.map(capitalize).join(', ') : '';
   document.getElementById('qp-details').textContent = services + ' | ' + (q.address_line1 || '') + ' ' + (q.postcode || '') + ' | ' + formatEstimate(q.estimated_value_min, q.estimated_value_max);
-  document.getElementById('qp-date').value = toDateStr(schedState.currentDate);
+  if (window._fpQpDate) window._fpQpDate.setDate(toDateStr(schedState.currentDate), true);
 
   loadTeamForDropdowns();
 }
