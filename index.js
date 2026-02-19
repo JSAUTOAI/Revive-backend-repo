@@ -30,6 +30,7 @@ const { sendAdminAlertWhatsApp } = require('./services/whatsapp');
 // Import admin middleware and routes
 const { requireAdminAuth } = require('./middleware/auth');
 const adminRoutes = require('./routes/admin');
+const jobRoutes = require('./routes/jobs');
 
 // Create Express app
 const app = express();
@@ -43,8 +44,9 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// Pass Supabase client to admin routes
+// Pass Supabase client to admin routes and job routes
 adminRoutes.setSupabaseClient(supabase);
+jobRoutes.setSupabaseClient(supabase);
 
 // =======================
 // MIDDLEWARE
@@ -53,7 +55,7 @@ adminRoutes.setSupabaseClient(supabase);
 // CORS - Allow Aura form to submit and admin API access
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
@@ -932,6 +934,28 @@ app.patch('/admin/quotes/:id/status', requireAdminAuth, adminRoutes.updateQuoteS
 
 // Update admin notes
 app.patch('/admin/quotes/:id/notes', requireAdminAuth, adminRoutes.updateQuoteNotes);
+
+// =======================
+// JOB SCHEDULING ROUTES (Protected)
+// =======================
+
+// Jobs CRUD
+app.get('/admin/jobs', requireAdminAuth, jobRoutes.listJobs);
+app.post('/admin/jobs', requireAdminAuth, jobRoutes.createJob);
+app.patch('/admin/jobs/:id', requireAdminAuth, jobRoutes.updateJob);
+app.delete('/admin/jobs/:id', requireAdminAuth, jobRoutes.deleteJob);
+app.get('/admin/jobs/week/:date', requireAdminAuth, jobRoutes.getWeekJobs);
+
+// Recurring jobs
+app.get('/admin/recurring', requireAdminAuth, jobRoutes.listRecurring);
+app.post('/admin/recurring', requireAdminAuth, jobRoutes.createRecurring);
+app.patch('/admin/recurring/:id', requireAdminAuth, jobRoutes.updateRecurring);
+app.post('/admin/recurring/:id/generate', requireAdminAuth, jobRoutes.generateFromRecurring);
+
+// Team members
+app.get('/admin/team', requireAdminAuth, jobRoutes.listTeam);
+app.post('/admin/team', requireAdminAuth, jobRoutes.createTeamMember);
+app.patch('/admin/team/:id', requireAdminAuth, jobRoutes.updateTeamMember);
 
 // =======================
 // ERROR HANDLING
