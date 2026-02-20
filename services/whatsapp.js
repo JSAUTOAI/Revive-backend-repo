@@ -19,7 +19,7 @@ const FROM_WHATSAPP = `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`;
 // Content Template SIDs (v3 - rich formatting with emojis, bold, bullet points)
 const TEMPLATES = {
   QUOTE_CONFIRMATION: 'HXe1a33f5eaa1799f1c5c596f3e496769e',
-  ESTIMATE_READY: 'HX1b524fbeaffdf0eafce090c78ceacfe2',
+  ESTIMATE_READY: 'HXf579b26142676cd0271ea20ed54c379d',
   ADMIN_ALERT: 'HX4ec1c09e9d04022e7758a80b865f8991',
 };
 
@@ -63,7 +63,7 @@ async function sendConfirmationWhatsApp(quote) {
 }
 
 /**
- * Send estimate message via WhatsApp (v3 call-to-action template)
+ * Send estimate message via WhatsApp (v3 text template)
  *
  * Template variables:
  *   {{1}} = Customer name
@@ -71,7 +71,7 @@ async function sendConfirmationWhatsApp(quote) {
  *   {{3}} = Services list (bullet pointed)
  *   {{4}} = Location (address, postcode)
  *   {{5}} = Contact timing (e.g. "at your preferred time (evenings)" or "shortly")
- *   {{6}} = Quote ID (for accept button URL suffix)
+ *   {{6}} = Accept estimate URL
  *
  * @param {Object} quote - Quote data with estimate fields
  * @returns {Promise<Object>} - Twilio API response
@@ -98,7 +98,7 @@ async function sendEstimateWhatsApp(quote) {
         '3': servicesBullets,
         '4': location,
         '5': contactTiming,
-        '6': quote.id
+        '6': `https://revive-backend-repo-production.up.railway.app/accept-estimate/${quote.id}`
       })
     });
 
