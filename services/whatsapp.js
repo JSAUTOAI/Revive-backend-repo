@@ -16,19 +16,20 @@ const client = twilio(
 // Twilio WhatsApp number (production)
 const FROM_WHATSAPP = `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`;
 
-// Content Template SIDs (approved by Meta)
-// Update these SIDs when creating richer V3 templates
+// Content Template SIDs (v3 - rich formatting with emojis, bold, bullet points)
 const TEMPLATES = {
-  QUOTE_CONFIRMATION: 'HXc8939b6d34aaab6915ffc30cc36c511f',
-  ESTIMATE_READY: 'HX32ba36a8fd9c1a9b0b40076188f5ef8d',
-  ADMIN_ALERT: 'HXf258a03a33e6415610cce497994ca92c',
+  QUOTE_CONFIRMATION: 'HXe1a33f5eaa1799f1c5c596f3e496769e',
+  ESTIMATE_READY: 'HX1b524fbeaffdf0eafce090c78ceacfe2',
+  ADMIN_ALERT: 'HX4ec1c09e9d04022e7758a80b865f8991',
 };
 
 /**
- * Send confirmation message via WhatsApp (using Content Template)
+ * Send confirmation message via WhatsApp (v3 template)
  *
- * Template: "Hi {{1}}, thank you for your enquiry with Revive Exterior Cleaning.
- *           We have received your request for {{2}} and are preparing your estimate now."
+ * Template variables:
+ *   {{1}} = Customer name
+ *   {{2}} = Services list (bullet pointed)
+ *   {{3}} = Location (address, postcode)
  *
  * @param {Object} quote - Quote data from database
  * @returns {Promise<Object>} - Twilio API response
@@ -38,7 +39,8 @@ async function sendConfirmationWhatsApp(quote) {
     console.log(`[WhatsApp] Sending confirmation to ${quote.phone}`);
 
     const toWhatsApp = formatPhoneNumber(quote.phone);
-    const servicesText = quote.services.map(s => capitalizeService(s)).join(', ');
+    const servicesBullets = quote.services.map(s => '• ' + capitalizeService(s)).join('\n');
+    const location = [quote.address_line1, quote.postcode].filter(Boolean).join(', ');
 
     const message = await client.messages.create({
       from: FROM_WHATSAPP,
@@ -46,7 +48,8 @@ async function sendConfirmationWhatsApp(quote) {
       contentSid: TEMPLATES.QUOTE_CONFIRMATION,
       contentVariables: JSON.stringify({
         '1': quote.name,
-        '2': servicesText
+        '2': servicesBullets,
+        '3': location
       })
     });
 
@@ -59,34 +62,16 @@ async function sendConfirmationWhatsApp(quote) {
   }
 }
 
-/*
- * ========================================================================
- * ORIGINAL CONFIRMATION MESSAGE (for reference when creating V3 template)
- * ========================================================================
- *
- * Hi ${quote.name}! 👋
- *
- * Thank you for requesting a quote from Revive Exterior Cleaning.
- *
- * ✅ We've received your request for:
- * ${quote.services.map(s => `• ${capitalizeService(s)}`).join('\n')}
- *
- * 📍 Location: ${quote.address_line1}, ${quote.postcode}
- *
- * We're calculating your personalised estimate now. You'll receive it within the next few minutes!
- *
- * Questions? Just reply to this message.
- *
- * - The Revive Team
- *
- * ========================================================================
- */
-
 /**
- * Send estimate message via WhatsApp (using Content Template)
+ * Send estimate message via WhatsApp (v3 call-to-action template)
  *
- * Template: "Hi {{1}}, your estimate for {{2}} is ready.
- *           Estimated price range: {{3}}. We will be in touch shortly to discuss next steps."
+ * Template variables:
+ *   {{1}} = Customer name
+ *   {{2}} = Price range (e.g. "£150 - £300")
+ *   {{3}} = Services list (bullet pointed)
+ *   {{4}} = Location (address, postcode)
+ *   {{5}} = Contact timing (e.g. "at your preferred time (evenings)" or "shortly")
+ *   {{6}} = Quote ID (for accept button URL suffix)
  *
  * @param {Object} quote - Quote data with estimate fields
  * @returns {Promise<Object>} - Twilio API response
@@ -96,8 +81,12 @@ async function sendEstimateWhatsApp(quote) {
     console.log(`[WhatsApp] Sending estimate to ${quote.phone}`);
 
     const toWhatsApp = formatPhoneNumber(quote.phone);
-    const servicesText = quote.services.map(s => capitalizeService(s)).join(', ');
-    const priceRange = `£${quote.estimated_value_min}-£${quote.estimated_value_max}`;
+    const priceRange = `£${quote.estimated_value_min} - £${quote.estimated_value_max}`;
+    const servicesBullets = quote.services.map(s => '• ' + capitalizeService(s)).join('\n');
+    const location = [quote.address_line1, quote.postcode].filter(Boolean).join(', ');
+    const contactTiming = quote.best_time
+      ? `at your preferred time (${quote.best_time})`
+      : 'shortly';
 
     const message = await client.messages.create({
       from: FROM_WHATSAPP,
@@ -105,8 +94,11 @@ async function sendEstimateWhatsApp(quote) {
       contentSid: TEMPLATES.ESTIMATE_READY,
       contentVariables: JSON.stringify({
         '1': quote.name,
-        '2': servicesText,
-        '3': priceRange
+        '2': priceRange,
+        '3': servicesBullets,
+        '4': location,
+        '5': contactTiming,
+        '6': quote.id
       })
     });
 
@@ -119,40 +111,16 @@ async function sendEstimateWhatsApp(quote) {
   }
 }
 
-/*
- * ========================================================================
- * ORIGINAL ESTIMATE MESSAGE (for reference when creating V3 template)
- * ========================================================================
- *
- * Hi ${quote.name}, your estimate is ready! 💚
- *
- * 📊 *ESTIMATED PRICE RANGE*
- * £${quote.estimated_value_min} - £${quote.estimated_value_max}
- *
- * ✅ *Services Included:*
- * ${quote.services.map(s => `• ${capitalizeService(s)}`).join('\n')}
- *
- * 📍 *Location:* ${quote.address_line1}, ${quote.postcode}
- *
- * ℹ️ *Please note:* This is an estimated range. Final pricing will be confirmed after we assess your property in person.
- *
- * ✅ *Happy with this price range?*
- * Tap here to accept: https://revive-backend-repo-production.up.railway.app/accept-estimate/${quote.id}
- *
- * We'll contact you ${quote.best_time ? `at your preferred time (${quote.best_time})` : 'shortly'} to discuss the job in detail and provide a final quotation.
- *
- * 💬 Have questions? Just reply to this message!
- *
- * - The Revive Team
- * Professional Property Care
- *
- * ========================================================================
- */
-
 /**
- * Send admin alert via WhatsApp for high-value leads
- * NOTE: Admin alerts now handled via email only (no WhatsApp template needed)
- * This function is kept for backwards compatibility - it logs and returns success
+ * Send admin alert via WhatsApp for high-value leads (v3 template)
+ *
+ * Template variables:
+ *   {{1}} = Alert type ("HOT LEAD ALERT" or "CUSTOMER ACCEPTED QUOTE!")
+ *   {{2}} = Lead score
+ *   {{3}} = Price range
+ *   {{4}} = Customer details block (multi-line)
+ *   {{5}} = Services list (bullet pointed)
+ *   {{6}} = Preferred contact + best time
  *
  * @param {Object} quote - Quote data with lead scoring
  * @param {boolean} isAcceptance - True if customer just accepted the estimate
@@ -168,23 +136,39 @@ async function sendAdminAlertWhatsApp(quote, isAcceptance = false) {
       }
     }
 
-    const alertType = isAcceptance ? 'customer acceptance' : 'high-value lead';
+    const alertType = isAcceptance ? 'CUSTOMER ACCEPTED QUOTE!' : 'HOT LEAD ALERT';
     console.log(`[WhatsApp] Sending admin alert for ${alertType}`);
 
     const adminPhone = process.env.ADMIN_PHONE || quote.phone;
     const toWhatsApp = formatPhoneNumber(adminPhone);
-    const servicesText = quote.services.map(s => capitalizeService(s)).join(', ');
-    const priceRange = `£${quote.estimated_value_min}-£${quote.estimated_value_max}`;
+    const priceRange = `£${quote.estimated_value_min} - £${quote.estimated_value_max}`;
+    const servicesBullets = quote.services.map(s => '• ' + capitalizeService(s)).join('\n');
+
+    // Build customer details block
+    const customerDetails = [
+      `Name: ${quote.name}`,
+      `Phone: ${quote.phone}`,
+      `Email: ${quote.email}`,
+      `Address: ${[quote.address_line1, quote.postcode].filter(Boolean).join(', ')}`
+    ].join('\n');
+
+    // Build contact preference string
+    const contactPref = quote.preferred_contact || 'Email';
+    const contactInfo = quote.best_time
+      ? `${contactPref} (${quote.best_time})`
+      : contactPref;
 
     const message = await client.messages.create({
       from: FROM_WHATSAPP,
       to: toWhatsApp,
       contentSid: TEMPLATES.ADMIN_ALERT,
       contentVariables: JSON.stringify({
-        '1': quote.name,
+        '1': alertType,
         '2': String(quote.lead_score || 0),
-        '3': servicesText,
-        '4': priceRange
+        '3': priceRange,
+        '4': customerDetails,
+        '5': servicesBullets,
+        '6': contactInfo
       })
     });
 
@@ -196,34 +180,6 @@ async function sendAdminAlertWhatsApp(quote, isAcceptance = false) {
     return { success: false, error: error.message };
   }
 }
-
-/*
- * ========================================================================
- * ORIGINAL ADMIN ALERT MESSAGE (for reference if template created later)
- * ========================================================================
- *
- * 🔥 *HOT LEAD ALERT* (or 🎉 *CUSTOMER ACCEPTED QUOTE!*)
- *
- * Lead Score: ${quote.lead_score}/100
- * Qualification: ${quote.qualification_status.toUpperCase()}
- * Estimated Value: £${quote.estimated_value_min}-£${quote.estimated_value_max}
- *
- * *Customer Details:*
- * Name: ${quote.name}
- * Phone: ${quote.phone}
- * Email: ${quote.email}
- * Address: ${quote.address_line1}, ${quote.postcode}
- *
- * *Services:*
- * ${quote.services.map(s => `• ${capitalizeService(s)}`).join('\n')}
- *
- * *Preferred Contact:* ${quote.preferred_contact || 'Email'}
- * ${quote.best_time ? `*Best Time:* ${quote.best_time}` : ''}
- *
- * Contact them ASAP! 🚀
- *
- * ========================================================================
- */
 
 /**
  * Format phone number for WhatsApp (add country code if missing)
