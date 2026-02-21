@@ -69,25 +69,14 @@ async function processEstimation(supabase, quoteId, quote) {
       // Continue even if Sheets update fails
     });
 
-    // Step 4: Send estimate to customer based on preferred contact method
-    const preferredContact = updatedQuote.preferred_contact?.toLowerCase();
+    // Step 4: Send estimate via both WhatsApp and email (belt and suspenders)
+    sendEstimateWhatsApp(updatedQuote).catch(err => {
+      console.error(`[Estimation Job] Failed to send estimate WhatsApp:`, err);
+    });
 
-    if (preferredContact === 'whatsapp' || preferredContact === 'phone') {
-      // Send via WhatsApp
-      sendEstimateWhatsApp(updatedQuote).catch(err => {
-        console.error(`[Estimation Job] Failed to send estimate WhatsApp:`, err);
-        // Fallback to email if WhatsApp fails
-        console.log(`[Estimation Job] Falling back to email...`);
-        sendEstimateEmail(updatedQuote).catch(emailErr => {
-          console.error(`[Estimation Job] Email fallback also failed:`, emailErr);
-        });
-      });
-    } else {
-      // Send via email (default)
-      sendEstimateEmail(updatedQuote).catch(err => {
-        console.error(`[Estimation Job] Failed to send estimate email:`, err);
-      });
-    }
+    sendEstimateEmail(updatedQuote).catch(err => {
+      console.error(`[Estimation Job] Failed to send estimate email:`, err);
+    });
 
     // Step 5: Check if should alert admin
     if (shouldAlertAdmin(scoring.score, scoring.qualification)) {

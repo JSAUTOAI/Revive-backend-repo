@@ -219,24 +219,14 @@ app.post('/api/quote', async (req, res) => {
     // Trigger async estimation job (non-blocking)
     queueEstimation(supabase, savedQuote.id, savedQuote);
 
-    // Send confirmation based on preferred contact method
-    const contactMethod = savedQuote.preferred_contact?.toLowerCase();
+    // Send confirmation via both WhatsApp and email (belt and suspenders)
+    sendConfirmationWhatsApp(savedQuote).catch(err => {
+      console.error('[Quote Route] Failed to send confirmation WhatsApp:', err);
+    });
 
-    if (contactMethod === 'whatsapp' || contactMethod === 'phone') {
-      // Send WhatsApp confirmation
-      sendConfirmationWhatsApp(savedQuote).catch(err => {
-        console.error('[Quote Route] Failed to send confirmation WhatsApp:', err);
-        // Fallback to email if WhatsApp fails
-        sendConfirmationEmail(savedQuote).catch(emailErr => {
-          console.error('[Quote Route] Email fallback also failed:', emailErr);
-        });
-      });
-    } else {
-      // Send email confirmation (default)
-      sendConfirmationEmail(savedQuote).catch(err => {
-        console.error('[Quote Route] Failed to send confirmation email:', err);
-      });
-    }
+    sendConfirmationEmail(savedQuote).catch(err => {
+      console.error('[Quote Route] Failed to send confirmation email:', err);
+    });
 
     // Return success (same format as before)
     res.json({
