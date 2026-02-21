@@ -1865,7 +1865,7 @@ async function bookThisJob() {
 
   var timeSlot = document.getElementById('modal-book-time').value;
   var duration = document.getElementById('modal-book-duration').value || null;
-  var assignedTo = document.getElementById('modal-quote-assigned').value || null;
+  var assignedTo = document.getElementById('modal-assigned-to').value || null;
   var services = Array.isArray(q.services) ? q.services.map(capitalize).join(', ') : 'Service';
 
   var body = {
@@ -1892,8 +1892,12 @@ async function bookThisJob() {
     if (res.success) {
       // Update quote status to booked
       await patchQuote('status', 'booked');
+      // Close modal and navigate to schedule showing the booked date
+      closeModal();
+      switchTab('schedule');
+      schedState.currentDate = new Date(bookDate + 'T12:00:00');
+      loadSchedule();
       showToast('Job booked for ' + bookDate + ' at ' + timeSlot, 'success');
-      loadQuotes();
     } else {
       showToast('Failed: ' + (res.error || 'Unknown error'), 'error');
     }
