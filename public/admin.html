@@ -496,9 +496,10 @@
           <div id="modal-calendar-dayinfo" class="hidden mt-3 pt-3 border-t border-neutral-800">
             <div class="flex items-center justify-between mb-2">
               <span class="text-xs text-neutral-400" id="modal-calendar-daylabel"></span>
-              <button onclick="bookOnSelectedDate()" class="bg-lime-400 hover:bg-lime-300 text-black text-[11px] font-semibold px-3 py-1 rounded-lg transition-colors" id="modal-book-date-btn">
-                Book on this date
-              </button>
+              <span class="text-lime-400 text-[11px] font-semibold" id="modal-book-date-badge">
+                <svg class="w-3 h-3 inline -mt-0.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                Selected
+              </span>
             </div>
             <div id="modal-calendar-dayjobs" class="space-y-1 text-xs max-h-24 overflow-y-auto"></div>
           </div>
@@ -510,11 +511,55 @@
         </div>
       </div>
 
-      <!-- Book This Job Button -->
-      <button onclick="bookThisJob()" class="w-full bg-lime-400 hover:bg-lime-300 text-black font-semibold py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-        Book This Job
-      </button>
+      <!-- Booking Bar -->
+      <div class="bg-neutral-900/50 border border-neutral-800 rounded-xl p-4 space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">Time</label>
+            <select id="modal-book-time" class="w-full mt-1 bg-black border border-neutral-700 text-neutral-300 text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+              <option value="07:00">07:00</option>
+              <option value="07:30">07:30</option>
+              <option value="08:00">08:00</option>
+              <option value="08:30">08:30</option>
+              <option value="09:00" selected>09:00</option>
+              <option value="09:30">09:30</option>
+              <option value="10:00">10:00</option>
+              <option value="10:30">10:30</option>
+              <option value="11:00">11:00</option>
+              <option value="11:30">11:30</option>
+              <option value="12:00">12:00</option>
+              <option value="12:30">12:30</option>
+              <option value="13:00">13:00</option>
+              <option value="13:30">13:30</option>
+              <option value="14:00">14:00</option>
+              <option value="14:30">14:30</option>
+              <option value="15:00">15:00</option>
+              <option value="15:30">15:30</option>
+              <option value="16:00">16:00</option>
+              <option value="16:30">16:30</option>
+              <option value="17:00">17:00</option>
+              <option value="17:30">17:30</option>
+              <option value="18:00">18:00</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">Duration</label>
+            <select id="modal-book-duration" class="w-full mt-1 bg-black border border-neutral-700 text-neutral-300 text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+              <option value="">Not set</option>
+              <option value="1 hour">1 hour</option>
+              <option value="2 hours">2 hours</option>
+              <option value="2-3 hours">2-3 hours</option>
+              <option value="3-4 hours">3-4 hours</option>
+              <option value="Half day">Half day</option>
+              <option value="Full day">Full day</option>
+            </select>
+          </div>
+        </div>
+        <button onclick="bookThisJob()" class="w-full bg-lime-400 hover:bg-lime-300 text-black font-semibold py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          Book This Job
+        </button>
+      </div>
 
       <!-- Section 6: Activity Log -->
       <div>
@@ -1801,55 +1846,53 @@ async function showDayInfo(dateStr) {
     dayJobs.innerHTML = '<div class="text-neutral-400">' + jobCount + ' job' + (jobCount !== 1 ? 's' : '') + ' scheduled (capacity: ' + capacity + ')</div>';
   }
 
-  document.getElementById('modal-book-date-btn').textContent = 'Book on ' + dateStr;
+  document.getElementById('modal-book-date-badge').textContent = 'Selected: ' + dateStr;
 }
 
 // ============================
-// BOOK THIS JOB
+// BOOK THIS JOB (direct from quote modal)
 // ============================
-function bookThisJob() {
+async function bookThisJob() {
   if (!state.currentQuote) return;
   var q = state.currentQuote;
 
-  // Switch to Schedule tab and open Add Job modal with From Quote tab
-  closeModal();
-  switchTab('schedule');
+  // Require a date from the calendar
+  if (!quoteSelectedDate) {
+    showToast('Please select a date from the calendar first', 'error');
+    return;
+  }
 
-  setTimeout(function() {
-    openAddJobModal();
-    switchJobTab('fromQuote');
+  var timeSlot = document.getElementById('modal-book-time').value;
+  var duration = document.getElementById('modal-book-duration').value || null;
+  var assignedTo = document.getElementById('modal-quote-assigned').value || null;
+  var services = Array.isArray(q.services) ? q.services.map(capitalize).join(', ') : 'Service';
 
-    // Wait for quotes to load, then auto-select this quote
-    setTimeout(function() {
-      selectQuoteForJob(q);
-    }, 500);
-  }, 300);
-}
+  var body = {
+    quote_id: q.id,
+    customer_name: q.name,
+    customer_phone: q.phone || null,
+    customer_email: q.email || null,
+    address: q.address_line1 || '',
+    postcode: q.postcode || '',
+    service: services,
+    scheduled_date: quoteSelectedDate,
+    time_slot: timeSlot,
+    assigned_to: assignedTo,
+    estimated_duration: duration,
+    job_value: q.final_value || q.estimated_value_max || q.estimated_value_min || null
+  };
 
-function bookOnSelectedDate() {
-  if (!state.currentQuote || !quoteSelectedDate) return;
-  var q = state.currentQuote;
-
-  closeModal();
-  switchTab('schedule');
-
-  setTimeout(function() {
-    openAddJobModal();
-    switchJobTab('fromQuote');
-
-    setTimeout(function() {
-      selectQuoteForJob(q);
-      // Pre-fill the selected date
-      setTimeout(function() {
-        var dateInput = document.getElementById('qp-date');
-        if (dateInput && dateInput._flatpickr) {
-          dateInput._flatpickr.setDate(quoteSelectedDate);
-        } else if (dateInput) {
-          dateInput.value = quoteSelectedDate;
-        }
-      }, 200);
-    }, 500);
-  }, 300);
+  try {
+    var res = await apiRequest('/admin/jobs', { method: 'POST', body: body });
+    if (res.success) {
+      // Update quote status to booked
+      await patchQuote('status', 'booked');
+      showToast('Job booked for ' + quoteSelectedDate + ' at ' + timeSlot, 'success');
+      loadQuotes();
+    }
+  } catch (e) {
+    showToast('Failed to create job', 'error');
+  }
 }
 
 function selectQuoteForJob(q) {
@@ -3156,7 +3199,7 @@ async function submitJobFromQuote() {
     time_slot: document.getElementById('qp-timeslot').value,
     assigned_to: document.getElementById('qp-assigned').value || null,
     estimated_duration: document.getElementById('qp-duration').value || null,
-    job_value: q.estimated_value_max || q.estimated_value_min || null
+    job_value: q.final_value || q.estimated_value_max || q.estimated_value_min || null
   };
 
   try {
