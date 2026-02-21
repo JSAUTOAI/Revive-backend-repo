@@ -39,18 +39,21 @@ async function sendConfirmationWhatsApp(quote) {
     console.log(`[WhatsApp] Sending confirmation to ${quote.phone}`);
 
     const toWhatsApp = formatPhoneNumber(quote.phone);
-    const servicesBullets = quote.services.map(s => '• ' + capitalizeService(s)).join('\n');
+    const servicesBullets = (quote.services || []).map(s => '• ' + capitalizeService(s)).join('\n');
     const location = [quote.address_line1, quote.postcode].filter(Boolean).join(', ');
+
+    const vars = {
+      '1': String(quote.name || 'Customer'),
+      '2': String(servicesBullets || '• Cleaning service'),
+      '3': String(location || 'Location TBC')
+    };
+    console.log(`[WhatsApp] Confirmation variables:`, JSON.stringify(vars));
 
     const message = await client.messages.create({
       from: FROM_WHATSAPP,
       to: toWhatsApp,
       contentSid: TEMPLATES.QUOTE_CONFIRMATION,
-      contentVariables: JSON.stringify({
-        '1': quote.name,
-        '2': servicesBullets,
-        '3': location
-      })
+      contentVariables: JSON.stringify(vars)
     });
 
     console.log(`[WhatsApp] Confirmation sent successfully: ${message.sid}`);
@@ -81,25 +84,28 @@ async function sendEstimateWhatsApp(quote) {
     console.log(`[WhatsApp] Sending estimate to ${quote.phone}`);
 
     const toWhatsApp = formatPhoneNumber(quote.phone);
-    const priceRange = `£${quote.estimated_value_min} - £${quote.estimated_value_max}`;
-    const servicesBullets = quote.services.map(s => '• ' + capitalizeService(s)).join('\n');
+    const priceRange = `£${quote.estimated_value_min || 0} - £${quote.estimated_value_max || 0}`;
+    const servicesBullets = (quote.services || []).map(s => '• ' + capitalizeService(s)).join('\n');
     const location = [quote.address_line1, quote.postcode].filter(Boolean).join(', ');
     const contactTiming = quote.best_time
       ? `at your preferred time (${quote.best_time})`
       : 'shortly';
 
+    const vars = {
+      '1': String(quote.name || 'Customer'),
+      '2': String(priceRange || 'Price TBC'),
+      '3': String(servicesBullets || '• Cleaning service'),
+      '4': String(location || 'Location TBC'),
+      '5': String(contactTiming),
+      '6': String(`https://revive-backend-repo-production.up.railway.app/accept-estimate/${quote.id}`)
+    };
+    console.log(`[WhatsApp] Estimate variables:`, JSON.stringify(vars));
+
     const message = await client.messages.create({
       from: FROM_WHATSAPP,
       to: toWhatsApp,
       contentSid: TEMPLATES.ESTIMATE_READY,
-      contentVariables: JSON.stringify({
-        '1': quote.name,
-        '2': priceRange,
-        '3': servicesBullets,
-        '4': location,
-        '5': contactTiming,
-        '6': `https://revive-backend-repo-production.up.railway.app/accept-estimate/${quote.id}`
-      })
+      contentVariables: JSON.stringify(vars)
     });
 
     console.log(`[WhatsApp] Estimate sent successfully: ${message.sid}`);
@@ -141,15 +147,15 @@ async function sendAdminAlertWhatsApp(quote, isAcceptance = false) {
 
     const adminPhone = process.env.ADMIN_PHONE || quote.phone;
     const toWhatsApp = formatPhoneNumber(adminPhone);
-    const priceRange = `£${quote.estimated_value_min} - £${quote.estimated_value_max}`;
-    const servicesBullets = quote.services.map(s => '• ' + capitalizeService(s)).join('\n');
+    const priceRange = `£${quote.estimated_value_min || 0} - £${quote.estimated_value_max || 0}`;
+    const servicesBullets = (quote.services || []).map(s => '• ' + capitalizeService(s)).join('\n');
 
     // Build customer details block
     const customerDetails = [
-      `Name: ${quote.name}`,
-      `Phone: ${quote.phone}`,
-      `Email: ${quote.email}`,
-      `Address: ${[quote.address_line1, quote.postcode].filter(Boolean).join(', ')}`
+      `Name: ${quote.name || 'Unknown'}`,
+      `Phone: ${quote.phone || 'N/A'}`,
+      `Email: ${quote.email || 'N/A'}`,
+      `Address: ${[quote.address_line1, quote.postcode].filter(Boolean).join(', ') || 'N/A'}`
     ].join('\n');
 
     // Build contact preference string
@@ -158,18 +164,21 @@ async function sendAdminAlertWhatsApp(quote, isAcceptance = false) {
       ? `${contactPref} (${quote.best_time})`
       : contactPref;
 
+    const vars = {
+      '1': String(alertType),
+      '2': String(quote.lead_score || 0),
+      '3': String(priceRange),
+      '4': String(customerDetails),
+      '5': String(servicesBullets || '• Cleaning service'),
+      '6': String(contactInfo)
+    };
+    console.log(`[WhatsApp] Admin alert variables:`, JSON.stringify(vars));
+
     const message = await client.messages.create({
       from: FROM_WHATSAPP,
       to: toWhatsApp,
       contentSid: TEMPLATES.ADMIN_ALERT,
-      contentVariables: JSON.stringify({
-        '1': alertType,
-        '2': String(quote.lead_score || 0),
-        '3': priceRange,
-        '4': customerDetails,
-        '5': servicesBullets,
-        '6': contactInfo
-      })
+      contentVariables: JSON.stringify(vars)
     });
 
     console.log(`[WhatsApp] Admin alert sent successfully: ${message.sid}`);
