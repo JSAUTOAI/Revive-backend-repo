@@ -61,6 +61,7 @@ async function sendConfirmationWhatsApp(quote) {
 
   } catch (error) {
     console.error('[WhatsApp] Failed to send confirmation:', error.message);
+    console.error('[WhatsApp] Error details:', JSON.stringify({ code: error.code, status: error.status, moreInfo: error.moreInfo }));
     return { success: false, error: error.message };
   }
 }
@@ -113,6 +114,7 @@ async function sendEstimateWhatsApp(quote) {
 
   } catch (error) {
     console.error('[WhatsApp] Failed to send estimate:', error.message);
+    console.error('[WhatsApp] Error details:', JSON.stringify({ code: error.code, status: error.status, moreInfo: error.moreInfo }));
     return { success: false, error: error.message };
   }
 }
