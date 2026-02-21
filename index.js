@@ -103,46 +103,6 @@ app.post('/api/data', (req, res) => {
   });
 });
 
-// Temporary WhatsApp test endpoint (remove after debugging)
-app.get('/api/test-whatsapp', async (req, res) => {
-  const token = req.query.token;
-  if (token !== process.env.ADMIN_TOKEN) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  const twilio = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-  const to = `whatsapp:+447934032980`;
-  const from = `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`;
-
-  const results = {};
-
-  // Test 1: Confirmation template with exact example values
-  try {
-    const msg = await twilio.messages.create({
-      from, to,
-      contentSid: 'HXe1a33f5eaa1799f1c5c596f3e496769e',
-      contentVariables: JSON.stringify({ '1': 'John', '2': '• Driveway Cleaning', '3': '123 High Street, M1 1AA' })
-    });
-    results.confirmation = { success: true, sid: msg.sid };
-  } catch (e) {
-    results.confirmation = { success: false, error: e.message, code: e.code, moreInfo: e.moreInfo };
-  }
-
-  // Test 2: Estimate template with exact example values
-  try {
-    const msg = await twilio.messages.create({
-      from, to,
-      contentSid: 'HXf579b26142676cd0271ea20ed54c379d',
-      contentVariables: JSON.stringify({ '1': 'John', '2': '£150 - £300', '3': '• Driveway Cleaning', '4': '123 High Street, M1 1AA', '5': 'shortly', '6': 'https://revive-backend-repo-production.up.railway.app/accept-estimate/test-123' })
-    });
-    results.estimate = { success: true, sid: msg.sid };
-  } catch (e) {
-    results.estimate = { success: false, error: e.message, code: e.code, moreInfo: e.moreInfo };
-  }
-
-  res.json(results);
-});
-
 // Quote request route (flexible + future-proof)
 app.post('/api/quote', async (req, res) => {
   try {

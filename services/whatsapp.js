@@ -39,7 +39,7 @@ async function sendConfirmationWhatsApp(quote) {
     console.log(`[WhatsApp] Sending confirmation to ${quote.phone}`);
 
     const toWhatsApp = formatPhoneNumber(quote.phone);
-    const servicesBullets = (quote.services || []).map(s => '• ' + capitalizeService(s)).join('\n');
+    const servicesBullets = (quote.services || []).map(s => capitalizeService(s)).join(', ');
     const location = [quote.address_line1, quote.postcode].filter(Boolean).join(', ');
 
     const vars = {
@@ -86,7 +86,7 @@ async function sendEstimateWhatsApp(quote) {
 
     const toWhatsApp = formatPhoneNumber(quote.phone);
     const priceRange = `£${quote.estimated_value_min || 0} - £${quote.estimated_value_max || 0}`;
-    const servicesBullets = (quote.services || []).map(s => '• ' + capitalizeService(s)).join('\n');
+    const servicesBullets = (quote.services || []).map(s => capitalizeService(s)).join(', ');
     const location = [quote.address_line1, quote.postcode].filter(Boolean).join(', ');
     const contactTiming = quote.best_time
       ? `at your preferred time (${quote.best_time})`
@@ -150,7 +150,7 @@ async function sendAdminAlertWhatsApp(quote, isAcceptance = false) {
     const adminPhone = process.env.ADMIN_PHONE || quote.phone;
     const toWhatsApp = formatPhoneNumber(adminPhone);
     const priceRange = `£${quote.estimated_value_min || 0} - £${quote.estimated_value_max || 0}`;
-    const servicesBullets = (quote.services || []).map(s => '• ' + capitalizeService(s)).join('\n');
+    const servicesBullets = (quote.services || []).map(s => capitalizeService(s)).join(', ');
 
     // Build customer details block
     const customerDetails = [
@@ -158,7 +158,7 @@ async function sendAdminAlertWhatsApp(quote, isAcceptance = false) {
       `Phone: ${quote.phone || 'N/A'}`,
       `Email: ${quote.email || 'N/A'}`,
       `Address: ${[quote.address_line1, quote.postcode].filter(Boolean).join(', ') || 'N/A'}`
-    ].join('\n');
+    ].join(' | ');
 
     // Build contact preference string
     const contactPref = quote.preferred_contact || 'Email';
