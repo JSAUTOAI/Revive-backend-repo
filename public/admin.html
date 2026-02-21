@@ -1856,10 +1856,11 @@ async function bookThisJob() {
   if (!state.currentQuote) return;
   var q = state.currentQuote;
 
-  // Require a date from the calendar
-  if (!quoteSelectedDate) {
-    showToast('Please select a date from the calendar first', 'error');
-    return;
+  // Use selected calendar date, or default to today
+  var bookDate = quoteSelectedDate;
+  if (!bookDate) {
+    var today = new Date();
+    bookDate = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
   }
 
   var timeSlot = document.getElementById('modal-book-time').value;
@@ -1875,23 +1876,35 @@ async function bookThisJob() {
     address: q.address_line1 || '',
     postcode: q.postcode || '',
     service: services,
-    scheduled_date: quoteSelectedDate,
+    scheduled_date: bookDate,
     time_slot: timeSlot,
     assigned_to: assignedTo,
     estimated_duration: duration,
     job_value: q.final_value || q.estimated_value_max || q.estimated_value_min || null
   };
 
+  // Disable button while processing
+  var btn = document.querySelector('[onclick="bookThisJob()"]');
+  if (btn) { btn.disabled = true; btn.textContent = 'Booking...'; }
+
   try {
     var res = await apiRequest('/admin/jobs', { method: 'POST', body: body });
     if (res.success) {
       // Update quote status to booked
       await patchQuote('status', 'booked');
-      showToast('Job booked for ' + quoteSelectedDate + ' at ' + timeSlot, 'success');
+      showToast('Job booked for ' + bookDate + ' at ' + timeSlot, 'success');
       loadQuotes();
+    } else {
+      showToast('Failed: ' + (res.error || 'Unknown error'), 'error');
     }
   } catch (e) {
-    showToast('Failed to create job', 'error');
+    console.error('Book job error:', e);
+    showToast('Failed to create job: ' + e.message, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg> Book This Job';
+    }
   }
 }
 
