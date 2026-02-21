@@ -943,6 +943,7 @@ app.get('/admin/jobs', requireAdminAuth, jobRoutes.listJobs);
 app.post('/admin/jobs', requireAdminAuth, jobRoutes.createJob);
 app.patch('/admin/jobs/:id', requireAdminAuth, jobRoutes.updateJob);
 app.delete('/admin/jobs/:id', requireAdminAuth, jobRoutes.deleteJob);
+app.post('/admin/jobs/:id/notify-reschedule', requireAdminAuth, jobRoutes.notifyReschedule);
 app.get('/admin/jobs/week/:date', requireAdminAuth, jobRoutes.getWeekJobs);
 
 // Recurring jobs

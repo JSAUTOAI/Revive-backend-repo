@@ -347,9 +347,90 @@ async function sendFollowUpEmail(customer, subject, body) {
   }
 }
 
+/**
+ * Send reschedule notification email to customer
+ *
+ * @param {Object} job - Job data with customer info and new schedule
+ * @param {string} formattedDate - Human-readable date (e.g. "Monday 24th February")
+ * @param {string} timeSlot - Time slot (e.g. "09:00")
+ * @returns {Promise<Object>} - Resend API response
+ */
+async function sendRescheduleEmail(job, formattedDate, timeSlot) {
+  try {
+    if (!job.customer_email) {
+      console.log('[Email] No customer email for reschedule notification');
+      return { success: false, error: 'No customer email' };
+    }
+
+    console.log(`[Email] Sending reschedule notification to ${job.customer_email}`);
+
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: job.customer_email,
+      subject: `Your ${job.service || 'cleaning'} appointment has been rescheduled - Revive`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background-color: #84cc16; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+            <h1 style="margin: 0; font-size: 22px;">Revive Exterior Cleaning</h1>
+          </div>
+
+          <div style="background-color: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px;">
+            <p style="font-size: 16px; margin: 0 0 15px 0;">Hi ${job.customer_name || 'there'},</p>
+
+            <p style="font-size: 15px; margin: 0 0 15px 0;">
+              We wanted to let you know that your <strong>${job.service || 'cleaning'}</strong> appointment has been rescheduled.
+            </p>
+
+            <div style="background-color: #fff; border: 2px solid #84cc16; border-radius: 8px; padding: 20px; margin: 20px 0;">
+              <p style="font-size: 14px; color: #666; margin: 0 0 8px 0;">NEW DATE & TIME</p>
+              <p style="font-size: 20px; font-weight: bold; color: #333; margin: 0 0 5px 0;">${formattedDate}</p>
+              <p style="font-size: 16px; color: #84cc16; font-weight: bold; margin: 0;">${timeSlot || 'Time TBC'}</p>
+            </div>
+
+            <p style="font-size: 15px; margin: 0 0 15px 0;">
+              If this time doesn't work for you, please get in touch and we'll find an alternative.
+            </p>
+
+            <div style="margin-top: 25px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+              <p style="font-size: 14px; color: #666;">
+                Best regards,<br>
+                <strong>The Revive Team</strong>
+              </p>
+            </div>
+          </div>
+
+          <div style="text-align: center; padding: 20px; font-size: 12px; color: #999;">
+            <p>Revive Exterior Cleaning - Professional Property Care</p>
+          </div>
+        </body>
+        </html>
+      `
+    });
+
+    if (error) {
+      console.error('[Email] Reschedule send error:', error);
+      throw error;
+    }
+
+    console.log('[Email] Reschedule notification sent:', data.id);
+    return { success: true, emailId: data.id };
+
+  } catch (error) {
+    console.error('[Email] Failed to send reschedule notification:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   sendConfirmationEmail,
   sendEstimateEmail,
   sendAdminAlert,
-  sendFollowUpEmail
+  sendFollowUpEmail,
+  sendRescheduleEmail
 };

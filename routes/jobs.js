@@ -800,6 +800,68 @@ async function updateMyJob(req, res) {
   }
 }
 
+/**
+ * POST /admin/jobs/:id/notify-reschedule
+ * Send reschedule notification to customer (opt-in, admin-triggered)
+ */
+async function notifyReschedule(req, res) {
+  try {
+    const { id } = req.params;
+    const { scheduled_date, time_slot } = req.body;
+
+    // Fetch the job
+    const { data: job, error } = await supabase
+      .from('jobs')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error || !job) {
+      return res.status(404).json({ success: false, error: 'Job not found' });
+    }
+
+    // Format date nicely for the customer
+    const dateObj = new Date((scheduled_date || job.scheduled_date) + 'T00:00:00');
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const dayNum = dateObj.getDate();
+    const suffix = dayNum === 1 || dayNum === 21 || dayNum === 31 ? 'st' : dayNum === 2 || dayNum === 22 ? 'nd' : dayNum === 3 || dayNum === 23 ? 'rd' : 'th';
+    const formattedDate = dayNames[dateObj.getDay()] + ' ' + dayNum + suffix + ' ' + monthNames[dateObj.getMonth()];
+    const timeDisplay = time_slot || job.time_slot || '';
+
+    const results = { email: null, whatsapp: null };
+
+    // Send email notification
+    try {
+      const { sendRescheduleEmail } = require('../services/emailer');
+      results.email = await sendRescheduleEmail(job, formattedDate, timeDisplay);
+    } catch (e) {
+      console.error('[Jobs] Reschedule email failed:', e.message);
+      results.email = { success: false, error: e.message };
+    }
+
+    // Send WhatsApp notification
+    try {
+      const { sendRescheduleWhatsApp } = require('../services/whatsapp');
+      results.whatsapp = await sendRescheduleWhatsApp(job, formattedDate, timeDisplay);
+    } catch (e) {
+      console.error('[Jobs] Reschedule WhatsApp failed:', e.message);
+      results.whatsapp = { success: false, error: e.message };
+    }
+
+    console.log(`[Jobs] Reschedule notification sent for job ${id}: email=${results.email?.success}, whatsapp=${results.whatsapp?.success}`);
+
+    res.json({
+      success: true,
+      results
+    });
+
+  } catch (error) {
+    console.error('[Jobs] Notify reschedule error:', error);
+    res.status(500).json({ success: false, error: 'Failed to send notification' });
+  }
+}
+
 module.exports = {
   setSupabaseClient,
   listJobs,
@@ -815,5 +877,6 @@ module.exports = {
   createTeamMember,
   updateTeamMember,
   getMySchedule,
-  updateMyJob
+  updateMyJob,
+  notifyReschedule
 };

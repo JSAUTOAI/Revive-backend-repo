@@ -228,8 +228,50 @@ function capitalizeService(service) {
   return serviceNames[service] || service.charAt(0).toUpperCase() + service.slice(1);
 }
 
+/**
+ * Send reschedule notification via WhatsApp (freeform message)
+ *
+ * Note: This uses a freeform message which only works within the 24-hour
+ * customer service window. For business-initiated messages outside this
+ * window, a Content Template would need to be approved by Meta.
+ * If freeform fails, the email notification serves as fallback.
+ *
+ * @param {Object} job - Job data with customer info
+ * @param {string} formattedDate - Human-readable date
+ * @param {string} timeSlot - Time slot
+ * @returns {Promise<Object>} - Twilio API response
+ */
+async function sendRescheduleWhatsApp(job, formattedDate, timeSlot) {
+  try {
+    if (!job.customer_phone) {
+      console.log('[WhatsApp] No customer phone for reschedule notification');
+      return { success: false, error: 'No customer phone' };
+    }
+
+    console.log(`[WhatsApp] Sending reschedule notification to ${job.customer_phone}`);
+
+    const toWhatsApp = formatPhoneNumber(job.customer_phone);
+    const body = `Hi ${job.customer_name || 'there'}, this is Revive Exterior Cleaning. Your ${job.service || 'cleaning'} appointment has been rescheduled to *${formattedDate}* at *${timeSlot || 'TBC'}*. If this doesn't work for you, please let us know and we'll find an alternative. Thanks!`;
+
+    const message = await client.messages.create({
+      from: FROM_WHATSAPP,
+      to: toWhatsApp,
+      body: body
+    });
+
+    console.log(`[WhatsApp] Reschedule notification sent: ${message.sid}`);
+    return { success: true, messageSid: message.sid };
+
+  } catch (error) {
+    console.error('[WhatsApp] Failed to send reschedule notification:', error.message);
+    // Don't throw - email serves as fallback
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   sendConfirmationWhatsApp,
   sendEstimateWhatsApp,
-  sendAdminAlertWhatsApp
+  sendAdminAlertWhatsApp,
+  sendRescheduleWhatsApp
 };

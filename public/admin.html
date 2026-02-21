@@ -678,15 +678,84 @@
       </button>
     </div>
     <div class="p-6 space-y-5">
-      <!-- Customer Info -->
+      <!-- Customer Info (read-only) -->
       <div class="space-y-2 text-sm">
         <div class="flex justify-between"><span class="text-neutral-500">Customer</span><span class="text-white" id="jd-name"></span></div>
         <div class="flex justify-between"><span class="text-neutral-500">Phone</span><a class="text-lime-400 hover:underline" id="jd-phone"></a></div>
         <div class="flex justify-between"><span class="text-neutral-500">Address</span><span class="text-white" id="jd-address"></span></div>
         <div class="flex justify-between"><span class="text-neutral-500">Service</span><span class="text-white" id="jd-service"></span></div>
-        <div class="flex justify-between"><span class="text-neutral-500">Assigned</span><span class="text-white" id="jd-assigned"></span></div>
-        <div class="flex justify-between"><span class="text-neutral-500">Duration</span><span class="text-white" id="jd-duration"></span></div>
-        <div class="flex justify-between"><span class="text-neutral-500">Value</span><span class="text-lime-400 font-semibold" id="jd-value"></span></div>
+      </div>
+
+      <!-- Scheduling (editable) -->
+      <div>
+        <h3 class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mb-3">Scheduling</h3>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-[10px] uppercase tracking-wider text-neutral-600 font-semibold">Date</label>
+            <input type="text" id="jd-date" readonly class="w-full mt-1 bg-black border border-neutral-700 text-white text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none cursor-pointer">
+          </div>
+          <div>
+            <label class="text-[10px] uppercase tracking-wider text-neutral-600 font-semibold">Time</label>
+            <select id="jd-time" onchange="patchJob('time_slot', this.value)" class="w-full mt-1 bg-black border border-neutral-700 text-neutral-300 text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+              <option value="07:00">07:00</option>
+              <option value="07:30">07:30</option>
+              <option value="08:00">08:00</option>
+              <option value="08:30">08:30</option>
+              <option value="09:00">09:00</option>
+              <option value="09:30">09:30</option>
+              <option value="10:00">10:00</option>
+              <option value="10:30">10:30</option>
+              <option value="11:00">11:00</option>
+              <option value="11:30">11:30</option>
+              <option value="12:00">12:00</option>
+              <option value="12:30">12:30</option>
+              <option value="13:00">13:00</option>
+              <option value="13:30">13:30</option>
+              <option value="14:00">14:00</option>
+              <option value="14:30">14:30</option>
+              <option value="15:00">15:00</option>
+              <option value="15:30">15:30</option>
+              <option value="16:00">16:00</option>
+              <option value="16:30">16:30</option>
+              <option value="17:00">17:00</option>
+              <option value="17:30">17:30</option>
+              <option value="18:00">18:00</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] uppercase tracking-wider text-neutral-600 font-semibold">Assigned To</label>
+            <select id="jd-assigned" onchange="patchJob('assigned_to', this.value || null)" class="w-full mt-1 bg-black border border-neutral-700 text-neutral-300 text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+              <option value="">Unassigned</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] uppercase tracking-wider text-neutral-600 font-semibold">Duration</label>
+            <select id="jd-duration" onchange="patchJob('estimated_duration', this.value || null)" class="w-full mt-1 bg-black border border-neutral-700 text-neutral-300 text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+              <option value="">Not set</option>
+              <option value="30 mins">30 mins</option>
+              <option value="1 hour">1 hour</option>
+              <option value="1.5 hours">1.5 hours</option>
+              <option value="2 hours">2 hours</option>
+              <option value="2-3 hours">2-3 hours</option>
+              <option value="3-4 hours">3-4 hours</option>
+              <option value="Half day">Half day</option>
+              <option value="Full day">Full day</option>
+            </select>
+          </div>
+          <div class="col-span-2">
+            <label class="text-[10px] uppercase tracking-wider text-neutral-600 font-semibold">Value (£)</label>
+            <input type="number" id="jd-value" step="0.01" min="0" placeholder="0.00" onchange="patchJob('job_value', parseFloat(this.value) || 0)" class="w-full mt-1 bg-black border border-neutral-700 text-white text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+          </div>
+        </div>
+      </div>
+
+      <!-- Notify Customer (opt-in) -->
+      <div id="jd-notifySection" class="hidden">
+        <button onclick="notifyCustomerReschedule()" id="jd-notifyBtn" class="w-full flex items-center justify-center gap-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white border border-neutral-700 py-2.5 rounded-lg text-xs font-medium transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          Notify Customer of Schedule Change
+        </button>
+        <div id="jd-notifyStatus" class="hidden text-center text-[10px] text-neutral-500 mt-1"></div>
       </div>
 
       <!-- Status -->
@@ -1694,7 +1763,7 @@ function renderJobCards(containerId, jobs) {
 
   jobs.forEach(function(j) {
     var card = document.createElement('div');
-    card.className = 'bg-neutral-900 border border-neutral-800 rounded-xl p-4 cursor-pointer hover:border-neutral-700 transition-colors';
+    card.className = 'bg-neutral-900 border border-neutral-800 rounded-xl p-4 cursor-pointer hover:border-neutral-700 transition-colors relative';
     card.onclick = function() { openJobDetail(j.id); };
 
     var teamMember = schedState.team.find(function(t) { return t.name === j.assigned_to; });
@@ -1704,6 +1773,15 @@ function renderJobCards(containerId, jobs) {
 
     var timeDisplay = j.time_slot || '';
 
+    // WhatsApp link for phone
+    var whatsappLink = '';
+    if (j.customer_phone) {
+      var waNum = j.customer_phone.replace(/[\s\-\(\)]/g, '');
+      if (waNum.startsWith('0')) waNum = '44' + waNum.substring(1);
+      else if (waNum.startsWith('+')) waNum = waNum.substring(1);
+      whatsappLink = '<a href="https://wa.me/' + waNum + '" target="_blank" onclick="event.stopPropagation()" class="text-green-400 hover:text-green-300 ml-1" title="WhatsApp"><svg class="w-3.5 h-3.5 inline" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18a8 8 0 01-4.243-1.212l-.258-.153-2.844.846.846-2.844-.153-.258A8 8 0 1112 20z"/></svg></a>';
+    }
+
     card.innerHTML =
       '<div class="flex items-center justify-between mb-2">' +
         '<div class="flex items-center gap-2">' +
@@ -1711,8 +1789,14 @@ function renderJobCards(containerId, jobs) {
           '<span class="text-white font-bold text-xs bg-neutral-800 px-2 py-0.5 rounded">' + esc(timeDisplay) + '</span>' +
           '<span class="text-sm text-white font-medium">' + esc(j.customer_name) + '</span>' +
           '<span class="text-xs text-neutral-600">' + esc(j.postcode) + '</span>' +
+          whatsappLink +
         '</div>' +
-        '<span class="text-sm font-semibold text-lime-400">' + (j.job_value ? '\u00A3' + Number(j.job_value).toFixed(0) : '') + '</span>' +
+        '<div class="flex items-center gap-2">' +
+          '<span class="text-sm font-semibold text-lime-400">' + (j.job_value ? '\u00A3' + Number(j.job_value).toFixed(0) : '') + '</span>' +
+          '<button onclick="event.stopPropagation(); toggleQuickReassign(this, \'' + j.id + '\')" class="text-neutral-600 hover:text-lime-400 transition-colors p-1 rounded hover:bg-neutral-800" title="Quick reassign">' +
+            '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>' +
+          '</button>' +
+        '</div>' +
       '</div>' +
       '<div class="flex items-center justify-between">' +
         '<div class="text-xs text-neutral-500">' +
@@ -1729,6 +1813,56 @@ function renderJobCards(containerId, jobs) {
 
     container.appendChild(card);
   });
+}
+
+// Quick reassign dropdown on job cards
+function toggleQuickReassign(btn, jobId) {
+  // Close any existing dropdown
+  var existing = document.querySelector('.quick-reassign-dropdown');
+  if (existing) { existing.remove(); return; }
+
+  var dropdown = document.createElement('div');
+  dropdown.className = 'quick-reassign-dropdown absolute right-2 top-10 bg-neutral-800 border border-neutral-700 rounded-lg shadow-xl z-30 py-1 min-w-[140px] fade-in';
+
+  var job = schedState.jobs.find(function(j) { return j.id === jobId; });
+
+  // Unassigned option
+  var unOpt = document.createElement('button');
+  unOpt.className = 'w-full text-left px-3 py-2 text-xs text-neutral-400 hover:bg-neutral-700 hover:text-white transition-colors' + (!job.assigned_to ? ' text-lime-400 font-semibold' : '');
+  unOpt.textContent = 'Unassigned';
+  unOpt.onclick = function(e) { e.stopPropagation(); quickReassign(jobId, null); dropdown.remove(); };
+  dropdown.appendChild(unOpt);
+
+  (schedState.team || []).forEach(function(t) {
+    if (!t.is_active) return;
+    var opt = document.createElement('button');
+    var isActive = t.name === (job && job.assigned_to);
+    opt.className = 'w-full text-left px-3 py-2 text-xs hover:bg-neutral-700 transition-colors flex items-center gap-2' + (isActive ? ' text-lime-400 font-semibold' : ' text-neutral-300 hover:text-white');
+    opt.innerHTML = '<span class="w-2 h-2 rounded-full flex-shrink-0" style="background:' + t.color + '"></span>' + esc(t.name);
+    opt.onclick = function(e) { e.stopPropagation(); quickReassign(jobId, t.name); dropdown.remove(); };
+    dropdown.appendChild(opt);
+  });
+
+  btn.closest('.relative').appendChild(dropdown);
+
+  // Close on click outside
+  setTimeout(function() {
+    document.addEventListener('click', function closeDropdown(e) {
+      if (!dropdown.contains(e.target)) { dropdown.remove(); document.removeEventListener('click', closeDropdown); }
+    });
+  }, 10);
+}
+
+async function quickReassign(jobId, teamName) {
+  try {
+    var res = await apiRequest('/admin/jobs/' + jobId, { method: 'PATCH', body: { assigned_to: teamName } });
+    if (res.success) {
+      loadSchedule();
+      showToast(teamName ? 'Reassigned to ' + teamName : 'Unassigned', 'success');
+    }
+  } catch (e) {
+    showToast('Failed to reassign', 'error');
+  }
 }
 
 function getPaymentBadge(j) {
@@ -1774,10 +1908,21 @@ function renderWeekView(jobs, monday) {
     hdr.innerHTML = dayNames[i] + '<br><span class="text-sm ' + (isToday ? 'text-lime-400' : 'text-white') + '">' + d.getDate() + '</span>';
     headers.appendChild(hdr);
 
-    // Day column
+    // Day column (droppable target)
     var col = document.createElement('div');
-    col.className = 'bg-neutral-900 border border-neutral-800 rounded-b-lg p-1.5 space-y-1 min-h-[120px] ' + (isToday ? 'border-lime-400/30' : '');
+    col.className = 'bg-neutral-900 border border-neutral-800 rounded-b-lg p-1.5 space-y-1 min-h-[120px] transition-colors ' + (isToday ? 'border-lime-400/30' : '');
+    col.dataset.date = dateStr;
     col.onclick = (function(ds) { return function() { schedState.currentDate = new Date(ds + 'T00:00:00'); schedState.view = 'day'; document.getElementById('schedViewBtn').textContent = 'Week View'; loadSchedule(); }; })(dateStr);
+
+    // Drag-and-drop: allow drop on day columns
+    col.addEventListener('dragover', function(e) { e.preventDefault(); this.style.borderColor = '#a3e635'; this.style.background = 'rgba(163, 230, 53, 0.05)'; });
+    col.addEventListener('dragleave', function(e) { this.style.borderColor = ''; this.style.background = ''; });
+    col.addEventListener('drop', (function(targetDate) { return function(e) {
+      e.preventDefault();
+      this.style.borderColor = ''; this.style.background = '';
+      var jobId = e.dataTransfer.getData('text/plain');
+      if (jobId) dragDropReschedule(jobId, targetDate);
+    }; })(dateStr));
 
     var dayJobs = jobs.filter(function(j) { return j.scheduled_date === dateStr; });
     dayJobs.forEach(function(j) {
@@ -1785,7 +1930,19 @@ function renderWeekView(jobs, monday) {
       var dotColor = teamMember ? teamMember.color : '#737373';
       var mini = document.createElement('div');
       mini.className = 'bg-black/50 rounded-lg p-2 text-[11px] cursor-pointer hover:bg-neutral-800 transition-colors';
+      mini.draggable = true;
+      mini.dataset.jobId = j.id;
       mini.onclick = function(e) { e.stopPropagation(); openJobDetail(j.id); };
+
+      // Drag-and-drop: make mini cards draggable
+      mini.addEventListener('dragstart', (function(job) { return function(e) {
+        e.stopPropagation();
+        e.dataTransfer.setData('text/plain', job.id);
+        e.dataTransfer.effectAllowed = 'move';
+        this.style.opacity = '0.4';
+      }; })(j));
+      mini.addEventListener('dragend', function() { this.style.opacity = '1'; });
+
       mini.innerHTML =
         '<div class="flex items-center gap-1 mb-0.5">' +
           '<span class="w-1.5 h-1.5 rounded-full flex-shrink-0" style="background:' + dotColor + '"></span>' +
@@ -1804,6 +1961,24 @@ function renderWeekView(jobs, monday) {
   updateScheduleTotals(jobs);
 }
 
+// Drag-and-drop reschedule handler
+async function dragDropReschedule(jobId, newDate) {
+  var job = schedState.jobs.find(function(j) { return j.id === jobId; });
+  if (!job || job.scheduled_date === newDate) return;
+
+  try {
+    var res = await apiRequest('/admin/jobs/' + jobId, { method: 'PATCH', body: { scheduled_date: newDate } });
+    if (res.success) {
+      var dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      var d = new Date(newDate + 'T00:00:00');
+      showToast('Moved ' + job.customer_name + ' to ' + dayNames[d.getDay()] + ' ' + d.getDate(), 'success');
+      loadSchedule();
+    }
+  } catch (e) {
+    showToast('Failed to reschedule', 'error');
+  }
+}
+
 function updateScheduleTotals(jobs) {
   var totalValue = 0, paid = 0, outstanding = 0;
   jobs.forEach(function(j) {
@@ -1820,6 +1995,10 @@ function updateScheduleTotals(jobs) {
 // ============================
 // JOB DETAIL MODAL
 // ============================
+var jdDatePicker = null;
+var jdOriginalDate = '';
+var jdOriginalTime = '';
+
 async function openJobDetail(id) {
   var job = schedState.jobs.find(function(j) { return j.id === id; });
   if (!job) {
@@ -1831,20 +2010,64 @@ async function openJobDetail(id) {
   if (!job) return;
 
   schedState.currentJob = job;
+  jdOriginalDate = job.scheduled_date || '';
+  jdOriginalTime = job.time_slot || '';
   document.getElementById('jobDetailModal').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
 
+  // Header
   document.getElementById('jd-title').textContent = job.customer_name + ' - ' + job.service;
+
+  // Customer info (read-only)
   document.getElementById('jd-name').textContent = job.customer_name;
   var phoneEl = document.getElementById('jd-phone');
   phoneEl.textContent = job.customer_phone || '-';
   phoneEl.href = job.customer_phone ? 'tel:' + job.customer_phone : '#';
   document.getElementById('jd-address').textContent = (job.address || '') + ' ' + (job.postcode || '');
   document.getElementById('jd-service').textContent = job.service;
-  document.getElementById('jd-assigned').textContent = job.assigned_to || 'Unassigned';
-  document.getElementById('jd-duration').textContent = job.estimated_duration || '-';
-  document.getElementById('jd-value').textContent = job.job_value ? '\u00A3' + Number(job.job_value).toFixed(2) : '-';
+
+  // Scheduling fields (editable)
+  // Date picker
+  if (jdDatePicker) jdDatePicker.destroy();
+  jdDatePicker = flatpickr('#jd-date', {
+    dateFormat: 'Y-m-d',
+    altInput: true,
+    altFormat: 'D j M Y',
+    defaultDate: job.scheduled_date || null,
+    theme: 'dark',
+    onChange: function(selectedDates, dateStr) {
+      patchJob('scheduled_date', dateStr);
+    }
+  });
+
+  // Time dropdown
+  document.getElementById('jd-time').value = job.time_slot || '09:00';
+
+  // Assigned dropdown - populate with team members
+  var assignedSelect = document.getElementById('jd-assigned');
+  assignedSelect.innerHTML = '<option value="">Unassigned</option>';
+  (schedState.team || []).forEach(function(t) {
+    if (!t.is_active) return;
+    var opt = document.createElement('option');
+    opt.value = t.name;
+    opt.textContent = t.name;
+    if (t.name === job.assigned_to) opt.selected = true;
+    assignedSelect.appendChild(opt);
+  });
+
+  // Duration dropdown
+  document.getElementById('jd-duration').value = job.estimated_duration || '';
+
+  // Value input
+  document.getElementById('jd-value').value = job.job_value || '';
+
+  // Notes
   document.getElementById('jd-notes').value = job.notes || '';
+
+  // Notify section - hidden by default, shown after reschedule
+  document.getElementById('jd-notifySection').classList.add('hidden');
+  document.getElementById('jd-notifyBtn').disabled = false;
+  document.getElementById('jd-notifyBtn').innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg> Notify Customer of Schedule Change';
 
   renderJobStatusButtons(job.status);
   renderPaymentSection(job);
@@ -1853,7 +2076,74 @@ async function openJobDetail(id) {
 function closeJobDetail() {
   document.getElementById('jobDetailModal').classList.add('hidden');
   document.body.style.overflow = '';
+  if (jdDatePicker) { jdDatePicker.destroy(); jdDatePicker = null; }
   schedState.currentJob = null;
+}
+
+// Generic patch helper for inline edits
+async function patchJob(field, value) {
+  if (!schedState.currentJob) return;
+  var body = {};
+  body[field] = value;
+  try {
+    var res = await apiRequest('/admin/jobs/' + schedState.currentJob.id, { method: 'PATCH', body: body });
+    if (res.success) {
+      schedState.currentJob = res.data;
+      loadSchedule();
+
+      // Show notify button if date or time changed
+      if (field === 'scheduled_date' || field === 'time_slot') {
+        var dateChanged = schedState.currentJob.scheduled_date !== jdOriginalDate;
+        var timeChanged = schedState.currentJob.time_slot !== jdOriginalTime;
+        if (dateChanged || timeChanged) {
+          document.getElementById('jd-notifySection').classList.remove('hidden');
+          document.getElementById('jd-notifyBtn').disabled = false;
+          document.getElementById('jd-notifyBtn').innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg> Notify Customer of Schedule Change';
+        }
+      }
+
+      var labels = {
+        scheduled_date: 'Date updated',
+        time_slot: 'Time updated',
+        assigned_to: value ? 'Reassigned to ' + value : 'Unassigned',
+        estimated_duration: 'Duration updated',
+        job_value: 'Value updated'
+      };
+      showToast(labels[field] || 'Updated', 'success');
+    }
+  } catch (e) {
+    showToast('Failed to update', 'error');
+  }
+}
+
+// Notify customer of reschedule (opt-in only)
+async function notifyCustomerReschedule() {
+  if (!schedState.currentJob) return;
+  var job = schedState.currentJob;
+  var btn = document.getElementById('jd-notifyBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg> Sending...';
+
+  try {
+    var res = await apiRequest('/admin/jobs/' + job.id + '/notify-reschedule', {
+      method: 'POST',
+      body: { scheduled_date: job.scheduled_date, time_slot: job.time_slot }
+    });
+    if (res.success) {
+      btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Customer Notified';
+      btn.className = 'w-full flex items-center justify-center gap-2 bg-green-900/60 text-green-300 border border-green-800 py-2.5 rounded-lg text-xs font-medium cursor-default';
+      var statusEl = document.getElementById('jd-notifyStatus');
+      statusEl.classList.remove('hidden');
+      statusEl.textContent = 'WhatsApp + Email sent to ' + (job.customer_name || 'customer');
+      showToast('Customer notified', 'success');
+    } else {
+      throw new Error(res.error || 'Failed');
+    }
+  } catch (e) {
+    btn.disabled = false;
+    btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg> Notify Customer of Schedule Change';
+    showToast('Failed to notify customer: ' + e.message, 'error');
+  }
 }
 
 function renderJobStatusButtons(currentStatus) {
