@@ -66,7 +66,7 @@ app.use((req, res, next) => {
 });
 
 // Parse JSON bodies
-app.use(express.json());
+app.use(express.json({ limit: '15mb' }));
 
 // Parse URL-encoded bodies (from forms)
 app.use(express.urlencoded({ extended: true }));
@@ -934,6 +934,18 @@ app.patch('/admin/quotes/:id/status', requireAdminAuth, adminRoutes.updateQuoteS
 // Update admin notes
 app.patch('/admin/quotes/:id/notes', requireAdminAuth, adminRoutes.updateQuoteNotes);
 
+// General quote update (editable fields)
+app.patch('/admin/quotes/:id', requireAdminAuth, adminRoutes.updateQuote);
+
+// Quote activity log
+app.get('/admin/quotes/:id/activity', requireAdminAuth, adminRoutes.getQuoteActivity);
+app.post('/admin/quotes/:id/activity', requireAdminAuth, adminRoutes.addQuoteActivity);
+
+// Quote attachments
+app.post('/admin/quotes/:id/attachments', requireAdminAuth, adminRoutes.uploadAttachment);
+app.get('/admin/quotes/:id/attachments', requireAdminAuth, adminRoutes.listAttachments);
+app.delete('/admin/quotes/:id/attachments/:filename', requireAdminAuth, adminRoutes.deleteAttachment);
+
 // =======================
 // JOB SCHEDULING ROUTES (Protected)
 // =======================
@@ -941,6 +953,7 @@ app.patch('/admin/quotes/:id/notes', requireAdminAuth, adminRoutes.updateQuoteNo
 // Jobs CRUD
 app.get('/admin/jobs', requireAdminAuth, jobRoutes.listJobs);
 app.post('/admin/jobs', requireAdminAuth, jobRoutes.createJob);
+app.get('/admin/jobs/availability', requireAdminAuth, jobRoutes.getAvailability);
 app.patch('/admin/jobs/:id', requireAdminAuth, jobRoutes.updateJob);
 app.delete('/admin/jobs/:id', requireAdminAuth, jobRoutes.deleteJob);
 app.post('/admin/jobs/:id/notify-reschedule', requireAdminAuth, jobRoutes.notifyReschedule);

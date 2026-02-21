@@ -244,6 +244,51 @@ async function deleteJob(req, res) {
 }
 
 /**
+ * GET /admin/jobs/availability
+ * Returns job count per day for a date range (for calendar availability view)
+ * Query: from_date, to_date (YYYY-MM-DD)
+ */
+async function getAvailability(req, res) {
+  try {
+    let { from_date, to_date } = req.query;
+
+    if (!from_date) {
+      from_date = new Date().toISOString().split('T')[0];
+    }
+    if (!to_date) {
+      const d = new Date();
+      d.setDate(d.getDate() + 42); // 6 weeks
+      to_date = d.toISOString().split('T')[0];
+    }
+
+    const { data, error } = await supabase
+      .from('jobs')
+      .select('scheduled_date, assigned_to')
+      .gte('scheduled_date', from_date)
+      .lte('scheduled_date', to_date)
+      .not('status', 'eq', 'cancelled');
+
+    if (error) {
+      console.error('[Jobs] Availability query error:', error);
+      return res.status(500).json({ success: false, error: 'Failed to fetch availability' });
+    }
+
+    // Count jobs per day
+    const dates = {};
+    (data || []).forEach(function(j) {
+      if (!dates[j.scheduled_date]) dates[j.scheduled_date] = 0;
+      dates[j.scheduled_date]++;
+    });
+
+    res.json({ success: true, dates });
+
+  } catch (error) {
+    console.error('[Jobs] Availability error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+/**
  * GET /admin/jobs/week/:date
  * Get all jobs for the week containing :date (Monday-Sunday)
  */
@@ -878,5 +923,6 @@ module.exports = {
   updateTeamMember,
   getMySchedule,
   updateMyJob,
-  notifyReschedule
+  notifyReschedule,
+  getAvailability
 };
