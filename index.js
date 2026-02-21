@@ -219,14 +219,26 @@ app.post('/api/quote', async (req, res) => {
     // Trigger async estimation job (non-blocking)
     queueEstimation(supabase, savedQuote.id, savedQuote);
 
-    // Send confirmation via both WhatsApp and email (belt and suspenders)
-    sendConfirmationWhatsApp(savedQuote).catch(err => {
-      console.error('[Quote Route] Failed to send confirmation WhatsApp:', err);
-    });
-
-    sendConfirmationEmail(savedQuote).catch(err => {
-      console.error('[Quote Route] Failed to send confirmation email:', err);
-    });
+    // Send confirmation via both WhatsApp and email, record timestamps
+    (async () => {
+      const confirmUpdates = {};
+      try {
+        await sendConfirmationWhatsApp(savedQuote);
+      } catch (err) {
+        console.error('[Quote Route] Failed to send confirmation WhatsApp:', err);
+      }
+      try {
+        const emailResult = await sendConfirmationEmail(savedQuote);
+        if (emailResult.success) {
+          confirmUpdates.confirmation_email_sent_at = new Date().toISOString();
+        }
+      } catch (err) {
+        console.error('[Quote Route] Failed to send confirmation email:', err);
+      }
+      if (Object.keys(confirmUpdates).length > 0) {
+        await supabase.from('quotes').update(confirmUpdates).eq('id', savedQuote.id);
+      }
+    })();
 
     // Return success (same format as before)
     res.json({

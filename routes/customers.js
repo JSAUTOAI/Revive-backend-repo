@@ -465,8 +465,17 @@ async function getConversionAnalytics(req, res) {
   try {
     // Fetch data in parallel
     const [quotesRes, jobsRes, customersRes] = await Promise.all([
-      supabase.from('quotes').select('id, customer_id, customer_accepted_estimate, customer_accepted_at, estimate_email_sent_at, services, created_at'),
-      supabase.from('jobs').select('id, customer_id, status, job_value, payment_status, service, scheduled_date'),
+      supabase.from('quotes').select(
+        'id, customer_id, customer_accepted_estimate, customer_accepted_at, ' +
+        'estimate_email_sent_at, whatsapp_sent_at, estimated_at, ' +
+        'services, created_at, status, ' +
+        'estimated_value_min, estimated_value_max, ' +
+        'preferred_contact, postcode, ' +
+        'qualification_status, lead_score, last_contact_at'
+      ),
+      supabase.from('jobs').select(
+        'id, customer_id, status, job_value, payment_status, service, scheduled_date, quote_id'
+      ),
       supabase.from('customers').select('id, last_followup_sent_at')
     ]);
 
@@ -474,25 +483,34 @@ async function getConversionAnalytics(req, res) {
     const jobs = jobsRes.data || [];
     const customers = customersRes.data || [];
 
-    // 1. Quote-to-acceptance rate
-    const quotesWithEstimate = quotes.filter(q => q.estimate_email_sent_at);
-    const quotesAccepted = quotesWithEstimate.filter(q => q.customer_accepted_estimate === true);
+    // ===== CONVERSION RATES (fixed) =====
+
+    // 1. Quote-to-acceptance rate (use estimated_at as fallback)
+    const quotesWithEstimate = quotes.filter(q => q.estimate_email_sent_at || q.estimated_at);
+    const quotesAccepted = quotes.filter(q => q.customer_accepted_estimate === true);
     const quoteToAcceptanceRate = quotesWithEstimate.length > 0
       ? Math.round((quotesAccepted.length / quotesWithEstimate.length) * 100)
       : 0;
 
-    // 2. Acceptance-to-job rate
+    // 2. Acceptance-to-job rate (include booked/scheduled, not just completed)
     const acceptedCustomerIds = [...new Set(quotesAccepted.filter(q => q.customer_id).map(q => q.customer_id))];
-    const completedJobCustomerIds = [...new Set(jobs.filter(j => j.status === 'completed' && j.customer_id).map(j => j.customer_id))];
-    const acceptedThenBooked = acceptedCustomerIds.filter(id => completedJobCustomerIds.includes(id));
+    const jobCustomerIds = [...new Set(
+      jobs.filter(j => ['completed', 'scheduled', 'in_progress'].includes(j.status) && j.customer_id)
+        .map(j => j.customer_id)
+    )];
+    const acceptedThenBooked = acceptedCustomerIds.filter(id => jobCustomerIds.includes(id));
     const acceptanceToJobRate = acceptedCustomerIds.length > 0
       ? Math.round((acceptedThenBooked.length / acceptedCustomerIds.length) * 100)
       : 0;
 
     // 3. Average time from estimate to acceptance (hours)
     const timeDiffs = quotesAccepted
-      .filter(q => q.customer_accepted_at && q.estimate_email_sent_at)
-      .map(q => new Date(q.customer_accepted_at) - new Date(q.estimate_email_sent_at));
+      .filter(q => q.customer_accepted_at && (q.estimate_email_sent_at || q.estimated_at))
+      .map(q => {
+        const sentAt = q.estimate_email_sent_at || q.estimated_at;
+        return new Date(q.customer_accepted_at) - new Date(sentAt);
+      })
+      .filter(d => d > 0);
     const avgTimeToAcceptHours = timeDiffs.length > 0
       ? Math.round(timeDiffs.reduce((a, b) => a + b, 0) / timeDiffs.length / (1000 * 60 * 60) * 10) / 10
       : 0;
@@ -510,7 +528,7 @@ async function getConversionAnalytics(req, res) {
     const followedUpThenBooked = followedUpCustomers.filter(c => {
       return jobs.some(j =>
         j.customer_id === c.id &&
-        j.status === 'completed' &&
+        ['completed', 'scheduled', 'in_progress'].includes(j.status) &&
         new Date(j.scheduled_date) > new Date(c.last_followup_sent_at)
       );
     });
@@ -518,9 +536,132 @@ async function getConversionAnalytics(req, res) {
       ? Math.round((followedUpThenBooked.length / followedUpCustomers.length) * 100)
       : 0;
 
+    // ===== CONVERSION FUNNEL =====
+    const paidQuoteIds = new Set(jobs.filter(j => j.payment_status === 'paid' && j.quote_id).map(j => j.quote_id));
+    const funnel = {
+      total_quotes: quotes.length,
+      estimated: quotes.filter(q => q.estimated_at).length,
+      sent_to_customer: quotes.filter(q => q.estimate_email_sent_at || q.whatsapp_sent_at).length,
+      accepted: quotesAccepted.length,
+      booked: quotes.filter(q => ['booked', 'completed'].includes(q.status)).length,
+      completed: quotes.filter(q => q.status === 'completed').length,
+      paid: paidQuoteIds.size
+    };
+
+    // ===== PIPELINE SNAPSHOT =====
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1));
+    startOfWeek.setHours(0, 0, 0, 0);
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 7);
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+    const pipeline = {
+      awaiting_action: quotes.filter(q => q.status === 'new').length,
+      hot_leads_uncontacted: quotes.filter(q => q.qualification_status === 'hot' && q.status === 'new').length,
+      accepted_not_booked: quotes.filter(q =>
+        q.customer_accepted_estimate === true &&
+        !['booked', 'completed'].includes(q.status)
+      ).length,
+      jobs_this_week: jobs.filter(j => {
+        const d = new Date(j.scheduled_date);
+        return d >= startOfWeek && d < endOfWeek && j.status !== 'cancelled';
+      }).length,
+      jobs_this_month: jobs.filter(j => {
+        const d = new Date(j.scheduled_date);
+        return d >= startOfMonth && d <= endOfMonth && j.status !== 'cancelled';
+      }).length,
+      total_pipeline_value: quotes
+        .filter(q => ['new', 'contacted', 'quoted'].includes(q.status))
+        .reduce((sum, q) => sum + Number(q.estimated_value_max || 0), 0)
+    };
+
+    // ===== SERVICE INSIGHTS =====
+    const serviceStats = {};
+    quotes.forEach(q => {
+      (q.services || []).forEach(svc => {
+        if (!serviceStats[svc]) serviceStats[svc] = { quote_count: 0, converted: 0, total_value: 0 };
+        serviceStats[svc].quote_count++;
+        if (['booked', 'completed'].includes(q.status) || q.customer_accepted_estimate) {
+          serviceStats[svc].converted++;
+        }
+      });
+    });
+    paidJobs.forEach(j => {
+      const svc = (j.service || '').toLowerCase();
+      if (serviceStats[svc]) serviceStats[svc].total_value += Number(j.job_value || 0);
+    });
+    const mostRequested = Object.entries(serviceStats)
+      .map(([service, stats]) => ({
+        service,
+        quote_count: stats.quote_count,
+        conversion_rate: stats.quote_count > 0 ? Math.round((stats.converted / stats.quote_count) * 100) : 0,
+        avg_value: stats.converted > 0 ? Math.round(stats.total_value / stats.converted) : 0
+      }))
+      .sort((a, b) => b.quote_count - a.quote_count);
+
+    // ===== CUSTOMER BEHAVIOUR =====
+    const contactBreakdown = {};
+    quotes.forEach(q => {
+      const method = (q.preferred_contact || 'no_preference').toLowerCase();
+      contactBreakdown[method] = (contactBreakdown[method] || 0) + 1;
+    });
+
+    const peakHours = new Array(24).fill(0);
+    const peakDays = new Array(7).fill(0);
+    quotes.forEach(q => {
+      const d = new Date(q.created_at);
+      peakHours[d.getHours()]++;
+      peakDays[d.getDay()]++;
+    });
+
+    const postcodeAreas = {};
+    quotes.forEach(q => {
+      if (q.postcode) {
+        const area = q.postcode.replace(/\s/g, '').match(/^[A-Za-z]+/);
+        if (area) {
+          const key = area[0].toUpperCase();
+          postcodeAreas[key] = (postcodeAreas[key] || 0) + 1;
+        }
+      }
+    });
+    const topPostcodes = Object.entries(postcodeAreas)
+      .map(([postcode_area, count]) => ({ postcode_area, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    const customerQuoteCounts = {};
+    quotes.forEach(q => {
+      if (q.customer_id) customerQuoteCounts[q.customer_id] = (customerQuoteCounts[q.customer_id] || 0) + 1;
+    });
+    const uniqueCustomers = Object.keys(customerQuoteCounts).length;
+    const repeatCustomers = Object.values(customerQuoteCounts).filter(c => c >= 2).length;
+    const repeatRate = uniqueCustomers > 0 ? Math.round((repeatCustomers / uniqueCustomers) * 100) : 0;
+
+    // ===== RESPONSE METRICS =====
+    const contactedQuotes = quotes.filter(q => q.last_contact_at && q.status !== 'new');
+    const timeToAction = contactedQuotes
+      .map(q => new Date(q.last_contact_at) - new Date(q.created_at))
+      .filter(d => d > 0);
+    const avgTimeToFirstAction = timeToAction.length > 0
+      ? Math.round(timeToAction.reduce((a, b) => a + b, 0) / timeToAction.length / (1000 * 60 * 60) * 10) / 10
+      : 0;
+
+    const estimatedQuotes = quotes.filter(q => q.estimated_at);
+    const timeToEstimate = estimatedQuotes
+      .map(q => new Date(q.estimated_at) - new Date(q.created_at))
+      .filter(d => d > 0);
+    const avgTimeToEstimate = timeToEstimate.length > 0
+      ? Math.round(timeToEstimate.reduce((a, b) => a + b, 0) / timeToEstimate.length / (1000 * 60 * 60) * 10) / 10
+      : 0;
+
     res.json({
       success: true,
       analytics: {
+        // Existing metrics (fixed)
         quote_to_acceptance_rate: quoteToAcceptanceRate,
         quotes_with_estimate: quotesWithEstimate.length,
         quotes_accepted: quotesAccepted.length,
@@ -533,7 +674,22 @@ async function getConversionAnalytics(req, res) {
         followup_effectiveness: followUpEffectiveness,
         followed_up_count: followedUpCustomers.length,
         followed_up_then_booked: followedUpThenBooked.length,
-        total_quotes: quotes.length
+        total_quotes: quotes.length,
+        // New metrics
+        funnel,
+        pipeline,
+        service_insights: { most_requested: mostRequested },
+        customer_behaviour: {
+          preferred_contact_breakdown: contactBreakdown,
+          peak_submission_hours: peakHours,
+          peak_submission_days: peakDays,
+          top_postcodes: topPostcodes,
+          repeat_customer_rate: repeatRate
+        },
+        response_metrics: {
+          avg_time_to_first_action_hours: avgTimeToFirstAction,
+          avg_time_to_estimate_hours: avgTimeToEstimate
+        }
       }
     });
   } catch (error) {

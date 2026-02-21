@@ -69,14 +69,32 @@ async function processEstimation(supabase, quoteId, quote) {
       // Continue even if Sheets update fails
     });
 
-    // Step 4: Send estimate via both WhatsApp and email (belt and suspenders)
-    sendEstimateWhatsApp(updatedQuote).catch(err => {
-      console.error(`[Estimation Job] Failed to send estimate WhatsApp:`, err);
-    });
+    // Step 4: Send estimate via both WhatsApp and email, record timestamps
+    const timestampUpdates = {};
 
-    sendEstimateEmail(updatedQuote).catch(err => {
+    try {
+      const waResult = await sendEstimateWhatsApp(updatedQuote);
+      if (waResult.success) {
+        timestampUpdates.whatsapp_sent_at = new Date().toISOString();
+        console.log(`[Estimation Job] WhatsApp estimate sent, timestamp recorded`);
+      }
+    } catch (err) {
+      console.error(`[Estimation Job] Failed to send estimate WhatsApp:`, err);
+    }
+
+    try {
+      const emailResult = await sendEstimateEmail(updatedQuote);
+      if (emailResult.success) {
+        timestampUpdates.estimate_email_sent_at = new Date().toISOString();
+        console.log(`[Estimation Job] Estimate email sent, timestamp recorded`);
+      }
+    } catch (err) {
       console.error(`[Estimation Job] Failed to send estimate email:`, err);
-    });
+    }
+
+    if (Object.keys(timestampUpdates).length > 0) {
+      await supabase.from('quotes').update(timestampUpdates).eq('id', quoteId);
+    }
 
     // Step 5: Check if should alert admin
     if (shouldAlertAdmin(scoring.score, scoring.qualification)) {
