@@ -87,6 +87,7 @@
       <button onclick="switchTab('schedule')" id="tab-schedule" class="tab-btn px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300">Schedule</button>
       <button onclick="switchTab('team')" id="tab-team" class="tab-btn px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300">Team</button>
       <button onclick="switchTab('customers')" id="tab-customers" class="tab-btn px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300">Customers</button>
+      <button onclick="switchTab('invoices')" id="tab-invoices" class="tab-btn px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300">Invoices</button>
     </div>
   </header>
 
@@ -480,6 +481,53 @@
         <button onclick="custNextPage()" id="custNextBtn" class="bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-white px-3 py-1.5 rounded-lg text-xs">Next</button>
       </div>
     </div>
+  </div>
+
+  <!-- ===== INVOICES TAB ===== -->
+  <div id="content-invoices" class="tab-content hidden max-w-7xl mx-auto px-4 sm:px-6 py-6">
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+        <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Total</div>
+        <div class="text-xl font-bold text-white mt-1" id="inv-stat-total">-</div>
+      </div>
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+        <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Draft</div>
+        <div class="text-xl font-bold text-neutral-400 mt-1" id="inv-stat-draft">-</div>
+      </div>
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+        <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Sent</div>
+        <div class="text-xl font-bold text-orange-400 mt-1" id="inv-stat-sent">-</div>
+      </div>
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+        <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Paid</div>
+        <div class="text-xl font-bold text-green-400 mt-1" id="inv-stat-paid">-</div>
+      </div>
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+        <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Outstanding</div>
+        <div class="text-xl font-bold text-red-400 mt-1" id="inv-stat-outstanding">-</div>
+      </div>
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+        <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Total Invoiced</div>
+        <div class="text-xl font-bold text-lime-400 mt-1" id="inv-stat-invoiced">-</div>
+      </div>
+    </div>
+
+    <!-- Filter -->
+    <div class="flex items-center gap-3 mb-4">
+      <select id="inv-filter-status" onchange="loadInvoices()" class="bg-neutral-900 border border-neutral-800 text-neutral-300 text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+        <option value="">All Invoices</option>
+        <option value="draft">Draft</option>
+        <option value="sent">Sent</option>
+        <option value="paid">Paid</option>
+        <option value="overdue">Overdue</option>
+      </select>
+    </div>
+
+    <!-- Invoice List -->
+    <div id="invoiceList" class="space-y-2"></div>
+    <div id="invoiceEmpty" class="hidden text-center text-neutral-600 text-sm py-12">No invoices yet. Generate an invoice from a completed job.</div>
   </div>
 
 </div>
@@ -1068,6 +1116,12 @@
         </div>
       </div>
 
+      <!-- Invoice (shown when completed) -->
+      <div id="jd-invoiceSection" class="hidden">
+        <h3 class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mb-3">Invoice</h3>
+        <div id="jd-invoiceContent"></div>
+      </div>
+
       <!-- Notes -->
       <div>
         <h3 class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mb-2">Notes</h3>
@@ -1162,6 +1216,13 @@
         <h3 class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mb-3">Job History</h3>
         <div id="cp-jobs" class="space-y-2 max-h-60 overflow-y-auto"></div>
         <div id="cp-no-jobs" class="hidden text-neutral-600 text-xs">No jobs yet</div>
+      </div>
+
+      <!-- Invoice History -->
+      <div>
+        <h3 class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mb-3">Invoices</h3>
+        <div id="cp-invoices" class="space-y-2 max-h-40 overflow-y-auto"></div>
+        <div id="cp-no-invoices" class="hidden text-neutral-600 text-xs">No invoices yet</div>
       </div>
 
       <!-- Quote History -->
@@ -1310,6 +1371,72 @@
 </div>
 
 <!-- ============ TOAST ============ -->
+<!-- ============ INVOICE PREVIEW/EDIT MODAL ============ -->
+<div id="invoiceModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[55] flex items-start justify-center p-4 pt-8 overflow-y-auto" onclick="if(event.target===this)closeInvoiceModal()">
+  <div class="bg-neutral-900 border border-neutral-800 rounded-2xl max-w-2xl w-full fade-in my-4">
+    <div class="sticky top-0 bg-neutral-900 border-b border-neutral-800 px-6 py-4 rounded-t-2xl flex items-center justify-between z-10">
+      <div>
+        <h2 class="text-white font-semibold text-sm" id="inv-modal-title">Invoice</h2>
+        <div class="text-neutral-500 text-[10px] mt-0.5" id="inv-modal-date"></div>
+      </div>
+      <button onclick="closeInvoiceModal()" class="text-neutral-500 hover:text-white transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="p-6 space-y-5">
+      <!-- Customer Info (read-only) -->
+      <div class="space-y-2 text-sm">
+        <div class="flex justify-between"><span class="text-neutral-500">Customer</span><span class="text-white" id="inv-modal-customer"></span></div>
+        <div class="flex justify-between"><span class="text-neutral-500">Address</span><span class="text-white" id="inv-modal-address"></span></div>
+        <div class="flex justify-between"><span class="text-neutral-500">Service</span><span class="text-white" id="inv-modal-service"></span></div>
+      </div>
+
+      <!-- Line Items -->
+      <div>
+        <h3 class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mb-3">Line Items</h3>
+        <div id="inv-modal-items" class="space-y-2"></div>
+        <button onclick="addInvoiceLineItem()" class="mt-2 text-lime-400 hover:text-lime-300 text-xs font-medium transition-colors">+ Add Line Item</button>
+      </div>
+
+      <!-- VAT -->
+      <div>
+        <h3 class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mb-2">VAT Rate</h3>
+        <div class="flex gap-2">
+          <button onclick="setInvoiceVat(0)" class="inv-vat-btn px-3 py-1.5 rounded-lg text-xs font-medium transition-all bg-lime-400 text-black ring-2 ring-lime-300" data-rate="0">0%</button>
+          <button onclick="setInvoiceVat(5)" class="inv-vat-btn px-3 py-1.5 rounded-lg text-xs font-medium transition-all bg-neutral-800 text-neutral-300 hover:bg-neutral-700" data-rate="5">5%</button>
+          <button onclick="setInvoiceVat(20)" class="inv-vat-btn px-3 py-1.5 rounded-lg text-xs font-medium transition-all bg-neutral-800 text-neutral-300 hover:bg-neutral-700" data-rate="20">20%</button>
+        </div>
+      </div>
+
+      <!-- Totals -->
+      <div class="bg-black/30 rounded-xl p-4 space-y-2">
+        <div class="flex justify-between text-sm"><span class="text-neutral-500">Subtotal</span><span class="text-white" id="inv-modal-subtotal">£0.00</span></div>
+        <div id="inv-modal-vat-row" class="hidden flex justify-between text-sm"><span class="text-neutral-500" id="inv-modal-vat-label">VAT (0%)</span><span class="text-white" id="inv-modal-vat-amount">£0.00</span></div>
+        <div class="flex justify-between text-lg font-bold border-t border-neutral-700 pt-2"><span class="text-white">Total</span><span class="text-lime-400" id="inv-modal-total">£0.00</span></div>
+      </div>
+
+      <!-- Payment Terms -->
+      <div>
+        <h3 class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mb-2">Payment Terms</h3>
+        <input type="text" id="inv-modal-terms" value="Due on receipt" class="w-full bg-black border border-neutral-700 text-white text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+      </div>
+
+      <!-- Notes -->
+      <div>
+        <h3 class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold mb-2">Notes</h3>
+        <textarea id="inv-modal-notes" rows="2" class="w-full bg-black border border-neutral-700 text-white text-sm px-3 py-2 rounded-lg resize-none focus:border-lime-400 focus:outline-none" placeholder="Optional notes for the customer..."></textarea>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex gap-2 pt-2 border-t border-neutral-800">
+        <button onclick="saveInvoiceDraft()" class="bg-neutral-800 hover:bg-neutral-700 text-white font-medium px-4 py-2.5 rounded-lg text-xs transition-colors">Save Draft</button>
+        <button onclick="sendInvoiceFromModal()" class="bg-lime-400 hover:bg-lime-300 text-black font-semibold px-4 py-2.5 rounded-lg text-xs transition-colors flex-1">Send to Customer</button>
+        <button id="inv-modal-view-btn" onclick="viewInvoicePublic()" class="hidden bg-neutral-800 hover:bg-neutral-700 text-white font-medium px-4 py-2.5 rounded-lg text-xs transition-colors">View</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="toast" class="fixed top-4 right-4 z-[60] hidden fade-in">
   <div class="bg-neutral-900 border border-neutral-700 rounded-lg px-4 py-3 shadow-xl flex items-center gap-3 max-w-sm">
     <div id="toast-icon"></div>
@@ -2422,6 +2549,7 @@ function switchTab(tab) {
   if (tab === 'schedule') { loadTeamForDropdowns(); loadSchedule(); loadRecurring(); }
   if (tab === 'team') loadTeam();
   if (tab === 'customers') { loadCustomers(); loadCustStats(); loadAnalytics(); }
+  if (tab === 'invoices') loadInvoices();
 }
 
 // ============================
@@ -2864,6 +2992,7 @@ async function openJobDetail(id) {
 
   renderJobStatusButtons(job.status);
   renderPaymentSection(job);
+  renderInvoiceSection(job);
 }
 
 function closeJobDetail() {
@@ -2983,6 +3112,7 @@ async function updateJobStatus(newStatus) {
       schedState.currentJob = res.data;
       renderJobStatusButtons(newStatus);
       renderPaymentSection(res.data);
+      renderInvoiceSection(res.data);
       loadSchedule();
       showToast('Job status updated to ' + capitalize(newStatus), 'success');
     }
@@ -3971,6 +4101,9 @@ async function openCustProfile(id) {
       noQuotes.classList.remove('hidden');
     }
 
+    // Invoices
+    loadCustInvoices(c.id);
+
     // Notes
     document.getElementById('cp-notes').value = c.admin_notes || '';
 
@@ -4317,6 +4450,387 @@ document.addEventListener('click', function(e) {
     results.classList.add('hidden');
   }
 });
+
+// ============================
+// INVOICES
+// ============================
+var invState = {
+  invoices: [],
+  currentInvoice: null,
+  lineItems: [],
+  vatRate: 0
+};
+
+async function loadInvoices() {
+  try {
+    var filter = document.getElementById('inv-filter-status').value;
+    var url = '/admin/invoices' + (filter ? '?status=' + filter : '');
+    var res = await apiRequest(url);
+    if (!res.success) return;
+
+    invState.invoices = res.data || [];
+    renderInvoiceStats();
+    renderInvoiceList();
+  } catch (e) {
+    console.error('Failed to load invoices:', e);
+  }
+}
+
+function renderInvoiceStats() {
+  var all = invState.invoices;
+  // If filtered, load all for stats
+  var draft = 0, sent = 0, paid = 0, overdue = 0, totalInvoiced = 0, outstanding = 0;
+  all.forEach(function(inv) {
+    if (inv.status === 'draft') draft++;
+    else if (inv.status === 'sent') { sent++; outstanding += Number(inv.total || 0); }
+    else if (inv.status === 'paid') { paid++; totalInvoiced += Number(inv.total || 0); }
+    else if (inv.status === 'overdue') { overdue++; outstanding += Number(inv.total || 0); }
+    totalInvoiced += (inv.status !== 'paid') ? 0 : 0; // already counted above
+  });
+  // Recalculate total invoiced as sum of all
+  var allTotal = 0;
+  all.forEach(function(inv) { allTotal += Number(inv.total || 0); });
+
+  document.getElementById('inv-stat-total').textContent = all.length;
+  document.getElementById('inv-stat-draft').textContent = draft;
+  document.getElementById('inv-stat-sent').textContent = sent;
+  document.getElementById('inv-stat-paid').textContent = paid;
+  document.getElementById('inv-stat-outstanding').textContent = '\u00A3' + outstanding.toFixed(0);
+  document.getElementById('inv-stat-invoiced').textContent = '\u00A3' + allTotal.toFixed(0);
+}
+
+function getInvoiceStatusBadge(status) {
+  var map = {
+    draft: 'text-neutral-300 bg-neutral-700',
+    sent: 'text-orange-300 bg-orange-900/60',
+    paid: 'text-green-300 bg-green-900/60',
+    overdue: 'text-red-300 bg-red-900/60'
+  };
+  var cls = map[status] || map.draft;
+  return '<span class="px-2 py-0.5 rounded text-[10px] font-medium ' + cls + '">' + capitalize(status || 'draft') + '</span>';
+}
+
+function renderInvoiceList() {
+  var list = document.getElementById('invoiceList');
+  var empty = document.getElementById('invoiceEmpty');
+  list.innerHTML = '';
+
+  if (invState.invoices.length === 0) {
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  invState.invoices.forEach(function(inv) {
+    var card = document.createElement('div');
+    card.className = 'bg-neutral-900 border border-neutral-800 rounded-xl p-4 cursor-pointer hover:border-neutral-700 transition-colors';
+    card.onclick = function() { openInvoiceModal(inv.id); };
+
+    var dateStr = inv.created_at ? new Date(inv.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+
+    card.innerHTML =
+      '<div class="flex items-center justify-between">' +
+        '<div class="flex items-center gap-3">' +
+          '<span class="text-lime-400 font-bold text-xs">' + esc(inv.invoice_number) + '</span>' +
+          '<span class="text-white text-sm font-medium">' + esc(inv.customer_name) + '</span>' +
+          '<span class="text-neutral-500 text-xs hidden sm:inline">' + esc(inv.service || '') + '</span>' +
+        '</div>' +
+        '<div class="flex items-center gap-3">' +
+          '<span class="text-neutral-500 text-xs">' + dateStr + '</span>' +
+          '<span class="text-lime-400 font-semibold text-sm">\u00A3' + Number(inv.total || 0).toFixed(2) + '</span>' +
+          getInvoiceStatusBadge(inv.status) +
+        '</div>' +
+      '</div>';
+
+    list.appendChild(card);
+  });
+}
+
+// Invoice section in job detail modal
+async function renderInvoiceSection(job) {
+  var section = document.getElementById('jd-invoiceSection');
+  var content = document.getElementById('jd-invoiceContent');
+
+  if (job.status !== 'completed') {
+    section.classList.add('hidden');
+    return;
+  }
+  section.classList.remove('hidden');
+  content.innerHTML = '<div class="text-neutral-500 text-xs">Checking...</div>';
+
+  try {
+    var res = await apiRequest('/admin/jobs/' + job.id + '/invoice');
+    if (res.success && res.data) {
+      var inv = res.data;
+      var badge = getInvoiceStatusBadge(inv.status);
+      var btns = '';
+      if (inv.status === 'draft') {
+        btns = '<button onclick="openInvoiceModal(\'' + inv.id + '\')" class="bg-lime-400 hover:bg-lime-300 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors w-full">Edit & Send Invoice</button>';
+      } else if (inv.status === 'sent') {
+        btns =
+          '<div class="flex gap-2">' +
+            '<button onclick="openInvoiceModal(\'' + inv.id + '\')" class="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors">View/Resend</button>' +
+            '<button onclick="markInvoicePaid(\'' + inv.id + '\')" class="flex-1 bg-green-900 hover:bg-green-800 text-green-300 text-xs font-medium px-3 py-2 rounded-lg transition-colors">Mark Paid</button>' +
+          '</div>';
+      } else if (inv.status === 'paid') {
+        btns = '<button onclick="openInvoiceModal(\'' + inv.id + '\')" class="bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-medium px-4 py-2 rounded-lg transition-colors w-full">View Invoice</button>';
+      }
+      content.innerHTML =
+        '<div class="flex items-center justify-between mb-3">' +
+          '<span class="text-lime-400 font-semibold text-xs">' + esc(inv.invoice_number) + '</span>' +
+          '<div class="flex items-center gap-2">' +
+            '<span class="text-white text-sm font-bold">\u00A3' + Number(inv.total).toFixed(2) + '</span>' +
+            badge +
+          '</div>' +
+        '</div>' +
+        btns;
+    } else {
+      content.innerHTML = '<button onclick="generateInvoice()" class="w-full bg-lime-400 hover:bg-lime-300 text-black text-xs font-semibold px-4 py-2.5 rounded-lg transition-colors">Generate Invoice</button>';
+    }
+  } catch (e) {
+    content.innerHTML = '<button onclick="generateInvoice()" class="w-full bg-lime-400 hover:bg-lime-300 text-black text-xs font-semibold px-4 py-2.5 rounded-lg transition-colors">Generate Invoice</button>';
+  }
+}
+
+async function generateInvoice() {
+  if (!schedState.currentJob) return;
+  try {
+    var res = await apiRequest('/admin/jobs/' + schedState.currentJob.id + '/invoice', { method: 'POST' });
+    if (res.success) {
+      showToast('Invoice ' + res.data.invoice_number + ' created', 'success');
+      renderInvoiceSection(schedState.currentJob);
+      openInvoiceModal(res.data.id);
+    } else {
+      if (res.invoice_id) {
+        openInvoiceModal(res.invoice_id);
+      } else {
+        showToast(res.error || 'Failed to create invoice', 'error');
+      }
+    }
+  } catch (e) {
+    showToast('Failed to create invoice', 'error');
+  }
+}
+
+async function markInvoicePaid(invoiceId) {
+  try {
+    var res = await apiRequest('/admin/invoices/' + invoiceId, {
+      method: 'PATCH',
+      body: { status: 'paid', paid_at: new Date().toISOString() }
+    });
+    if (res.success) {
+      showToast('Invoice marked as paid', 'success');
+      if (schedState.currentJob) renderInvoiceSection(schedState.currentJob);
+      if (currentTab === 'invoices') loadInvoices();
+    }
+  } catch (e) {
+    showToast('Failed to update invoice', 'error');
+  }
+}
+
+// Invoice modal
+async function openInvoiceModal(invoiceId) {
+  try {
+    var res = await apiRequest('/admin/invoices/' + invoiceId);
+    if (!res.success) { showToast('Failed to load invoice', 'error'); return; }
+
+    invState.currentInvoice = res.data;
+    var inv = res.data;
+    invState.lineItems = Array.isArray(inv.line_items) ? inv.line_items.map(function(li) { return Object.assign({}, li); }) : [];
+    invState.vatRate = parseFloat(inv.vat_rate) || 0;
+
+    document.getElementById('invoiceModal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+
+    document.getElementById('inv-modal-title').textContent = inv.invoice_number;
+    document.getElementById('inv-modal-date').textContent = inv.created_at ? new Date(inv.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+    document.getElementById('inv-modal-customer').textContent = inv.customer_name;
+    document.getElementById('inv-modal-address').textContent = (inv.address || '') + (inv.postcode ? ' ' + inv.postcode : '');
+    document.getElementById('inv-modal-service').textContent = inv.service || '';
+    document.getElementById('inv-modal-terms').value = inv.payment_terms || 'Due on receipt';
+    document.getElementById('inv-modal-notes').value = inv.notes || '';
+
+    // Show view button if sent or paid
+    var viewBtn = document.getElementById('inv-modal-view-btn');
+    if (inv.view_token) {
+      viewBtn.classList.remove('hidden');
+    } else {
+      viewBtn.classList.add('hidden');
+    }
+
+    renderInvoiceLineItems();
+    setInvoiceVat(invState.vatRate);
+  } catch (e) {
+    showToast('Failed to load invoice', 'error');
+  }
+}
+
+function closeInvoiceModal() {
+  document.getElementById('invoiceModal').classList.add('hidden');
+  document.body.style.overflow = '';
+  invState.currentInvoice = null;
+}
+
+function renderInvoiceLineItems() {
+  var container = document.getElementById('inv-modal-items');
+  container.innerHTML = '';
+
+  invState.lineItems.forEach(function(item, idx) {
+    var row = document.createElement('div');
+    row.className = 'grid grid-cols-12 gap-2 items-center';
+    row.innerHTML =
+      '<div class="col-span-5"><input type="text" value="' + esc(item.description || '') + '" onchange="updateLineItem(' + idx + ', \'description\', this.value)" class="w-full bg-black border border-neutral-700 text-white text-xs px-2 py-1.5 rounded-lg focus:border-lime-400 focus:outline-none" placeholder="Description"></div>' +
+      '<div class="col-span-2"><input type="number" value="' + (item.quantity || 1) + '" min="1" onchange="updateLineItem(' + idx + ', \'quantity\', this.value)" class="w-full bg-black border border-neutral-700 text-white text-xs px-2 py-1.5 rounded-lg focus:border-lime-400 focus:outline-none text-center" placeholder="Qty"></div>' +
+      '<div class="col-span-3"><input type="number" value="' + Number(item.unit_price || 0).toFixed(2) + '" step="0.01" min="0" onchange="updateLineItem(' + idx + ', \'unit_price\', this.value)" class="w-full bg-black border border-neutral-700 text-white text-xs px-2 py-1.5 rounded-lg focus:border-lime-400 focus:outline-none text-right" placeholder="Price"></div>' +
+      '<div class="col-span-1 text-right text-xs text-lime-400 font-medium">\u00A3' + Number(item.total || 0).toFixed(2) + '</div>' +
+      '<div class="col-span-1 text-right"><button onclick="removeLineItem(' + idx + ')" class="text-red-400 hover:text-red-300 text-xs">&times;</button></div>';
+    container.appendChild(row);
+  });
+
+  recalcInvoiceTotals();
+}
+
+function updateLineItem(idx, field, value) {
+  if (!invState.lineItems[idx]) return;
+  if (field === 'quantity') value = parseInt(value) || 1;
+  if (field === 'unit_price') value = parseFloat(value) || 0;
+  invState.lineItems[idx][field] = value;
+  if (field === 'quantity' || field === 'unit_price') {
+    invState.lineItems[idx].total = (invState.lineItems[idx].quantity || 1) * (invState.lineItems[idx].unit_price || 0);
+  }
+  renderInvoiceLineItems();
+}
+
+function removeLineItem(idx) {
+  invState.lineItems.splice(idx, 1);
+  renderInvoiceLineItems();
+}
+
+function addInvoiceLineItem() {
+  invState.lineItems.push({ description: '', quantity: 1, unit_price: 0, total: 0 });
+  renderInvoiceLineItems();
+}
+
+function setInvoiceVat(rate) {
+  invState.vatRate = rate;
+  document.querySelectorAll('.inv-vat-btn').forEach(function(btn) {
+    if (parseInt(btn.getAttribute('data-rate')) === rate) {
+      btn.className = 'inv-vat-btn px-3 py-1.5 rounded-lg text-xs font-medium transition-all bg-lime-400 text-black ring-2 ring-lime-300';
+    } else {
+      btn.className = 'inv-vat-btn px-3 py-1.5 rounded-lg text-xs font-medium transition-all bg-neutral-800 text-neutral-300 hover:bg-neutral-700';
+    }
+  });
+  recalcInvoiceTotals();
+}
+
+function recalcInvoiceTotals() {
+  var subtotal = 0;
+  invState.lineItems.forEach(function(li) { subtotal += Number(li.total || 0); });
+  var vatAmount = subtotal * (invState.vatRate / 100);
+  var total = subtotal + vatAmount;
+
+  document.getElementById('inv-modal-subtotal').textContent = '\u00A3' + subtotal.toFixed(2);
+  var vatRow = document.getElementById('inv-modal-vat-row');
+  if (invState.vatRate > 0) {
+    vatRow.classList.remove('hidden');
+    document.getElementById('inv-modal-vat-label').textContent = 'VAT (' + invState.vatRate + '%)';
+    document.getElementById('inv-modal-vat-amount').textContent = '\u00A3' + vatAmount.toFixed(2);
+  } else {
+    vatRow.classList.add('hidden');
+  }
+  document.getElementById('inv-modal-total').textContent = '\u00A3' + total.toFixed(2);
+}
+
+async function saveInvoiceDraft() {
+  if (!invState.currentInvoice) return;
+  var subtotal = 0;
+  invState.lineItems.forEach(function(li) { subtotal += Number(li.total || 0); });
+  var vatAmount = subtotal * (invState.vatRate / 100);
+  var total = subtotal + vatAmount;
+
+  try {
+    var res = await apiRequest('/admin/invoices/' + invState.currentInvoice.id, {
+      method: 'PATCH',
+      body: {
+        line_items: invState.lineItems,
+        subtotal: subtotal,
+        vat_rate: invState.vatRate,
+        vat_amount: vatAmount,
+        total: total,
+        notes: document.getElementById('inv-modal-notes').value || null,
+        payment_terms: document.getElementById('inv-modal-terms').value || 'Due on receipt'
+      }
+    });
+    if (res.success) {
+      invState.currentInvoice = res.data;
+      showToast('Invoice saved', 'success');
+      if (currentTab === 'invoices') loadInvoices();
+    }
+  } catch (e) {
+    showToast('Failed to save invoice', 'error');
+  }
+}
+
+async function sendInvoiceFromModal() {
+  if (!invState.currentInvoice) return;
+  // Save first
+  await saveInvoiceDraft();
+
+  try {
+    var res = await apiRequest('/admin/invoices/' + invState.currentInvoice.id + '/send', { method: 'POST' });
+    if (res.success) {
+      invState.currentInvoice = res.data;
+      showToast('Invoice sent to ' + (invState.currentInvoice.customer_email || 'customer'), 'success');
+      closeInvoiceModal();
+      if (schedState.currentJob) renderInvoiceSection(schedState.currentJob);
+      if (currentTab === 'invoices') loadInvoices();
+    } else {
+      showToast(res.error || 'Failed to send invoice', 'error');
+    }
+  } catch (e) {
+    showToast('Failed to send invoice', 'error');
+  }
+}
+
+function viewInvoicePublic() {
+  if (!invState.currentInvoice || !invState.currentInvoice.view_token) return;
+  window.open(window.location.origin + '/invoice/' + invState.currentInvoice.view_token, '_blank');
+}
+
+// Customer profile invoice history
+async function loadCustInvoices(customerId) {
+  var container = document.getElementById('cp-invoices');
+  var empty = document.getElementById('cp-no-invoices');
+  container.innerHTML = '';
+
+  try {
+    var res = await apiRequest('/admin/invoices?customer_id=' + customerId);
+    if (!res.success || !res.data || res.data.length === 0) {
+      empty.classList.remove('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+
+    res.data.forEach(function(inv) {
+      var row = document.createElement('div');
+      row.className = 'flex items-center justify-between bg-black/30 rounded-lg px-3 py-2 cursor-pointer hover:bg-black/50 transition-colors';
+      row.onclick = function() { openInvoiceModal(inv.id); };
+      row.innerHTML =
+        '<div class="flex items-center gap-3 text-xs">' +
+          '<span class="text-lime-400 font-semibold">' + esc(inv.invoice_number) + '</span>' +
+          '<span class="text-neutral-500">' + formatDateNice(inv.created_at ? inv.created_at.split('T')[0] : null) + '</span>' +
+          '<span class="text-white">' + esc(inv.service || '') + '</span>' +
+        '</div>' +
+        '<div class="flex items-center gap-3 text-xs">' +
+          '<span class="text-lime-400 font-medium">\u00A3' + Number(inv.total || 0).toFixed(2) + '</span>' +
+          getInvoiceStatusBadge(inv.status) +
+        '</div>';
+      container.appendChild(row);
+    });
+  } catch (e) {
+    empty.classList.remove('hidden');
+  }
+}
 
 // ============================
 // INIT

@@ -32,6 +32,7 @@ const { requireAdminAuth } = require('./middleware/auth');
 const adminRoutes = require('./routes/admin');
 const jobRoutes = require('./routes/jobs');
 const customerRoutes = require('./routes/customers');
+const invoiceRoutes = require('./routes/invoices');
 
 // Create Express app
 const app = express();
@@ -49,6 +50,7 @@ const supabase = createClient(
 adminRoutes.setSupabaseClient(supabase);
 jobRoutes.setSupabaseClient(supabase);
 customerRoutes.setSupabaseClient(supabase);
+invoiceRoutes.setSupabaseClient(supabase);
 
 // =======================
 // MIDDLEWARE
@@ -995,6 +997,20 @@ app.get('/admin/customers/analytics', requireAdminAuth, customerRoutes.getConver
 app.get('/admin/customers/:id', requireAdminAuth, customerRoutes.getCustomer);
 app.patch('/admin/customers/:id', requireAdminAuth, customerRoutes.updateCustomer);
 app.post('/admin/customers/:id/followup', requireAdminAuth, customerRoutes.sendFollowUp);
+
+// =======================
+// INVOICES
+// =======================
+
+app.get('/admin/invoices', requireAdminAuth, invoiceRoutes.listInvoices);
+app.get('/admin/invoices/:id', requireAdminAuth, invoiceRoutes.getInvoice);
+app.patch('/admin/invoices/:id', requireAdminAuth, invoiceRoutes.updateInvoice);
+app.post('/admin/invoices/:id/send', requireAdminAuth, invoiceRoutes.sendInvoice);
+app.post('/admin/jobs/:id/invoice', requireAdminAuth, invoiceRoutes.createInvoice);
+app.get('/admin/jobs/:id/invoice', requireAdminAuth, invoiceRoutes.getJobInvoice);
+
+// Public invoice view (no auth - token acts as access key)
+app.get('/invoice/:token', invoiceRoutes.viewInvoice);
 
 // =======================
 // TEAM MEMBER SCHEDULE (Public - UUID as access key)

@@ -427,10 +427,176 @@ async function sendRescheduleEmail(job, formattedDate, timeSlot) {
   }
 }
 
+/**
+ * Send invoice email to customer
+ *
+ * @param {Object} invoice - Invoice data from database
+ * @param {string} viewUrl - Public URL to view the invoice
+ * @returns {Promise<Object>} - Resend API response
+ */
+async function sendInvoiceEmail(invoice, viewUrl) {
+  try {
+    if (!invoice.customer_email) {
+      console.log('[Email] No customer email for invoice');
+      return { success: false, error: 'No customer email' };
+    }
+
+    console.log(`[Email] Sending invoice ${invoice.invoice_number} to ${invoice.customer_email}`);
+
+    const bizName = process.env.BUSINESS_NAME || 'Revive Exterior Cleaning';
+    const bizAddress = process.env.BUSINESS_ADDRESS || '';
+    const bizPhone = process.env.BUSINESS_PHONE || '';
+    const bizEmail = process.env.BUSINESS_EMAIL || '';
+    const bankName = process.env.BUSINESS_BANK_NAME || '';
+    const sortCode = process.env.BUSINESS_SORT_CODE || '';
+    const accountNumber = process.env.BUSINESS_ACCOUNT_NUMBER || '';
+
+    const lineItems = Array.isArray(invoice.line_items) ? invoice.line_items : [];
+    const invoiceDate = invoice.created_at ? new Date(invoice.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+
+    const lineItemsHtml = lineItems.map(item =>
+      `<tr>
+        <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: left;">${item.description || ''}</td>
+        <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">${item.quantity || 1}</td>
+        <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">&pound;${Number(item.unit_price || 0).toFixed(2)}</td>
+        <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">&pound;${Number(item.total || 0).toFixed(2)}</td>
+      </tr>`
+    ).join('');
+
+    const vatSection = parseFloat(invoice.vat_rate) > 0 ? `
+      <tr>
+        <td colspan="3" style="padding: 6px 12px; text-align: right; color: #6b7280; font-size: 14px;">Subtotal</td>
+        <td style="padding: 6px 12px; text-align: right; font-size: 14px;">&pound;${Number(invoice.subtotal).toFixed(2)}</td>
+      </tr>
+      <tr>
+        <td colspan="3" style="padding: 6px 12px; text-align: right; color: #6b7280; font-size: 14px;">VAT (${Number(invoice.vat_rate)}%)</td>
+        <td style="padding: 6px 12px; text-align: right; font-size: 14px;">&pound;${Number(invoice.vat_amount).toFixed(2)}</td>
+      </tr>
+    ` : '';
+
+    const bankSection = sortCode && accountNumber ? `
+      <div style="background: #f9fafb; padding: 16px; border-radius: 8px; margin: 20px 0;">
+        <p style="margin: 0 0 8px; font-size: 14px; font-weight: 600; color: #374151;">Payment Details</p>
+        ${bankName ? `<p style="margin: 2px 0; font-size: 13px; color: #4b5563;"><strong>Account Name:</strong> ${bankName}</p>` : ''}
+        <p style="margin: 2px 0; font-size: 13px; color: #4b5563;"><strong>Sort Code:</strong> ${sortCode}</p>
+        <p style="margin: 2px 0; font-size: 13px; color: #4b5563;"><strong>Account Number:</strong> ${accountNumber}</p>
+        <p style="margin: 8px 0 0; font-size: 12px; color: #6b7280;">Please use <strong>${invoice.invoice_number}</strong> as payment reference.</p>
+      </div>
+    ` : '';
+
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: invoice.customer_email,
+      subject: `Invoice ${invoice.invoice_number} - £${Number(invoice.total).toFixed(2)} - ${bizName}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background-color: #84cc16; color: white; padding: 24px; border-radius: 8px 8px 0 0;">
+            <table style="width: 100%;">
+              <tr>
+                <td><h1 style="margin: 0; font-size: 22px;">${bizName}</h1></td>
+                <td style="text-align: right;">
+                  <div style="font-size: 24px; font-weight: 800; letter-spacing: 1px;">INVOICE</div>
+                  <div style="font-size: 13px; opacity: 0.9;">${invoice.invoice_number}</div>
+                </td>
+              </tr>
+            </table>
+          </div>
+
+          <div style="background-color: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px;">
+            <p style="font-size: 16px; margin-top: 0;">Hi ${invoice.customer_name},</p>
+            <p style="font-size: 15px;">Please find your invoice below for services provided.</p>
+
+            <!-- Invoice Details -->
+            <div style="background: white; border-radius: 8px; overflow: hidden; margin: 20px 0;">
+              <table style="width: 100%; font-size: 13px; color: #4b5563; margin-bottom: 16px;">
+                <tr>
+                  <td style="padding: 8px 12px;"><strong>Invoice Date:</strong> ${invoiceDate}</td>
+                  <td style="padding: 8px 12px; text-align: right;"><strong>Terms:</strong> ${invoice.payment_terms || 'Due on receipt'}</td>
+                </tr>
+              </table>
+
+              <!-- Line Items -->
+              <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <thead>
+                  <tr style="background: #f3f4f6;">
+                    <th style="padding: 10px 12px; text-align: left; font-size: 11px; text-transform: uppercase; color: #6b7280; border-bottom: 2px solid #e5e7eb;">Description</th>
+                    <th style="padding: 10px 12px; text-align: center; font-size: 11px; text-transform: uppercase; color: #6b7280; border-bottom: 2px solid #e5e7eb;">Qty</th>
+                    <th style="padding: 10px 12px; text-align: right; font-size: 11px; text-transform: uppercase; color: #6b7280; border-bottom: 2px solid #e5e7eb;">Price</th>
+                    <th style="padding: 10px 12px; text-align: right; font-size: 11px; text-transform: uppercase; color: #6b7280; border-bottom: 2px solid #e5e7eb;">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${lineItemsHtml}
+                </tbody>
+                <tfoot>
+                  ${vatSection}
+                  <tr>
+                    <td colspan="3" style="padding: 12px; text-align: right; font-size: 18px; font-weight: 700; border-top: 2px solid #333;">Total Due</td>
+                    <td style="padding: 12px; text-align: right; font-size: 18px; font-weight: 700; color: #84cc16; border-top: 2px solid #333;">&pound;${Number(invoice.total).toFixed(2)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            ${invoice.notes ? `
+            <div style="background: #fffbeb; padding: 12px; border-left: 4px solid #f59e0b; border-radius: 4px; margin: 16px 0;">
+              <p style="margin: 0; font-size: 13px; color: #92400e;"><strong>Notes:</strong> ${invoice.notes}</p>
+            </div>
+            ` : ''}
+
+            ${bankSection}
+
+            <div style="text-align: center; margin: 24px 0 16px;">
+              <a href="${viewUrl}" style="display: inline-block; background-color: #84cc16; color: white; padding: 14px 36px; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold;">
+                View Invoice Online
+              </a>
+              <p style="font-size: 12px; color: #888; margin-top: 8px;">You can also print or save as PDF from the online view.</p>
+            </div>
+
+            <p style="font-size: 14px; color: #666; margin-top: 24px;">
+              If you have any questions about this invoice, please don't hesitate to get in touch.
+            </p>
+
+            <p style="font-size: 14px; color: #666;">
+              Best regards,<br>
+              <strong>The ${bizName.split(' ')[0]} Team</strong>
+            </p>
+          </div>
+
+          <div style="text-align: center; padding: 20px; font-size: 12px; color: #999;">
+            <p>${bizName}${bizAddress ? ' - ' + bizAddress : ''}</p>
+            ${bizPhone ? `<p>${bizPhone}${bizEmail ? ' | ' + bizEmail : ''}</p>` : ''}
+          </div>
+        </body>
+        </html>
+      `
+    });
+
+    if (error) {
+      console.error('[Email] Invoice send error:', error);
+      throw error;
+    }
+
+    console.log('[Email] Invoice sent successfully:', data.id);
+    return { success: true, emailId: data.id };
+
+  } catch (error) {
+    console.error('[Email] Failed to send invoice:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   sendConfirmationEmail,
   sendEstimateEmail,
   sendAdminAlert,
   sendFollowUpEmail,
-  sendRescheduleEmail
+  sendRescheduleEmail,
+  sendInvoiceEmail
 };
