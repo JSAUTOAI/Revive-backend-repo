@@ -748,6 +748,220 @@ async function refreshCustomerAggregates(customerId) {
 }
 
 // ========================
+// CREATE CUSTOMER (Manual)
+// ========================
+
+/**
+ * POST /admin/customers
+ * Manually create a single customer
+ */
+async function createCustomer(req, res) {
+  try {
+    const { name, email, phone, address, postcode, tags, admin_notes } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, error: 'Name is required' });
+    }
+
+    // Check for duplicates by email
+    if (email) {
+      const { data: byEmail } = await supabase
+        .from('customers')
+        .select('id, name')
+        .ilike('email', email.trim())
+        .limit(1);
+      if (byEmail && byEmail.length > 0) {
+        return res.status(409).json({
+          success: false,
+          error: `A customer with that email already exists: ${byEmail[0].name}`,
+          existingId: byEmail[0].id
+        });
+      }
+    }
+
+    // Check for duplicates by phone
+    if (phone) {
+      const { data: byPhone } = await supabase
+        .from('customers')
+        .select('id, name')
+        .eq('phone', phone.trim())
+        .limit(1);
+      if (byPhone && byPhone.length > 0) {
+        return res.status(409).json({
+          success: false,
+          error: `A customer with that phone number already exists: ${byPhone[0].name}`,
+          existingId: byPhone[0].id
+        });
+      }
+    }
+
+    const { data, error } = await supabase
+      .from('customers')
+      .insert([{
+        name: name.trim(),
+        email: email?.trim() || null,
+        phone: phone?.trim() || null,
+        address: address?.trim() || null,
+        postcode: postcode?.trim() || null,
+        tags: tags || [],
+        admin_notes: admin_notes?.trim() || null,
+        first_contact_date: new Date().toISOString()
+      }])
+      .select();
+
+    if (error) {
+      console.error('[Customers] Create error:', error);
+      return res.status(500).json({ success: false, error: 'Failed to create customer' });
+    }
+
+    console.log(`[Customers] Manually created customer ${data[0].id}: ${name}`);
+    res.json({ success: true, data: data[0] });
+  } catch (error) {
+    console.error('[Customers] Create error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+// ========================
+// IMPORT CUSTOMERS (CSV)
+// ========================
+
+/**
+ * POST /admin/customers/import
+ * Bulk import customers from parsed CSV data
+ * Body: { customers: [...], skipDuplicates: true }
+ */
+async function importCustomers(req, res) {
+  try {
+    const { customers, skipDuplicates = true } = req.body;
+
+    if (!customers || !Array.isArray(customers) || customers.length === 0) {
+      return res.status(400).json({ success: false, error: 'customers array is required' });
+    }
+
+    if (customers.length > 1000) {
+      return res.status(400).json({ success: false, error: 'Maximum 1000 customers per import' });
+    }
+
+    // Fetch all existing emails and phones for duplicate checking
+    const { data: existing } = await supabase
+      .from('customers')
+      .select('id, email, phone');
+
+    const existingEmails = new Set(
+      (existing || []).filter(c => c.email).map(c => c.email.toLowerCase())
+    );
+    const existingPhones = new Set(
+      (existing || []).filter(c => c.phone).map(c => c.phone)
+    );
+
+    const toInsert = [];
+    const skipped = [];
+    const errors = [];
+
+    // Also track within-batch duplicates
+    const batchEmails = new Set();
+    const batchPhones = new Set();
+
+    for (let i = 0; i < customers.length; i++) {
+      const row = customers[i];
+      const rowNum = i + 1;
+
+      // Validate name
+      if (!row.name || !row.name.trim()) {
+        errors.push({ row: rowNum, reason: 'Missing name', data: row });
+        continue;
+      }
+
+      const email = row.email?.trim() || null;
+      const phone = row.phone?.trim() || null;
+
+      // Check for duplicates
+      let isDuplicate = false;
+      let dupReason = '';
+
+      if (email) {
+        const emailLower = email.toLowerCase();
+        if (existingEmails.has(emailLower) || batchEmails.has(emailLower)) {
+          isDuplicate = true;
+          dupReason = `Duplicate email: ${email}`;
+        }
+      }
+
+      if (!isDuplicate && phone) {
+        if (existingPhones.has(phone) || batchPhones.has(phone)) {
+          isDuplicate = true;
+          dupReason = `Duplicate phone: ${phone}`;
+        }
+      }
+
+      if (isDuplicate) {
+        if (skipDuplicates) {
+          skipped.push({ row: rowNum, reason: dupReason, data: row });
+        } else {
+          errors.push({ row: rowNum, reason: dupReason, data: row });
+        }
+        continue;
+      }
+
+      // Track in batch
+      if (email) batchEmails.add(email.toLowerCase());
+      if (phone) batchPhones.add(phone);
+
+      toInsert.push({
+        name: row.name.trim(),
+        email: email,
+        phone: phone,
+        address: row.address?.trim() || null,
+        postcode: row.postcode?.trim() || null,
+        tags: row.tags ? (Array.isArray(row.tags) ? row.tags : [row.tags]) : [],
+        admin_notes: row.admin_notes?.trim() || null,
+        first_contact_date: new Date().toISOString()
+      });
+    }
+
+    // Insert in batches of 50
+    let imported = 0;
+    const BATCH_SIZE = 50;
+
+    for (let i = 0; i < toInsert.length; i += BATCH_SIZE) {
+      const batch = toInsert.slice(i, i + BATCH_SIZE);
+      const { error } = await supabase.from('customers').insert(batch);
+
+      if (error) {
+        console.error('[Customers] Import batch error:', error);
+        // Count remaining as errors
+        for (let j = i; j < toInsert.length; j++) {
+          errors.push({ row: j + 1, reason: 'Database insert failed', data: toInsert[j] });
+        }
+        break;
+      }
+
+      imported += batch.length;
+    }
+
+    console.log(`[Customers] Import complete: ${imported} imported, ${skipped.length} skipped, ${errors.length} errors`);
+
+    res.json({
+      success: true,
+      summary: {
+        imported,
+        skipped: skipped.length,
+        errors: errors.length,
+        total: customers.length
+      },
+      details: {
+        skipped: skipped.slice(0, 20),
+        errors: errors.slice(0, 20)
+      }
+    });
+  } catch (error) {
+    console.error('[Customers] Import error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+// ========================
 // FIND OR CREATE CUSTOMER
 // ========================
 
@@ -828,6 +1042,8 @@ module.exports = {
   getStats,
   getCustomer,
   updateCustomer,
+  createCustomer,
+  importCustomers,
   sendFollowUp,
   sendBulkFollowUp,
   getBulkPreview,

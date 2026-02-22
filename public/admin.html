@@ -469,6 +469,8 @@
         <option value="name">Name A-Z</option>
       </select>
       <button onclick="openBulkFollowUpModal()" class="bg-neutral-900 border border-neutral-700 hover:border-lime-400 text-neutral-300 hover:text-white px-4 py-2.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap">Send Bulk Email</button>
+      <button onclick="openAddCustomerModal()" class="bg-lime-400 hover:bg-lime-300 text-black px-4 py-2.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap">+ Add Customer</button>
+      <button onclick="openImportCsvModal()" class="bg-neutral-900 border border-neutral-700 hover:border-lime-400 text-neutral-300 hover:text-white px-4 py-2.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap">Import CSV</button>
     </div>
 
     <!-- Customer List -->
@@ -1532,6 +1534,128 @@
         <div class="text-[10px] text-neutral-600 mt-1">Use {name} to insert customer name</div>
       </div>
       <button onclick="sendFollowUpFromModal()" class="w-full bg-lime-400 hover:bg-lime-300 text-black font-semibold py-3 rounded-lg text-sm transition-colors">Send Email</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ADD CUSTOMER MODAL ============ -->
+<div id="addCustomerModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[55] flex items-center justify-center p-4" onclick="if(event.target===this)closeAddCustomerModal()">
+  <div class="bg-neutral-900 border border-neutral-800 rounded-2xl max-w-lg w-full fade-in">
+    <div class="border-b border-neutral-800 px-6 py-4 flex items-center justify-between">
+      <h2 class="text-white font-semibold text-sm">Add Customer</h2>
+      <button onclick="closeAddCustomerModal()" class="text-neutral-500 hover:text-white transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="p-6 space-y-4">
+      <div>
+        <label class="block text-neutral-400 text-xs mb-1">Name <span class="text-red-400">*</span></label>
+        <input type="text" id="ac-name" class="w-full bg-neutral-800 border border-neutral-700 text-white text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none" placeholder="John Smith">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-neutral-400 text-xs mb-1">Email</label>
+          <input type="email" id="ac-email" class="w-full bg-neutral-800 border border-neutral-700 text-white text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none" placeholder="john@example.com">
+        </div>
+        <div>
+          <label class="block text-neutral-400 text-xs mb-1">Phone</label>
+          <input type="tel" id="ac-phone" class="w-full bg-neutral-800 border border-neutral-700 text-white text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none" placeholder="07700 900123">
+        </div>
+      </div>
+      <div>
+        <label class="block text-neutral-400 text-xs mb-1">Address</label>
+        <input type="text" id="ac-address" class="w-full bg-neutral-800 border border-neutral-700 text-white text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none" placeholder="12 High Street, Manchester">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-neutral-400 text-xs mb-1">Postcode</label>
+          <input type="text" id="ac-postcode" class="w-full bg-neutral-800 border border-neutral-700 text-white text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none" placeholder="M1 2AB">
+        </div>
+        <div>
+          <label class="block text-neutral-400 text-xs mb-1">Tags</label>
+          <input type="text" id="ac-tags" class="w-full bg-neutral-800 border border-neutral-700 text-white text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none" placeholder="e.g. regular, commercial">
+        </div>
+      </div>
+      <div>
+        <label class="block text-neutral-400 text-xs mb-1">Admin Notes</label>
+        <textarea id="ac-notes" rows="2" class="w-full bg-neutral-800 border border-neutral-700 text-white text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none resize-none" placeholder="Optional notes..."></textarea>
+      </div>
+      <div id="ac-error" class="hidden text-red-400 text-xs"></div>
+      <div class="flex gap-3 justify-end pt-2">
+        <button onclick="closeAddCustomerModal()" class="bg-neutral-800 hover:bg-neutral-700 text-neutral-300 px-4 py-2 rounded-lg text-xs transition-colors">Cancel</button>
+        <button onclick="saveNewCustomer()" id="ac-save-btn" class="bg-lime-400 hover:bg-lime-300 text-black px-5 py-2 rounded-lg text-xs font-semibold transition-colors">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ IMPORT CSV MODAL ============ -->
+<div id="importCsvModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[55] flex items-start justify-center p-4 pt-8 overflow-y-auto" onclick="if(event.target===this)closeImportCsvModal()">
+  <div class="bg-neutral-900 border border-neutral-800 rounded-2xl max-w-3xl w-full fade-in my-4">
+    <div class="sticky top-0 bg-neutral-900 border-b border-neutral-800 px-6 py-4 rounded-t-2xl flex items-center justify-between z-10">
+      <h2 class="text-white font-semibold text-sm">Import Customers from CSV</h2>
+      <button onclick="closeImportCsvModal()" class="text-neutral-500 hover:text-white transition-colors">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="p-6 space-y-5">
+
+      <!-- Step 1: File Upload -->
+      <div id="csv-step-upload">
+        <div class="border-2 border-dashed border-neutral-700 rounded-xl p-8 text-center hover:border-lime-400/50 transition-colors cursor-pointer" onclick="document.getElementById('csv-file-input').click()">
+          <svg class="w-10 h-10 text-neutral-600 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+          <p class="text-neutral-400 text-sm mb-1">Click to select a CSV file</p>
+          <p class="text-neutral-600 text-xs">Supports .csv files with headers like Name, Email, Phone, Address, Postcode</p>
+        </div>
+        <input type="file" id="csv-file-input" accept=".csv" class="hidden" onchange="handleCsvFile(this)">
+      </div>
+
+      <!-- Step 2: Column Mapping -->
+      <div id="csv-step-mapping" class="hidden">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-neutral-400 text-xs font-semibold uppercase tracking-wider">Column Mapping</h3>
+          <span class="text-neutral-600 text-xs" id="csv-row-count"></span>
+        </div>
+        <p class="text-neutral-500 text-xs mb-3">Map your CSV columns to customer fields. We've auto-detected what we can.</p>
+        <div id="csv-mapping-table" class="space-y-2 mb-4"></div>
+
+        <!-- Preview -->
+        <h3 class="text-neutral-400 text-xs font-semibold uppercase tracking-wider mb-2 mt-5">Preview (first 5 rows)</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs" id="csv-preview-table">
+            <thead id="csv-preview-head"></thead>
+            <tbody id="csv-preview-body"></tbody>
+          </table>
+        </div>
+
+        <div class="flex gap-3 justify-end pt-4">
+          <button onclick="resetCsvImport()" class="bg-neutral-800 hover:bg-neutral-700 text-neutral-300 px-4 py-2 rounded-lg text-xs transition-colors">Back</button>
+          <button onclick="executeCsvImport()" id="csv-import-btn" class="bg-lime-400 hover:bg-lime-300 text-black px-5 py-2 rounded-lg text-xs font-semibold transition-colors">Import Customers</button>
+        </div>
+      </div>
+
+      <!-- Step 3: Results -->
+      <div id="csv-step-results" class="hidden">
+        <div class="grid grid-cols-3 gap-3 mb-4">
+          <div class="bg-neutral-800 rounded-xl p-4 text-center">
+            <div class="text-lime-400 text-2xl font-bold" id="csv-result-imported">0</div>
+            <div class="text-neutral-500 text-[10px] uppercase tracking-wider mt-1">Imported</div>
+          </div>
+          <div class="bg-neutral-800 rounded-xl p-4 text-center">
+            <div class="text-amber-400 text-2xl font-bold" id="csv-result-skipped">0</div>
+            <div class="text-neutral-500 text-[10px] uppercase tracking-wider mt-1">Duplicates Skipped</div>
+          </div>
+          <div class="bg-neutral-800 rounded-xl p-4 text-center">
+            <div class="text-red-400 text-2xl font-bold" id="csv-result-errors">0</div>
+            <div class="text-neutral-500 text-[10px] uppercase tracking-wider mt-1">Errors</div>
+          </div>
+        </div>
+        <div id="csv-result-details" class="space-y-1 max-h-48 overflow-y-auto"></div>
+        <div class="flex gap-3 justify-end pt-4">
+          <button onclick="closeImportCsvModal(); loadCustomers();" class="bg-lime-400 hover:bg-lime-300 text-black px-5 py-2 rounded-lg text-xs font-semibold transition-colors">Done</button>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -5525,6 +5649,338 @@ async function loadPricingHistory() {
     }
   } catch (e) {
     // Silently fail
+  }
+}
+
+// ============================
+// ADD CUSTOMER MODAL
+// ============================
+
+function openAddCustomerModal() {
+  document.getElementById('ac-name').value = '';
+  document.getElementById('ac-email').value = '';
+  document.getElementById('ac-phone').value = '';
+  document.getElementById('ac-address').value = '';
+  document.getElementById('ac-postcode').value = '';
+  document.getElementById('ac-tags').value = '';
+  document.getElementById('ac-notes').value = '';
+  document.getElementById('ac-error').classList.add('hidden');
+  document.getElementById('ac-save-btn').disabled = false;
+  document.getElementById('ac-save-btn').textContent = 'Save';
+  document.getElementById('addCustomerModal').classList.remove('hidden');
+}
+
+function closeAddCustomerModal() {
+  document.getElementById('addCustomerModal').classList.add('hidden');
+}
+
+async function saveNewCustomer() {
+  var name = document.getElementById('ac-name').value.trim();
+  if (!name) {
+    document.getElementById('ac-error').textContent = 'Name is required';
+    document.getElementById('ac-error').classList.remove('hidden');
+    return;
+  }
+
+  var tagsRaw = document.getElementById('ac-tags').value.trim();
+  var tags = tagsRaw ? tagsRaw.split(',').map(function(t) { return t.trim(); }).filter(Boolean) : [];
+
+  var btn = document.getElementById('ac-save-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+  document.getElementById('ac-error').classList.add('hidden');
+
+  try {
+    var res = await apiRequest('/admin/customers', {
+      method: 'POST',
+      body: {
+        name: name,
+        email: document.getElementById('ac-email').value.trim() || null,
+        phone: document.getElementById('ac-phone').value.trim() || null,
+        address: document.getElementById('ac-address').value.trim() || null,
+        postcode: document.getElementById('ac-postcode').value.trim() || null,
+        tags: tags,
+        admin_notes: document.getElementById('ac-notes').value.trim() || null
+      }
+    });
+
+    if (res.success) {
+      closeAddCustomerModal();
+      showToast('Customer added successfully', 'success');
+      loadCustomers();
+    } else {
+      var errEl = document.getElementById('ac-error');
+      errEl.textContent = res.error || 'Failed to create customer';
+      if (res.existingId) {
+        errEl.innerHTML = res.error + ' <a href="#" onclick="closeAddCustomerModal(); openCustProfile(\'' + res.existingId + '\'); return false;" class="text-lime-400 underline ml-1">View profile</a>';
+      }
+      errEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'Save';
+    }
+  } catch (e) {
+    document.getElementById('ac-error').textContent = 'Failed to create customer';
+    document.getElementById('ac-error').classList.remove('hidden');
+    btn.disabled = false;
+    btn.textContent = 'Save';
+  }
+}
+
+// ============================
+// IMPORT CSV MODAL
+// ============================
+
+var csvState = { headers: [], rows: [], mappings: {} };
+
+function openImportCsvModal() {
+  resetCsvImport();
+  document.getElementById('importCsvModal').classList.remove('hidden');
+}
+
+function closeImportCsvModal() {
+  document.getElementById('importCsvModal').classList.add('hidden');
+}
+
+function resetCsvImport() {
+  csvState = { headers: [], rows: [], mappings: {} };
+  document.getElementById('csv-file-input').value = '';
+  document.getElementById('csv-step-upload').classList.remove('hidden');
+  document.getElementById('csv-step-mapping').classList.add('hidden');
+  document.getElementById('csv-step-results').classList.add('hidden');
+}
+
+function parseCsvText(text) {
+  var rows = [];
+  var row = [];
+  var field = '';
+  var inQuotes = false;
+  var i = 0;
+
+  while (i < text.length) {
+    var ch = text[i];
+
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i += 2;
+        } else {
+          inQuotes = false;
+          i++;
+        }
+      } else {
+        field += ch;
+        i++;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+        i++;
+      } else if (ch === ',') {
+        row.push(field.trim());
+        field = '';
+        i++;
+      } else if (ch === '\n' || ch === '\r') {
+        row.push(field.trim());
+        if (row.some(function(f) { return f.length > 0; })) rows.push(row);
+        row = [];
+        field = '';
+        if (ch === '\r' && text[i + 1] === '\n') i++;
+        i++;
+      } else {
+        field += ch;
+        i++;
+      }
+    }
+  }
+  // Last field/row
+  row.push(field.trim());
+  if (row.some(function(f) { return f.length > 0; })) rows.push(row);
+
+  return rows;
+}
+
+var FIELD_OPTIONS = [
+  { value: '', label: 'Skip' },
+  { value: 'name', label: 'Name' },
+  { value: 'email', label: 'Email' },
+  { value: 'phone', label: 'Phone' },
+  { value: 'address', label: 'Address' },
+  { value: 'postcode', label: 'Postcode' },
+  { value: 'tags', label: 'Tags' },
+  { value: 'admin_notes', label: 'Notes' }
+];
+
+var HEADER_MAP = {
+  'name': 'name', 'full name': 'name', 'fullname': 'name', 'customer name': 'name', 'customer': 'name', 'client': 'name', 'client name': 'name', 'first name': 'name', 'firstname': 'name',
+  'email': 'email', 'e-mail': 'email', 'email address': 'email', 'e-mail address': 'email',
+  'phone': 'phone', 'telephone': 'phone', 'tel': 'phone', 'mobile': 'phone', 'phone number': 'phone', 'mobile number': 'phone', 'cell': 'phone', 'contact number': 'phone',
+  'address': 'address', 'street': 'address', 'street address': 'address', 'address line 1': 'address', 'address1': 'address', 'full address': 'address',
+  'postcode': 'postcode', 'post code': 'postcode', 'zip': 'postcode', 'zip code': 'postcode', 'zipcode': 'postcode', 'postal code': 'postcode',
+  'tags': 'tags', 'tag': 'tags', 'category': 'tags', 'type': 'tags',
+  'notes': 'admin_notes', 'note': 'admin_notes', 'admin notes': 'admin_notes', 'comments': 'admin_notes', 'comment': 'admin_notes'
+};
+
+function autoDetectMapping(header) {
+  var key = header.toLowerCase().trim();
+  return HEADER_MAP[key] || '';
+}
+
+function handleCsvFile(input) {
+  var file = input.files[0];
+  if (!file) return;
+
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var text = e.target.result;
+    var allRows = parseCsvText(text);
+
+    if (allRows.length < 2) {
+      showToast('CSV file must have a header row and at least one data row', 'error');
+      return;
+    }
+
+    csvState.headers = allRows[0];
+    csvState.rows = allRows.slice(1);
+    csvState.mappings = {};
+
+    // Auto-detect column mappings
+    var usedFields = new Set();
+    csvState.headers.forEach(function(h, idx) {
+      var detected = autoDetectMapping(h);
+      if (detected && !usedFields.has(detected)) {
+        csvState.mappings[idx] = detected;
+        usedFields.add(detected);
+      } else {
+        csvState.mappings[idx] = '';
+      }
+    });
+
+    renderCsvMapping();
+
+    document.getElementById('csv-step-upload').classList.add('hidden');
+    document.getElementById('csv-step-mapping').classList.remove('hidden');
+  };
+  reader.readAsText(file);
+}
+
+function renderCsvMapping() {
+  var container = document.getElementById('csv-mapping-table');
+  document.getElementById('csv-row-count').textContent = csvState.rows.length + ' rows found';
+
+  var html = '';
+  csvState.headers.forEach(function(h, idx) {
+    html += '<div class="flex items-center gap-3 bg-neutral-800 rounded-lg px-3 py-2">';
+    html += '<span class="text-white text-xs flex-1 truncate">' + escapeHtml(h) + '</span>';
+    html += '<svg class="w-4 h-4 text-neutral-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>';
+    html += '<select onchange="csvState.mappings[' + idx + ']=this.value; updateCsvPreview()" class="bg-neutral-700 border border-neutral-600 text-white text-xs px-2 py-1.5 rounded-lg focus:border-lime-400 focus:outline-none w-28">';
+    FIELD_OPTIONS.forEach(function(opt) {
+      var sel = csvState.mappings[idx] === opt.value ? ' selected' : '';
+      html += '<option value="' + opt.value + '"' + sel + '>' + opt.label + '</option>';
+    });
+    html += '</select>';
+    html += '</div>';
+  });
+  container.innerHTML = html;
+
+  updateCsvPreview();
+}
+
+function updateCsvPreview() {
+  // Get mapped field names
+  var mappedFields = [];
+  csvState.headers.forEach(function(h, idx) {
+    var field = csvState.mappings[idx];
+    if (field) {
+      mappedFields.push({ idx: idx, field: field });
+    }
+  });
+
+  // Header row
+  var headHtml = '<tr>';
+  mappedFields.forEach(function(m) {
+    var label = FIELD_OPTIONS.find(function(f) { return f.value === m.field; });
+    headHtml += '<th class="text-left text-neutral-500 text-[10px] uppercase tracking-wider pb-2 pr-4">' + (label ? label.label : m.field) + '</th>';
+  });
+  headHtml += '</tr>';
+  document.getElementById('csv-preview-head').innerHTML = headHtml;
+
+  // Data rows (first 5)
+  var bodyHtml = '';
+  var previewRows = csvState.rows.slice(0, 5);
+  previewRows.forEach(function(row) {
+    bodyHtml += '<tr class="border-t border-neutral-800">';
+    mappedFields.forEach(function(m) {
+      bodyHtml += '<td class="text-white text-xs py-1.5 pr-4 truncate max-w-[150px]">' + escapeHtml(row[m.idx] || '') + '</td>';
+    });
+    bodyHtml += '</tr>';
+  });
+  document.getElementById('csv-preview-body').innerHTML = bodyHtml;
+}
+
+async function executeCsvImport() {
+  // Build customer objects from mappings
+  var mappedFields = [];
+  csvState.headers.forEach(function(h, idx) {
+    var field = csvState.mappings[idx];
+    if (field) mappedFields.push({ idx: idx, field: field });
+  });
+
+  // Check that name is mapped
+  var hasName = mappedFields.some(function(m) { return m.field === 'name'; });
+  if (!hasName) {
+    showToast('You must map at least one column to "Name"', 'error');
+    return;
+  }
+
+  var customers = csvState.rows.map(function(row) {
+    var obj = {};
+    mappedFields.forEach(function(m) {
+      obj[m.field] = row[m.idx] || '';
+    });
+    return obj;
+  });
+
+  var btn = document.getElementById('csv-import-btn');
+  btn.disabled = true;
+  btn.textContent = 'Importing...';
+
+  try {
+    var res = await apiRequest('/admin/customers/import', {
+      method: 'POST',
+      body: { customers: customers, skipDuplicates: true }
+    });
+
+    if (res.success) {
+      document.getElementById('csv-step-mapping').classList.add('hidden');
+      document.getElementById('csv-step-results').classList.remove('hidden');
+
+      document.getElementById('csv-result-imported').textContent = res.summary.imported;
+      document.getElementById('csv-result-skipped').textContent = res.summary.skipped;
+      document.getElementById('csv-result-errors').textContent = res.summary.errors;
+
+      // Show details
+      var detailsHtml = '';
+      if (res.details.skipped && res.details.skipped.length > 0) {
+        res.details.skipped.forEach(function(s) {
+          detailsHtml += '<div class="text-amber-400 text-xs bg-neutral-800 rounded px-3 py-1.5">Row ' + s.row + ': ' + escapeHtml(s.reason) + '</div>';
+        });
+      }
+      if (res.details.errors && res.details.errors.length > 0) {
+        res.details.errors.forEach(function(e) {
+          detailsHtml += '<div class="text-red-400 text-xs bg-neutral-800 rounded px-3 py-1.5">Row ' + e.row + ': ' + escapeHtml(e.reason) + '</div>';
+        });
+      }
+      document.getElementById('csv-result-details').innerHTML = detailsHtml || '<div class="text-lime-400 text-xs">All rows imported successfully!</div>';
+    } else {
+      showToast(res.error || 'Import failed', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Import Customers';
+    }
+  } catch (e) {
+    showToast('Import failed', 'error');
+    btn.disabled = false;
+    btn.textContent = 'Import Customers';
   }
 }
 
