@@ -46,8 +46,10 @@ function getBusinessDetails() {
     phone: process.env.BUSINESS_PHONE || '',
     email: process.env.BUSINESS_EMAIL || '',
     bankName: process.env.BUSINESS_BANK_NAME || '',
+    accountName: process.env.BUSINESS_ACCOUNT_NAME || '',
     sortCode: process.env.BUSINESS_SORT_CODE || '',
-    accountNumber: process.env.BUSINESS_ACCOUNT_NUMBER || ''
+    accountNumber: process.env.BUSINESS_ACCOUNT_NUMBER || '',
+    logoUrl: process.env.BUSINESS_LOGO_URL || ''
   };
 }
 
@@ -392,7 +394,8 @@ async function viewInvoice(req, res) {
       <div style="margin-top: 32px; padding: 20px; background: #f9fafb; border-radius: 8px;">
         <h3 style="margin: 0 0 12px 0; font-size: 14px; color: #374151; font-weight: 600;">Payment Details</h3>
         <table style="font-size: 14px; color: #4b5563;">
-          ${biz.bankName ? `<tr><td style="padding: 2px 16px 2px 0; color: #6b7280;">Account Name</td><td>${biz.bankName}</td></tr>` : ''}
+          ${biz.bankName ? `<tr><td style="padding: 2px 16px 2px 0; color: #6b7280;">Bank</td><td>${biz.bankName}</td></tr>` : ''}
+          ${biz.accountName ? `<tr><td style="padding: 2px 16px 2px 0; color: #6b7280;">Account Name</td><td>${biz.accountName}</td></tr>` : ''}
           <tr><td style="padding: 2px 16px 2px 0; color: #6b7280;">Sort Code</td><td>${biz.sortCode}</td></tr>
           <tr><td style="padding: 2px 16px 2px 0; color: #6b7280;">Account Number</td><td>${biz.accountNumber}</td></tr>
         </table>
@@ -430,9 +433,12 @@ async function viewInvoice(req, res) {
   <div class="container" style="position: relative; z-index: 1;">
     <!-- Header -->
     <div style="background: #84cc16; color: white; padding: 32px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-      <div>
-        <h1 style="font-size: 28px; font-weight: 800; margin: 0;">${biz.name}</h1>
-        ${biz.address ? `<p style="margin: 4px 0 0; font-size: 14px; opacity: 0.9;">${biz.address}</p>` : ''}
+      <div style="display: flex; align-items: center; gap: 16px;">
+        ${biz.logoUrl ? `<img src="${biz.logoUrl}" alt="${biz.name}" style="height: 60px; width: auto; border-radius: 8px;">` : ''}
+        <div>
+          <h1 style="font-size: 28px; font-weight: 800; margin: 0;">${biz.name}</h1>
+          ${biz.address ? `<p style="margin: 4px 0 0; font-size: 14px; opacity: 0.9;">${biz.address}</p>` : ''}
+        </div>
       </div>
       <div style="text-align: right;">
         <div style="font-size: 32px; font-weight: 800; letter-spacing: 2px;">INVOICE</div>

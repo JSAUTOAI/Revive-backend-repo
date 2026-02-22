@@ -448,8 +448,10 @@ async function sendInvoiceEmail(invoice, viewUrl) {
     const bizPhone = process.env.BUSINESS_PHONE || '';
     const bizEmail = process.env.BUSINESS_EMAIL || '';
     const bankName = process.env.BUSINESS_BANK_NAME || '';
+    const accountName = process.env.BUSINESS_ACCOUNT_NAME || '';
     const sortCode = process.env.BUSINESS_SORT_CODE || '';
     const accountNumber = process.env.BUSINESS_ACCOUNT_NUMBER || '';
+    const logoUrl = process.env.BUSINESS_LOGO_URL || '';
 
     const lineItems = Array.isArray(invoice.line_items) ? invoice.line_items : [];
     const invoiceDate = invoice.created_at ? new Date(invoice.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
@@ -477,7 +479,8 @@ async function sendInvoiceEmail(invoice, viewUrl) {
     const bankSection = sortCode && accountNumber ? `
       <div style="background: #f9fafb; padding: 16px; border-radius: 8px; margin: 20px 0;">
         <p style="margin: 0 0 8px; font-size: 14px; font-weight: 600; color: #374151;">Payment Details</p>
-        ${bankName ? `<p style="margin: 2px 0; font-size: 13px; color: #4b5563;"><strong>Account Name:</strong> ${bankName}</p>` : ''}
+        ${bankName ? `<p style="margin: 2px 0; font-size: 13px; color: #4b5563;"><strong>Bank:</strong> ${bankName}</p>` : ''}
+        ${accountName ? `<p style="margin: 2px 0; font-size: 13px; color: #4b5563;"><strong>Account Name:</strong> ${accountName}</p>` : ''}
         <p style="margin: 2px 0; font-size: 13px; color: #4b5563;"><strong>Sort Code:</strong> ${sortCode}</p>
         <p style="margin: 2px 0; font-size: 13px; color: #4b5563;"><strong>Account Number:</strong> ${accountNumber}</p>
         <p style="margin: 8px 0 0; font-size: 12px; color: #6b7280;">Please use <strong>${invoice.invoice_number}</strong> as payment reference.</p>
@@ -499,7 +502,10 @@ async function sendInvoiceEmail(invoice, viewUrl) {
           <div style="background-color: #84cc16; color: white; padding: 24px; border-radius: 8px 8px 0 0;">
             <table style="width: 100%;">
               <tr>
-                <td><h1 style="margin: 0; font-size: 22px;">${bizName}</h1></td>
+                <td>
+                  ${logoUrl ? `<img src="${logoUrl}" alt="${bizName}" style="height: 48px; width: auto; border-radius: 6px; margin-bottom: 8px; display: block;">` : ''}
+                  <h1 style="margin: 0; font-size: 22px;">${bizName}</h1>
+                </td>
                 <td style="text-align: right;">
                   <div style="font-size: 24px; font-weight: 800; letter-spacing: 1px;">INVOICE</div>
                   <div style="font-size: 13px; opacity: 0.9;">${invoice.invoice_number}</div>
