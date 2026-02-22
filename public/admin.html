@@ -614,6 +614,11 @@
             </tbody>
           </table>
         </div>
+        <div class="flex items-center gap-3 mt-4 pt-4 border-t border-neutral-800">
+          <input type="text" id="new-service-name" placeholder="e.g. Patio Cleaning, Fence Wash..." class="flex-1 bg-black border border-neutral-700 text-white text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none" onkeydown="if(event.key==='Enter')addCustomService()">
+          <button onclick="addCustomService()" class="bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 hover:border-lime-400 text-neutral-300 hover:text-white px-4 py-2 rounded-lg text-xs font-medium transition-colors whitespace-nowrap">+ Add Service</button>
+        </div>
+        <div id="add-service-error" class="hidden text-red-400 text-xs mt-2"></div>
       </div>
     </div>
 
@@ -686,14 +691,6 @@
           <div>
             <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">Service</label>
             <select id="test-service" class="w-full mt-1 bg-black border border-neutral-700 text-neutral-300 text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
-              <option value="roof">Roof Cleaning</option>
-              <option value="driveway">Driveway</option>
-              <option value="gutter">Gutter Cleaning</option>
-              <option value="softwash">Soft Wash</option>
-              <option value="render">Render Cleaning</option>
-              <option value="window">Window Cleaning</option>
-              <option value="solar">Solar Panel</option>
-              <option value="other">Other</option>
             </select>
           </div>
           <div>
@@ -5326,6 +5323,8 @@ var settingsState = {
   loaded: false
 };
 
+var DEFAULT_SERVICES = ['roof', 'driveway', 'gutter', 'softwash', 'render', 'window', 'solar', 'other'];
+
 var SERVICE_LABELS = {
   roof: 'Roof Cleaning',
   driveway: 'Driveway',
@@ -5336,6 +5335,10 @@ var SERVICE_LABELS = {
   solar: 'Solar Panel',
   other: 'Other'
 };
+
+function getServiceLabel(key) {
+  return SERVICE_LABELS[key] || key.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+}
 
 var MODIFIER_LABELS = {
   firstTimeCleaning: 'First Time Cleaning',
@@ -5399,12 +5402,25 @@ function renderSettings() {
 function renderPricingTable(pricing) {
   var tbody = document.getElementById('pricing-table-body');
   var html = '';
-  var services = ['roof', 'driveway', 'gutter', 'softwash', 'render', 'window', 'solar', 'other'];
+
+  // Build service list: defaults first, then any custom services from config
+  var services = DEFAULT_SERVICES.slice();
+  Object.keys(pricing).forEach(function(svc) {
+    if (services.indexOf(svc) === -1) services.push(svc);
+  });
 
   services.forEach(function(svc) {
+    var isCustom = DEFAULT_SERVICES.indexOf(svc) === -1;
     var p = pricing[svc] || { small: [0, 0], medium: [0, 0], large: [0, 0] };
     html += '<tr class="border-b border-neutral-800/50">';
-    html += '<td class="py-2 pr-3 text-neutral-300 font-medium text-xs">' + (SERVICE_LABELS[svc] || svc) + '</td>';
+    html += '<td class="py-2 pr-3 text-neutral-300 font-medium text-xs whitespace-nowrap">';
+    html += '<span>' + escapeHtml(getServiceLabel(svc)) + '</span>';
+    if (isCustom) {
+      html += ' <button onclick="removeCustomService(\'' + svc + '\')" class="text-neutral-600 hover:text-red-400 ml-1 transition-colors" title="Remove service">';
+      html += '<svg class="w-3.5 h-3.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>';
+      html += '</button>';
+    }
+    html += '</td>';
 
     ['small', 'medium', 'large'].forEach(function(size) {
       var range = p[size] || [0, 0];
@@ -5416,6 +5432,9 @@ function renderPricingTable(pricing) {
   });
 
   tbody.innerHTML = html;
+
+  // Also update test estimate service dropdown
+  updateTestServiceDropdown(services);
 }
 
 function renderModifiers(modifiers) {
@@ -5599,6 +5618,76 @@ async function resetPricingSettings() {
   } catch (e) {
     showToast('Failed to reset settings', 'error');
   }
+}
+
+function addCustomService() {
+  var input = document.getElementById('new-service-name');
+  var errEl = document.getElementById('add-service-error');
+  var name = input.value.trim();
+  errEl.classList.add('hidden');
+
+  if (!name) {
+    errEl.textContent = 'Enter a service name';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  // Generate key from name: lowercase, replace spaces/special chars with underscores
+  var key = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+
+  if (!key) {
+    errEl.textContent = 'Invalid service name';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  // Check if already exists
+  var existing = document.querySelector('.pricing-input[data-service="' + key + '"]');
+  if (existing) {
+    errEl.textContent = 'Service "' + name + '" already exists';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  // Add label for this custom service
+  SERVICE_LABELS[key] = name;
+
+  // Get current pricing from config and add the new service
+  var currentPricing = collectPricingFromUI();
+  currentPricing[key] = { small: [0, 0], medium: [0, 0], large: [0, 0], default: [0, 0] };
+
+  // Re-render the table with the new service
+  renderPricingTable(currentPricing);
+
+  input.value = '';
+  showToast('Service added — set prices and click Save', 'success');
+}
+
+function removeCustomService(key) {
+  if (DEFAULT_SERVICES.indexOf(key) !== -1) return; // Can't remove defaults
+
+  if (!confirm('Remove "' + getServiceLabel(key) + '" from the pricing table?')) return;
+
+  // Collect current pricing, remove the service, re-render
+  var currentPricing = collectPricingFromUI();
+  delete currentPricing[key];
+  delete SERVICE_LABELS[key];
+
+  renderPricingTable(currentPricing);
+  showToast('Service removed — click Save to confirm', 'success');
+}
+
+function updateTestServiceDropdown(services) {
+  var select = document.getElementById('test-service');
+  if (!select) return;
+  var currentVal = select.value;
+
+  var html = '';
+  services.forEach(function(svc) {
+    var sel = svc === currentVal ? ' selected' : '';
+    html += '<option value="' + svc + '"' + sel + '>' + escapeHtml(getServiceLabel(svc)) + '</option>';
+  });
+  select.innerHTML = html;
 }
 
 async function runTestEstimate() {
