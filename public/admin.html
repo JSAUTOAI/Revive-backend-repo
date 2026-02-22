@@ -88,6 +88,7 @@
       <button onclick="switchTab('team')" id="tab-team" class="tab-btn px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300">Team</button>
       <button onclick="switchTab('customers')" id="tab-customers" class="tab-btn px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300">Customers</button>
       <button onclick="switchTab('invoices')" id="tab-invoices" class="tab-btn px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300">Invoices</button>
+      <button onclick="switchTab('finance')" id="tab-finance" class="tab-btn px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300">Finance</button>
       <button onclick="switchTab('chats')" id="tab-chats" class="tab-btn px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300">Chats</button>
       <button onclick="switchTab('settings')" id="tab-settings" class="tab-btn px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300">Settings</button>
     </div>
@@ -532,6 +533,430 @@
     <!-- Invoice List -->
     <div id="invoiceList" class="space-y-2"></div>
     <div id="invoiceEmpty" class="hidden text-center text-neutral-600 text-sm py-12">No invoices yet. Generate an invoice from a completed job.</div>
+  </div>
+
+  <!-- ===== FINANCE TAB ===== -->
+  <div id="content-finance" class="tab-content hidden max-w-7xl mx-auto px-4 sm:px-6 py-6">
+
+    <!-- Sub-tab Navigation -->
+    <div class="flex gap-1 mb-6 border-b border-neutral-800 pb-0 overflow-x-auto">
+      <button onclick="finSwitchTab('overview')" id="fin-tab-overview" class="fin-tab-btn px-3 py-2 text-xs font-semibold rounded-t-lg transition-colors bg-neutral-900 text-lime-400 border border-neutral-800 border-b-0 whitespace-nowrap">Overview</button>
+      <button onclick="finSwitchTab('expenses')" id="fin-tab-expenses" class="fin-tab-btn px-3 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300 whitespace-nowrap">Expenses</button>
+      <button onclick="finSwitchTab('wages')" id="fin-tab-wages" class="fin-tab-btn px-3 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300 whitespace-nowrap">Wages</button>
+      <button onclick="finSwitchTab('mileage')" id="fin-tab-mileage" class="fin-tab-btn px-3 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300 whitespace-nowrap">Mileage</button>
+      <button onclick="finSwitchTab('recurring')" id="fin-tab-recurring" class="fin-tab-btn px-3 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300 whitespace-nowrap">Recurring</button>
+      <button onclick="finSwitchTab('income')" id="fin-tab-income" class="fin-tab-btn px-3 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300 whitespace-nowrap">Income</button>
+      <button onclick="finSwitchTab('reports')" id="fin-tab-reports" class="fin-tab-btn px-3 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300 whitespace-nowrap">Reports</button>
+    </div>
+
+    <!-- ===== OVERVIEW SUB-TAB ===== -->
+    <div id="fin-content-overview" class="fin-tab-content">
+      <!-- Stats Cards -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+          <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Income (Month)</div>
+          <div class="text-xl font-bold text-lime-400 mt-1" id="fin-stat-income-month">-</div>
+        </div>
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+          <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Expenses (Month)</div>
+          <div class="text-xl font-bold text-red-400 mt-1" id="fin-stat-expenses-month">-</div>
+        </div>
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+          <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Profit (Month)</div>
+          <div class="text-xl font-bold text-white mt-1" id="fin-stat-profit-month">-</div>
+        </div>
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+          <div class="text-neutral-500 text-[10px] uppercase tracking-wider">YTD Profit</div>
+          <div class="text-xl font-bold text-white mt-1" id="fin-stat-ytd-profit">-</div>
+        </div>
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+          <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Wages (Month)</div>
+          <div class="text-xl font-bold text-orange-400 mt-1" id="fin-stat-wages-month">-</div>
+        </div>
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+          <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Upcoming Recurring</div>
+          <div class="text-xl font-bold text-white mt-1" id="fin-stat-upcoming">-</div>
+        </div>
+      </div>
+
+      <!-- Cashflow Chart -->
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4 mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-sm font-semibold text-white">Monthly Cashflow</h3>
+          <span class="text-[10px] text-neutral-500">Last 12 months</span>
+        </div>
+        <div id="fin-cashflow-chart" class="h-48 flex items-end gap-1 overflow-x-auto"></div>
+        <div class="flex gap-4 mt-3 text-[10px] text-neutral-500">
+          <span><span class="inline-block w-3 h-3 rounded bg-lime-400 mr-1"></span>Income</span>
+          <span><span class="inline-block w-3 h-3 rounded bg-red-400 mr-1"></span>Expenses</span>
+        </div>
+      </div>
+
+      <!-- Quick Actions + Recent Activity -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+          <h3 class="text-sm font-semibold text-white mb-3">Quick Actions</h3>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="finSwitchTab('expenses'); setTimeout(function(){ document.getElementById('fin-exp-description').focus(); }, 100)" class="bg-lime-400 hover:bg-lime-300 text-black text-xs font-semibold px-3 py-2 rounded-lg transition-colors">+ Add Expense</button>
+            <button onclick="finSwitchTab('wages')" class="bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors">+ Record Wage</button>
+            <button onclick="finSwitchTab('mileage')" class="bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors">+ Log Mileage</button>
+            <button onclick="finSwitchTab('income')" class="bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors">+ Add Income</button>
+          </div>
+        </div>
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+          <h3 class="text-sm font-semibold text-white mb-3">Upcoming Recurring</h3>
+          <div id="fin-upcoming-list" class="space-y-2 text-xs text-neutral-400">Loading...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== EXPENSES SUB-TAB ===== -->
+    <div id="fin-content-expenses" class="fin-tab-content hidden">
+      <!-- Quick Add Form -->
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4 mb-6">
+        <h3 class="text-sm font-semibold text-white mb-3">Add Expense</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <input type="date" id="fin-exp-date" class="bg-black border border-neutral-700 text-white text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+          <input type="text" id="fin-exp-description" placeholder="Description" class="bg-black border border-neutral-700 text-white text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-xs">&pound;</span>
+            <input type="number" id="fin-exp-amount" placeholder="0.00" step="0.01" min="0" class="bg-black border border-neutral-700 text-white text-xs pl-7 pr-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none w-full">
+          </div>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-xs">VAT &pound;</span>
+            <input type="number" id="fin-exp-vat" placeholder="0.00" step="0.01" min="0" class="bg-black border border-neutral-700 text-white text-xs pl-14 pr-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none w-full">
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
+          <select id="fin-exp-category" class="bg-black border border-neutral-700 text-neutral-300 text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+            <option value="">Select Category</option>
+          </select>
+          <select id="fin-exp-method" class="bg-black border border-neutral-700 text-neutral-300 text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+            <option value="bank_transfer">Bank Transfer</option>
+            <option value="card">Card</option>
+            <option value="cash">Cash</option>
+            <option value="petty_cash">Petty Cash</option>
+          </select>
+          <div class="flex items-center gap-3">
+            <label class="flex items-center gap-2 text-xs text-neutral-400 cursor-pointer">
+              <input type="checkbox" id="fin-exp-business" checked class="accent-lime-400"> Business
+            </label>
+            <input type="text" id="fin-exp-supplier" placeholder="Supplier" class="bg-black border border-neutral-700 text-white text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none flex-1">
+          </div>
+          <button onclick="finCreateExpense()" class="bg-lime-400 hover:bg-lime-300 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors">Save Expense</button>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="flex flex-wrap items-center gap-3 mb-4">
+        <select id="fin-exp-filter-category" onchange="finLoadExpenses()" class="bg-neutral-900 border border-neutral-800 text-neutral-300 text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+          <option value="">All Categories</option>
+        </select>
+        <select id="fin-exp-filter-method" onchange="finLoadExpenses()" class="bg-neutral-900 border border-neutral-800 text-neutral-300 text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+          <option value="">All Methods</option>
+          <option value="bank_transfer">Bank Transfer</option>
+          <option value="card">Card</option>
+          <option value="cash">Cash</option>
+          <option value="petty_cash">Petty Cash</option>
+        </select>
+        <select id="fin-exp-filter-type" onchange="finLoadExpenses()" class="bg-neutral-900 border border-neutral-800 text-neutral-300 text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+          <option value="">All Types</option>
+          <option value="true">Business Only</option>
+          <option value="false">Personal Only</option>
+        </select>
+        <input type="date" id="fin-exp-filter-from" onchange="finLoadExpenses()" class="bg-neutral-900 border border-neutral-800 text-neutral-300 text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+        <input type="date" id="fin-exp-filter-to" onchange="finLoadExpenses()" class="bg-neutral-900 border border-neutral-800 text-neutral-300 text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+        <div class="ml-auto text-neutral-500 text-xs" id="fin-exp-count"></div>
+      </div>
+
+      <!-- Expenses Table -->
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr class="border-b border-neutral-800">
+                <th class="text-left text-[10px] uppercase tracking-wider text-neutral-500 px-4 py-3">Date</th>
+                <th class="text-left text-[10px] uppercase tracking-wider text-neutral-500 px-4 py-3">Description</th>
+                <th class="text-left text-[10px] uppercase tracking-wider text-neutral-500 px-4 py-3 hidden md:table-cell">Category</th>
+                <th class="text-right text-[10px] uppercase tracking-wider text-neutral-500 px-4 py-3">Amount</th>
+                <th class="text-right text-[10px] uppercase tracking-wider text-neutral-500 px-4 py-3 hidden lg:table-cell">VAT</th>
+                <th class="text-left text-[10px] uppercase tracking-wider text-neutral-500 px-4 py-3 hidden lg:table-cell">Method</th>
+                <th class="text-center text-[10px] uppercase tracking-wider text-neutral-500 px-4 py-3 hidden md:table-cell">Type</th>
+                <th class="text-right text-[10px] uppercase tracking-wider text-neutral-500 px-4 py-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="fin-expenses-table"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="fin-exp-empty" class="hidden text-center text-neutral-600 text-sm py-12">No expenses recorded yet. Add your first expense above.</div>
+      <!-- Pagination -->
+      <div class="flex items-center justify-between mt-4">
+        <button onclick="finExpPrev()" id="fin-exp-prev" class="text-xs text-neutral-500 hover:text-white disabled:opacity-30" disabled>&larr; Previous</button>
+        <span class="text-xs text-neutral-500" id="fin-exp-page"></span>
+        <button onclick="finExpNext()" id="fin-exp-next" class="text-xs text-neutral-500 hover:text-white disabled:opacity-30" disabled>Next &rarr;</button>
+      </div>
+    </div>
+
+    <!-- ===== WAGES SUB-TAB ===== -->
+    <div id="fin-content-wages" class="fin-tab-content hidden">
+      <!-- Summary Cards -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+          <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Wages This Month</div>
+          <div class="text-xl font-bold text-orange-400 mt-1" id="fin-wages-month-total">-</div>
+        </div>
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+          <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Wages YTD</div>
+          <div class="text-xl font-bold text-white mt-1" id="fin-wages-ytd-total">-</div>
+        </div>
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+          <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Payments This Month</div>
+          <div class="text-xl font-bold text-white mt-1" id="fin-wages-month-count">-</div>
+        </div>
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+          <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Team Members</div>
+          <div class="text-xl font-bold text-white mt-1" id="fin-wages-team-count">-</div>
+        </div>
+      </div>
+
+      <!-- Quick Add Wage Form -->
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4 mb-6">
+        <h3 class="text-sm font-semibold text-white mb-3">Record Wage Payment</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <select id="fin-wage-member" class="bg-black border border-neutral-700 text-neutral-300 text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+            <option value="">Select Team Member</option>
+          </select>
+          <input type="date" id="fin-wage-date" class="bg-black border border-neutral-700 text-white text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-xs">&pound;</span>
+            <input type="number" id="fin-wage-amount" placeholder="0.00" step="0.01" min="0" class="bg-black border border-neutral-700 text-white text-xs pl-7 pr-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none w-full">
+          </div>
+          <select id="fin-wage-type" class="bg-black border border-neutral-700 text-neutral-300 text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+            <option value="weekly_wage">Weekly Wage</option>
+            <option value="daily_rate">Daily Rate</option>
+            <option value="per_job">Per Job</option>
+            <option value="bonus">Bonus</option>
+            <option value="expenses_reimbursement">Expenses Reimbursement</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
+          <select id="fin-wage-method" class="bg-black border border-neutral-700 text-neutral-300 text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+            <option value="bank_transfer">Bank Transfer</option>
+            <option value="cash">Cash</option>
+            <option value="card">Card</option>
+          </select>
+          <input type="date" id="fin-wage-period-start" placeholder="Period start" class="bg-black border border-neutral-700 text-white text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+          <input type="date" id="fin-wage-period-end" placeholder="Period end" class="bg-black border border-neutral-700 text-white text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+          <button onclick="finCreateWage()" class="bg-lime-400 hover:bg-lime-300 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors">Save Payment</button>
+        </div>
+      </div>
+
+      <!-- Wages Table -->
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr class="border-b border-neutral-800">
+                <th class="text-left text-[10px] uppercase tracking-wider text-neutral-500 px-4 py-3">Date</th>
+                <th class="text-left text-[10px] uppercase tracking-wider text-neutral-500 px-4 py-3">Team Member</th>
+                <th class="text-right text-[10px] uppercase tracking-wider text-neutral-500 px-4 py-3">Amount</th>
+                <th class="text-left text-[10px] uppercase tracking-wider text-neutral-500 px-4 py-3 hidden md:table-cell">Type</th>
+                <th class="text-left text-[10px] uppercase tracking-wider text-neutral-500 px-4 py-3 hidden lg:table-cell">Period</th>
+                <th class="text-left text-[10px] uppercase tracking-wider text-neutral-500 px-4 py-3 hidden lg:table-cell">Method</th>
+                <th class="text-right text-[10px] uppercase tracking-wider text-neutral-500 px-4 py-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="fin-wages-table"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="fin-wages-empty" class="hidden text-center text-neutral-600 text-sm py-12">No wage payments recorded yet.</div>
+    </div>
+
+    <!-- ===== MILEAGE SUB-TAB ===== -->
+    <div id="fin-content-mileage" class="fin-tab-content hidden">
+      <!-- Summary Cards -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+          <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Miles This Month</div>
+          <div class="text-xl font-bold text-white mt-1" id="fin-miles-month">-</div>
+        </div>
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+          <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Miles YTD</div>
+          <div class="text-xl font-bold text-white mt-1" id="fin-miles-ytd">-</div>
+        </div>
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+          <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Claimable (Month)</div>
+          <div class="text-xl font-bold text-lime-400 mt-1" id="fin-miles-claim-month">-</div>
+        </div>
+        <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+          <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Claimable YTD</div>
+          <div class="text-xl font-bold text-lime-400 mt-1" id="fin-miles-claim-ytd">-</div>
+        </div>
+      </div>
+
+      <!-- Quick Add Mileage Form -->
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4 mb-6">
+        <h3 class="text-sm font-semibold text-white mb-3">Log Journey</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <input type="date" id="fin-mile-date" class="bg-black border border-neutral-700 text-white text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+          <input type="text" id="fin-mile-from" placeholder="From" class="bg-black border border-neutral-700 text-white text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+          <input type="text" id="fin-mile-to" placeholder="To" class="bg-black border border-neutral-700 text-white text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+          <input type="number" id="fin-mile-miles" placeholder="Miles" step="0.1" min="0" class="bg-black border border-neutral-700 text-white text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
+          <select id="fin-mile-purpose" class="bg-black border border-neutral-700 text-neutral-300 text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+            <option value="">Purpose</option>
+            <option value="Job Visit">Job Visit</option>
+            <option value="Quote Inspection">Quote Inspection</option>
+            <option value="Material Pickup">Material Pickup</option>
+            <option value="Equipment Hire">Equipment Hire</option>
+            <option value="Client Meeting">Client Meeting</option>
+            <option value="Other">Other</option>
+          </select>
+          <label class="flex items-center gap-2 text-xs text-neutral-400 cursor-pointer px-3 py-2">
+            <input type="checkbox" id="fin-mile-return" class="accent-lime-400"> Return journey (doubles miles)
+          </label>
+          <div class="text-xs text-neutral-500 flex items-center px-3">Rate: 45p/mile (HMRC)</div>
+          <button onclick="finCreateMileage()" class="bg-lime-400 hover:bg-lime-300 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors">Save Journey</button>
+        </div>
+      </div>
+
+      <!-- Mileage Table -->
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr class="border-b border-neutral-800">
+                <th class="text-left text-[10px] uppercase tracking-wider text-neutral-500 px-4 py-3">Date</th>
+                <th class="text-left text-[10px] uppercase tracking-wider text-neutral-500 px-4 py-3">From</th>
+                <th class="text-left text-[10px] uppercase tracking-wider text-neutral-500 px-4 py-3">To</th>
+                <th class="text-right text-[10px] uppercase tracking-wider text-neutral-500 px-4 py-3">Miles</th>
+                <th class="text-right text-[10px] uppercase tracking-wider text-neutral-500 px-4 py-3">Amount</th>
+                <th class="text-left text-[10px] uppercase tracking-wider text-neutral-500 px-4 py-3 hidden md:table-cell">Purpose</th>
+                <th class="text-right text-[10px] uppercase tracking-wider text-neutral-500 px-4 py-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="fin-mileage-table"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="fin-mileage-empty" class="hidden text-center text-neutral-600 text-sm py-12">No mileage recorded yet.</div>
+    </div>
+
+    <!-- ===== RECURRING SUB-TAB ===== -->
+    <div id="fin-content-recurring" class="fin-tab-content hidden">
+      <!-- Add Recurring Form -->
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4 mb-6">
+        <h3 class="text-sm font-semibold text-white mb-3">Add Recurring Expense</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <input type="text" id="fin-rec-description" placeholder="Description (e.g. Van Insurance)" class="bg-black border border-neutral-700 text-white text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-xs">&pound;</span>
+            <input type="number" id="fin-rec-amount" placeholder="0.00" step="0.01" min="0" class="bg-black border border-neutral-700 text-white text-xs pl-7 pr-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none w-full">
+          </div>
+          <select id="fin-rec-category" class="bg-black border border-neutral-700 text-neutral-300 text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+            <option value="">Select Category</option>
+          </select>
+          <select id="fin-rec-frequency" class="bg-black border border-neutral-700 text-neutral-300 text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+            <option value="weekly">Weekly</option>
+            <option value="fortnightly">Fortnightly</option>
+            <option value="monthly" selected>Monthly</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="annually">Annually</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
+          <input type="date" id="fin-rec-next-due" class="bg-black border border-neutral-700 text-white text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+          <input type="text" id="fin-rec-supplier" placeholder="Supplier" class="bg-black border border-neutral-700 text-white text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+          <select id="fin-rec-method" class="bg-black border border-neutral-700 text-neutral-300 text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+            <option value="bank_transfer">Bank Transfer</option>
+            <option value="card">Card</option>
+            <option value="cash">Cash</option>
+          </select>
+          <button onclick="finCreateRecurring()" class="bg-lime-400 hover:bg-lime-300 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors">Add Recurring</button>
+        </div>
+      </div>
+
+      <!-- Recurring List -->
+      <div id="fin-recurring-list" class="space-y-3"></div>
+      <div id="fin-recurring-empty" class="hidden text-center text-neutral-600 text-sm py-12">No recurring expenses set up yet.</div>
+    </div>
+
+    <!-- ===== INCOME SUB-TAB ===== -->
+    <div id="fin-content-income" class="fin-tab-content hidden">
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4 mb-6">
+        <h3 class="text-sm font-semibold text-white mb-3">Add Manual Income</h3>
+        <p class="text-xs text-neutral-500 mb-3">For cash jobs or income not captured by invoices. Paid invoices are automatically included in your totals.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <input type="date" id="fin-inc-date" class="bg-black border border-neutral-700 text-white text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+          <input type="text" id="fin-inc-description" placeholder="Description" class="bg-black border border-neutral-700 text-white text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-xs">&pound;</span>
+            <input type="number" id="fin-inc-amount" placeholder="0.00" step="0.01" min="0" class="bg-black border border-neutral-700 text-white text-xs pl-7 pr-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none w-full">
+          </div>
+          <button onclick="finCreateIncome()" class="bg-lime-400 hover:bg-lime-300 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors">Add Income</button>
+        </div>
+      </div>
+
+      <!-- Income Table -->
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead>
+              <tr class="border-b border-neutral-800">
+                <th class="text-left text-[10px] uppercase tracking-wider text-neutral-500 px-4 py-3">Date</th>
+                <th class="text-left text-[10px] uppercase tracking-wider text-neutral-500 px-4 py-3">Description</th>
+                <th class="text-right text-[10px] uppercase tracking-wider text-neutral-500 px-4 py-3">Amount</th>
+                <th class="text-left text-[10px] uppercase tracking-wider text-neutral-500 px-4 py-3 hidden md:table-cell">Source</th>
+                <th class="text-right text-[10px] uppercase tracking-wider text-neutral-500 px-4 py-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="fin-income-table"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="fin-income-empty" class="hidden text-center text-neutral-600 text-sm py-12">No manual income entries. Paid invoices are tracked automatically.</div>
+    </div>
+
+    <!-- ===== REPORTS SUB-TAB ===== -->
+    <div id="fin-content-reports" class="fin-tab-content hidden">
+      <!-- Date Range -->
+      <div class="flex flex-wrap items-center gap-3 mb-6">
+        <label class="text-xs text-neutral-500">From:</label>
+        <input type="date" id="fin-report-from" class="bg-neutral-900 border border-neutral-800 text-neutral-300 text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+        <label class="text-xs text-neutral-500">To:</label>
+        <input type="date" id="fin-report-to" class="bg-neutral-900 border border-neutral-800 text-neutral-300 text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+        <button onclick="finLoadReports()" class="bg-lime-400 hover:bg-lime-300 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors">Generate Report</button>
+      </div>
+
+      <!-- P&L Summary -->
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4 mb-6">
+        <h3 class="text-sm font-semibold text-white mb-3">Profit & Loss Summary</h3>
+        <div id="fin-report-pnl" class="text-xs text-neutral-400">Select a date range and click Generate Report.</div>
+      </div>
+
+      <!-- Category Breakdown -->
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4 mb-6">
+        <h3 class="text-sm font-semibold text-white mb-3">Expense Breakdown by Category</h3>
+        <div id="fin-report-categories" class="space-y-2"></div>
+      </div>
+
+      <!-- Tax Summary -->
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4 mb-6">
+        <h3 class="text-sm font-semibold text-white mb-3">Tax Year Summary (HMRC Categories)</h3>
+        <div id="fin-report-tax" class="text-xs text-neutral-400">Tax summary will show the current tax year (6 April - 5 April).</div>
+      </div>
+
+      <!-- Export Buttons -->
+      <div class="flex flex-wrap gap-3">
+        <button onclick="finExport('expenses')" class="bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors">Export Expenses CSV</button>
+        <button onclick="finExport('wages')" class="bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors">Export Wages CSV</button>
+        <button onclick="finExport('mileage')" class="bg-neutral-800 hover:bg-neutral-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors">Export Mileage CSV</button>
+      </div>
+    </div>
+
   </div>
 
   <!-- ===== CHATS TAB ===== -->
@@ -2899,6 +3324,7 @@ function switchTab(tab) {
   if (tab === 'team') loadTeam();
   if (tab === 'customers') { loadCustomers(); loadCustStats(); loadAnalytics(); }
   if (tab === 'invoices') loadInvoices();
+  if (tab === 'finance') finLoadAll();
   if (tab === 'chats') loadChats();
   if (tab === 'settings') loadSettings();
 }
@@ -6071,6 +6497,853 @@ async function executeCsvImport() {
     btn.disabled = false;
     btn.textContent = 'Import Customers';
   }
+}
+
+// ============================
+// FINANCE STATE
+// ============================
+var finState = {
+  categories: [],
+  expenses: [],
+  wages: [],
+  mileage: [],
+  recurring: [],
+  income: [],
+  summary: null,
+  activeSubTab: 'overview',
+  expPagination: { total: 0, limit: 50, offset: 0 }
+};
+
+// ============================
+// FINANCE SUB-TAB SWITCHING
+// ============================
+function finSwitchTab(tab) {
+  finState.activeSubTab = tab;
+  document.querySelectorAll('.fin-tab-content').forEach(function(el) { el.classList.add('hidden'); });
+  document.querySelectorAll('.fin-tab-btn').forEach(function(el) {
+    el.className = 'fin-tab-btn px-3 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300 whitespace-nowrap';
+  });
+  var content = document.getElementById('fin-content-' + tab);
+  if (content) content.classList.remove('hidden');
+  var btn = document.getElementById('fin-tab-' + tab);
+  if (btn) btn.className = 'fin-tab-btn px-3 py-2 text-xs font-semibold rounded-t-lg transition-colors bg-neutral-900 text-lime-400 border border-neutral-800 border-b-0 whitespace-nowrap';
+
+  if (tab === 'expenses') finLoadExpenses();
+  if (tab === 'wages') finLoadWages();
+  if (tab === 'mileage') finLoadMileage();
+  if (tab === 'recurring') finLoadRecurring();
+  if (tab === 'income') finLoadIncome();
+}
+
+// ============================
+// FINANCE LOAD ALL (on tab switch)
+// ============================
+async function finLoadAll() {
+  await finLoadCategories();
+  finLoadSummary();
+  finLoadCashflow();
+  // Set default dates
+  var today = new Date().toISOString().split('T')[0];
+  document.getElementById('fin-exp-date').value = today;
+  document.getElementById('fin-wage-date').value = today;
+  document.getElementById('fin-mile-date').value = today;
+  document.getElementById('fin-rec-next-due').value = today;
+  document.getElementById('fin-inc-date').value = today;
+  // Set report defaults (current tax year)
+  var now = new Date();
+  var taxStart;
+  if (now.getMonth() > 3 || (now.getMonth() === 3 && now.getDate() >= 6)) {
+    taxStart = now.getFullYear() + '-04-06';
+  } else {
+    taxStart = (now.getFullYear() - 1) + '-04-06';
+  }
+  document.getElementById('fin-report-from').value = taxStart;
+  document.getElementById('fin-report-to').value = today;
+  // Load team members for wage dropdown
+  finLoadTeamForWages();
+}
+
+// ============================
+// CATEGORIES
+// ============================
+async function finLoadCategories() {
+  try {
+    var data = await apiRequest('/admin/finance/categories?all=true');
+    if (data.success) {
+      finState.categories = data.data;
+      finPopulateCategoryDropdowns();
+    }
+  } catch (e) { console.error('[Finance] Load categories error:', e); }
+}
+
+function finPopulateCategoryDropdowns() {
+  var ids = ['fin-exp-category', 'fin-exp-filter-category', 'fin-rec-category'];
+  ids.forEach(function(id) {
+    var sel = document.getElementById(id);
+    if (!sel) return;
+    var val = sel.value;
+    var isFilter = id.indexOf('filter') > -1;
+    sel.innerHTML = isFilter ? '<option value="">All Categories</option>' : '<option value="">Select Category</option>';
+    finState.categories.forEach(function(cat) {
+      if (!cat.is_active && !isFilter) return;
+      var opt = document.createElement('option');
+      opt.value = cat.id;
+      opt.textContent = cat.name;
+      opt.style.color = cat.colour;
+      sel.appendChild(opt);
+    });
+    if (val) sel.value = val;
+  });
+}
+
+function finGetCategoryName(id) {
+  var cat = finState.categories.find(function(c) { return c.id === id; });
+  return cat ? cat.name : '';
+}
+
+function finGetCategoryColour(id) {
+  var cat = finState.categories.find(function(c) { return c.id === id; });
+  return cat ? cat.colour : '#737373';
+}
+
+// ============================
+// SUMMARY (Overview)
+// ============================
+async function finLoadSummary() {
+  try {
+    var data = await apiRequest('/admin/finance/summary');
+    if (data.success) {
+      finState.summary = data.data;
+      var d = data.data;
+      document.getElementById('fin-stat-income-month').textContent = '\u00A3' + d.month.income.toFixed(2);
+      document.getElementById('fin-stat-expenses-month').textContent = '\u00A3' + d.month.expenses.toFixed(2);
+      var profitEl = document.getElementById('fin-stat-profit-month');
+      profitEl.textContent = '\u00A3' + d.month.profit.toFixed(2);
+      profitEl.className = 'text-xl font-bold mt-1 ' + (d.month.profit >= 0 ? 'text-lime-400' : 'text-red-400');
+      var ytdEl = document.getElementById('fin-stat-ytd-profit');
+      ytdEl.textContent = '\u00A3' + d.ytd.profit.toFixed(2);
+      ytdEl.className = 'text-xl font-bold mt-1 ' + (d.ytd.profit >= 0 ? 'text-lime-400' : 'text-red-400');
+      document.getElementById('fin-stat-wages-month').textContent = '\u00A3' + d.wages_this_month.toFixed(2);
+      document.getElementById('fin-stat-upcoming').textContent = d.upcoming_recurring.length;
+
+      // Upcoming recurring list
+      var list = document.getElementById('fin-upcoming-list');
+      if (d.upcoming_recurring.length === 0) {
+        list.innerHTML = '<div class="text-neutral-600">No upcoming recurring expenses.</div>';
+      } else {
+        list.innerHTML = d.upcoming_recurring.map(function(r) {
+          return '<div class="flex justify-between items-center py-1 border-b border-neutral-800 last:border-0">' +
+            '<span>' + r.description + '</span>' +
+            '<span class="text-white font-semibold">\u00A3' + parseFloat(r.amount).toFixed(2) + ' <span class="text-neutral-600 font-normal">(' + r.next_due_date + ')</span></span>' +
+          '</div>';
+        }).join('');
+      }
+    }
+  } catch (e) { console.error('[Finance] Load summary error:', e); }
+}
+
+// ============================
+// CASHFLOW CHART
+// ============================
+async function finLoadCashflow() {
+  try {
+    var data = await apiRequest('/admin/finance/cashflow');
+    if (data.success) finRenderCashflow(data.data);
+  } catch (e) { console.error('[Finance] Load cashflow error:', e); }
+}
+
+function finRenderCashflow(months) {
+  var container = document.getElementById('fin-cashflow-chart');
+  if (!months || months.length === 0) {
+    container.innerHTML = '<div class="text-neutral-600 text-xs">No data yet.</div>';
+    return;
+  }
+  var maxVal = Math.max.apply(null, months.map(function(m) { return Math.max(m.income, m.expenses); })) || 1;
+  var html = '';
+  months.forEach(function(m) {
+    var incH = Math.max(2, Math.round((m.income / maxVal) * 160));
+    var expH = Math.max(2, Math.round((m.expenses / maxVal) * 160));
+    html += '<div class="flex flex-col items-center flex-1 min-w-[40px]">' +
+      '<div class="flex items-end gap-[2px] h-40">' +
+        '<div style="height:' + incH + 'px" class="w-3 bg-lime-400 rounded-t" title="Income: \u00A3' + m.income.toFixed(2) + '"></div>' +
+        '<div style="height:' + expH + 'px" class="w-3 bg-red-400 rounded-t" title="Expenses: \u00A3' + m.expenses.toFixed(2) + '"></div>' +
+      '</div>' +
+      '<div class="text-[9px] text-neutral-500 mt-1">' + m.label + '</div>' +
+    '</div>';
+  });
+  container.innerHTML = html;
+}
+
+// ============================
+// EXPENSES
+// ============================
+async function finLoadExpenses() {
+  try {
+    var params = [];
+    var catFilter = document.getElementById('fin-exp-filter-category').value;
+    var methodFilter = document.getElementById('fin-exp-filter-method').value;
+    var typeFilter = document.getElementById('fin-exp-filter-type').value;
+    var fromDate = document.getElementById('fin-exp-filter-from').value;
+    var toDate = document.getElementById('fin-exp-filter-to').value;
+    if (catFilter) params.push('category_id=' + catFilter);
+    if (methodFilter) params.push('payment_method=' + methodFilter);
+    if (typeFilter) params.push('is_business=' + typeFilter);
+    if (fromDate) params.push('date_from=' + fromDate);
+    if (toDate) params.push('date_to=' + toDate);
+    params.push('limit=' + finState.expPagination.limit);
+    params.push('offset=' + finState.expPagination.offset);
+
+    var data = await apiRequest('/admin/finance/expenses?' + params.join('&'));
+    if (data.success) {
+      finState.expenses = data.data;
+      finState.expPagination.total = data.total;
+      finState.expPagination.hasMore = data.hasMore;
+      finRenderExpenses();
+    }
+  } catch (e) { console.error('[Finance] Load expenses error:', e); }
+}
+
+function finRenderExpenses() {
+  var tbody = document.getElementById('fin-expenses-table');
+  var empty = document.getElementById('fin-exp-empty');
+  var countEl = document.getElementById('fin-exp-count');
+  var p = finState.expPagination;
+
+  if (!finState.expenses || finState.expenses.length === 0) {
+    tbody.innerHTML = '';
+    empty.classList.remove('hidden');
+    countEl.textContent = '';
+    document.getElementById('fin-exp-page').textContent = '';
+    document.getElementById('fin-exp-prev').disabled = true;
+    document.getElementById('fin-exp-next').disabled = true;
+    return;
+  }
+
+  empty.classList.add('hidden');
+  countEl.textContent = p.total + ' expense' + (p.total !== 1 ? 's' : '');
+
+  var page = Math.floor(p.offset / p.limit) + 1;
+  var totalPages = Math.ceil(p.total / p.limit);
+  document.getElementById('fin-exp-page').textContent = 'Page ' + page + ' of ' + totalPages;
+  document.getElementById('fin-exp-prev').disabled = p.offset === 0;
+  document.getElementById('fin-exp-next').disabled = !p.hasMore;
+
+  tbody.innerHTML = finState.expenses.map(function(e) {
+    var catName = e.expense_categories ? e.expense_categories.name : '';
+    var catColour = e.expense_categories ? e.expense_categories.colour : '#737373';
+    var dateStr = new Date(e.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' });
+    var typeLabel = e.is_business ? '<span class="text-lime-400">Biz</span>' : '<span class="text-red-400">Personal</span>';
+    var methodLabel = (e.payment_method || '').replace(/_/g, ' ').replace(/\b\w/g, function(l) { return l.toUpperCase(); });
+    var dimClass = e.is_business ? '' : ' opacity-50';
+
+    return '<tr class="border-b border-neutral-800 hover:bg-neutral-800/50' + dimClass + '">' +
+      '<td class="px-4 py-3 text-xs text-neutral-300">' + dateStr + '</td>' +
+      '<td class="px-4 py-3 text-xs text-white">' + (e.description || '') + (e.supplier ? '<span class="text-neutral-500 ml-1">(' + e.supplier + ')</span>' : '') + '</td>' +
+      '<td class="px-4 py-3 text-xs hidden md:table-cell"><span class="inline-block w-2 h-2 rounded-full mr-1" style="background:' + catColour + '"></span>' + catName + '</td>' +
+      '<td class="px-4 py-3 text-xs text-right font-semibold text-white">\u00A3' + parseFloat(e.amount).toFixed(2) + '</td>' +
+      '<td class="px-4 py-3 text-xs text-right text-neutral-500 hidden lg:table-cell">\u00A3' + parseFloat(e.vat_amount || 0).toFixed(2) + '</td>' +
+      '<td class="px-4 py-3 text-xs text-neutral-400 hidden lg:table-cell">' + methodLabel + '</td>' +
+      '<td class="px-4 py-3 text-xs text-center hidden md:table-cell">' + typeLabel + '</td>' +
+      '<td class="px-4 py-3 text-xs text-right"><button onclick="finDeleteExpense(\'' + e.id + '\')" class="text-red-400 hover:text-red-300 text-xs">Delete</button></td>' +
+    '</tr>';
+  }).join('');
+}
+
+function finExpPrev() {
+  finState.expPagination.offset = Math.max(0, finState.expPagination.offset - finState.expPagination.limit);
+  finLoadExpenses();
+}
+
+function finExpNext() {
+  finState.expPagination.offset += finState.expPagination.limit;
+  finLoadExpenses();
+}
+
+async function finCreateExpense() {
+  var desc = document.getElementById('fin-exp-description').value.trim();
+  var amount = document.getElementById('fin-exp-amount').value;
+  if (!desc || !amount) { showToast('Please enter description and amount', 'error'); return; }
+
+  try {
+    var data = await apiRequest('/admin/finance/expenses', {
+      method: 'POST',
+      body: {
+        date: document.getElementById('fin-exp-date').value,
+        description: desc,
+        amount: parseFloat(amount),
+        vat_amount: parseFloat(document.getElementById('fin-exp-vat').value) || 0,
+        category_id: document.getElementById('fin-exp-category').value || null,
+        payment_method: document.getElementById('fin-exp-method').value,
+        is_business: document.getElementById('fin-exp-business').checked,
+        supplier: document.getElementById('fin-exp-supplier').value.trim() || null
+      }
+    });
+    if (data.success) {
+      showToast('Expense saved');
+      document.getElementById('fin-exp-description').value = '';
+      document.getElementById('fin-exp-amount').value = '';
+      document.getElementById('fin-exp-vat').value = '';
+      document.getElementById('fin-exp-supplier').value = '';
+      finLoadExpenses();
+      finLoadSummary();
+      finLoadCashflow();
+    }
+  } catch (e) { showToast('Failed to save expense', 'error'); }
+}
+
+async function finDeleteExpense(id) {
+  if (!confirm('Delete this expense?')) return;
+  try {
+    var data = await apiRequest('/admin/finance/expenses/' + id, { method: 'DELETE' });
+    if (data.success) {
+      showToast('Expense deleted');
+      finLoadExpenses();
+      finLoadSummary();
+      finLoadCashflow();
+    }
+  } catch (e) { showToast('Failed to delete expense', 'error'); }
+}
+
+// ============================
+// WAGES
+// ============================
+async function finLoadTeamForWages() {
+  try {
+    var data = await apiRequest('/admin/team');
+    if (data.success) {
+      var sel = document.getElementById('fin-wage-member');
+      sel.innerHTML = '<option value="">Select Team Member</option>';
+      (data.data || []).forEach(function(m) {
+        if (!m.is_active && m.is_active !== undefined) return;
+        var opt = document.createElement('option');
+        opt.value = m.id + '|' + m.name;
+        opt.textContent = m.name;
+        sel.appendChild(opt);
+      });
+    }
+  } catch (e) { console.error('[Finance] Load team error:', e); }
+}
+
+async function finLoadWages() {
+  try {
+    var now = new Date();
+    var monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    var yearStart = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+
+    var data = await apiRequest('/admin/finance/wages?limit=100');
+    if (data.success) {
+      finState.wages = data.data;
+      finRenderWages();
+
+      // Calculate stats
+      var monthTotal = 0, ytdTotal = 0, monthCount = 0;
+      var members = {};
+      (data.data || []).forEach(function(w) {
+        ytdTotal += parseFloat(w.amount);
+        if (w.date >= monthStart) { monthTotal += parseFloat(w.amount); monthCount++; }
+        members[w.team_member_name] = true;
+      });
+      document.getElementById('fin-wages-month-total').textContent = '\u00A3' + monthTotal.toFixed(2);
+      document.getElementById('fin-wages-ytd-total').textContent = '\u00A3' + ytdTotal.toFixed(2);
+      document.getElementById('fin-wages-month-count').textContent = monthCount;
+      document.getElementById('fin-wages-team-count').textContent = Object.keys(members).length;
+    }
+  } catch (e) { console.error('[Finance] Load wages error:', e); }
+}
+
+function finRenderWages() {
+  var tbody = document.getElementById('fin-wages-table');
+  var empty = document.getElementById('fin-wages-empty');
+
+  if (!finState.wages || finState.wages.length === 0) {
+    tbody.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  tbody.innerHTML = finState.wages.map(function(w) {
+    var dateStr = new Date(w.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' });
+    var typeLabel = (w.payment_type || '').replace(/_/g, ' ').replace(/\b\w/g, function(l) { return l.toUpperCase(); });
+    var methodLabel = (w.payment_method || '').replace(/_/g, ' ').replace(/\b\w/g, function(l) { return l.toUpperCase(); });
+    var period = '';
+    if (w.period_start && w.period_end) period = w.period_start + ' to ' + w.period_end;
+
+    return '<tr class="border-b border-neutral-800 hover:bg-neutral-800/50">' +
+      '<td class="px-4 py-3 text-xs text-neutral-300">' + dateStr + '</td>' +
+      '<td class="px-4 py-3 text-xs text-white">' + (w.team_member_name || '') + '</td>' +
+      '<td class="px-4 py-3 text-xs text-right font-semibold text-white">\u00A3' + parseFloat(w.amount).toFixed(2) + '</td>' +
+      '<td class="px-4 py-3 text-xs text-neutral-400 hidden md:table-cell">' + typeLabel + '</td>' +
+      '<td class="px-4 py-3 text-xs text-neutral-400 hidden lg:table-cell">' + period + '</td>' +
+      '<td class="px-4 py-3 text-xs text-neutral-400 hidden lg:table-cell">' + methodLabel + '</td>' +
+      '<td class="px-4 py-3 text-xs text-right"><button onclick="finDeleteWage(\'' + w.id + '\')" class="text-red-400 hover:text-red-300 text-xs">Delete</button></td>' +
+    '</tr>';
+  }).join('');
+}
+
+async function finCreateWage() {
+  var memberVal = document.getElementById('fin-wage-member').value;
+  var amount = document.getElementById('fin-wage-amount').value;
+  if (!memberVal || !amount) { showToast('Please select team member and enter amount', 'error'); return; }
+
+  var parts = memberVal.split('|');
+  try {
+    var data = await apiRequest('/admin/finance/wages', {
+      method: 'POST',
+      body: {
+        team_member_id: parts[0],
+        team_member_name: parts[1],
+        date: document.getElementById('fin-wage-date').value,
+        amount: parseFloat(amount),
+        payment_type: document.getElementById('fin-wage-type').value,
+        payment_method: document.getElementById('fin-wage-method').value,
+        period_start: document.getElementById('fin-wage-period-start').value || null,
+        period_end: document.getElementById('fin-wage-period-end').value || null
+      }
+    });
+    if (data.success) {
+      showToast('Wage payment saved');
+      document.getElementById('fin-wage-amount').value = '';
+      document.getElementById('fin-wage-period-start').value = '';
+      document.getElementById('fin-wage-period-end').value = '';
+      finLoadWages();
+      finLoadSummary();
+      finLoadCashflow();
+    }
+  } catch (e) { showToast('Failed to save wage payment', 'error'); }
+}
+
+async function finDeleteWage(id) {
+  if (!confirm('Delete this wage payment?')) return;
+  try {
+    var data = await apiRequest('/admin/finance/wages/' + id, { method: 'DELETE' });
+    if (data.success) {
+      showToast('Wage payment deleted');
+      finLoadWages();
+      finLoadSummary();
+    }
+  } catch (e) { showToast('Failed to delete wage payment', 'error'); }
+}
+
+// ============================
+// MILEAGE
+// ============================
+async function finLoadMileage() {
+  try {
+    var now = new Date();
+    var monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+    var yearStart = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+
+    var data = await apiRequest('/admin/finance/mileage?limit=100');
+    if (data.success) {
+      finState.mileage = data.data;
+      finRenderMileage();
+
+      // Calculate stats
+      var monthMiles = 0, ytdMiles = 0, monthClaim = 0, ytdClaim = 0;
+      (data.data || []).forEach(function(m) {
+        var miles = parseFloat(m.miles) * (m.is_return ? 2 : 1);
+        var claim = parseFloat(m.calculated_amount || 0);
+        ytdMiles += miles;
+        ytdClaim += claim;
+        if (m.date >= monthStart) { monthMiles += miles; monthClaim += claim; }
+      });
+      document.getElementById('fin-miles-month').textContent = monthMiles.toFixed(1);
+      document.getElementById('fin-miles-ytd').textContent = ytdMiles.toFixed(1);
+      document.getElementById('fin-miles-claim-month').textContent = '\u00A3' + monthClaim.toFixed(2);
+      document.getElementById('fin-miles-claim-ytd').textContent = '\u00A3' + ytdClaim.toFixed(2);
+    }
+  } catch (e) { console.error('[Finance] Load mileage error:', e); }
+}
+
+function finRenderMileage() {
+  var tbody = document.getElementById('fin-mileage-table');
+  var empty = document.getElementById('fin-mileage-empty');
+
+  if (!finState.mileage || finState.mileage.length === 0) {
+    tbody.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  tbody.innerHTML = finState.mileage.map(function(m) {
+    var dateStr = new Date(m.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' });
+    var displayMiles = parseFloat(m.miles) * (m.is_return ? 2 : 1);
+    var retBadge = m.is_return ? ' <span class="text-neutral-500">(return)</span>' : '';
+
+    return '<tr class="border-b border-neutral-800 hover:bg-neutral-800/50">' +
+      '<td class="px-4 py-3 text-xs text-neutral-300">' + dateStr + '</td>' +
+      '<td class="px-4 py-3 text-xs text-white">' + (m.from_location || '') + '</td>' +
+      '<td class="px-4 py-3 text-xs text-white">' + (m.to_location || '') + '</td>' +
+      '<td class="px-4 py-3 text-xs text-right text-white">' + displayMiles.toFixed(1) + retBadge + '</td>' +
+      '<td class="px-4 py-3 text-xs text-right font-semibold text-lime-400">\u00A3' + parseFloat(m.calculated_amount || 0).toFixed(2) + '</td>' +
+      '<td class="px-4 py-3 text-xs text-neutral-400 hidden md:table-cell">' + (m.purpose || '') + '</td>' +
+      '<td class="px-4 py-3 text-xs text-right"><button onclick="finDeleteMileage(\'' + m.id + '\')" class="text-red-400 hover:text-red-300 text-xs">Delete</button></td>' +
+    '</tr>';
+  }).join('');
+}
+
+async function finCreateMileage() {
+  var from = document.getElementById('fin-mile-from').value.trim();
+  var to = document.getElementById('fin-mile-to').value.trim();
+  var miles = document.getElementById('fin-mile-miles').value;
+  if (!from || !to || !miles) { showToast('Please enter from, to, and miles', 'error'); return; }
+
+  try {
+    var data = await apiRequest('/admin/finance/mileage', {
+      method: 'POST',
+      body: {
+        date: document.getElementById('fin-mile-date').value,
+        from_location: from,
+        to_location: to,
+        miles: parseFloat(miles),
+        purpose: document.getElementById('fin-mile-purpose').value || null,
+        is_return: document.getElementById('fin-mile-return').checked
+      }
+    });
+    if (data.success) {
+      showToast('Mileage logged');
+      document.getElementById('fin-mile-from').value = '';
+      document.getElementById('fin-mile-to').value = '';
+      document.getElementById('fin-mile-miles').value = '';
+      document.getElementById('fin-mile-return').checked = false;
+      finLoadMileage();
+      finLoadSummary();
+      finLoadCashflow();
+    }
+  } catch (e) { showToast('Failed to log mileage', 'error'); }
+}
+
+async function finDeleteMileage(id) {
+  if (!confirm('Delete this mileage entry?')) return;
+  try {
+    var data = await apiRequest('/admin/finance/mileage/' + id, { method: 'DELETE' });
+    if (data.success) {
+      showToast('Mileage entry deleted');
+      finLoadMileage();
+      finLoadSummary();
+    }
+  } catch (e) { showToast('Failed to delete mileage entry', 'error'); }
+}
+
+// ============================
+// RECURRING EXPENSES
+// ============================
+async function finLoadRecurring() {
+  try {
+    var data = await apiRequest('/admin/finance/recurring');
+    if (data.success) {
+      finState.recurring = data.data;
+      finRenderRecurring();
+    }
+  } catch (e) { console.error('[Finance] Load recurring error:', e); }
+}
+
+function finRenderRecurring() {
+  var container = document.getElementById('fin-recurring-list');
+  var empty = document.getElementById('fin-recurring-empty');
+
+  if (!finState.recurring || finState.recurring.length === 0) {
+    container.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  container.innerHTML = finState.recurring.map(function(r) {
+    var catName = r.expense_categories ? r.expense_categories.name : '';
+    var catColour = r.expense_categories ? r.expense_categories.colour : '#737373';
+    var freqLabel = (r.frequency || '').charAt(0).toUpperCase() + (r.frequency || '').slice(1);
+    var statusClass = r.is_active ? 'text-lime-400' : 'text-neutral-500';
+    var statusLabel = r.is_active ? 'Active' : 'Paused';
+    var toggleLabel = r.is_active ? 'Pause' : 'Resume';
+    var isPastDue = new Date(r.next_due_date) <= new Date();
+
+    return '<div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">' +
+      '<div class="flex-1">' +
+        '<div class="flex items-center gap-2">' +
+          '<span class="inline-block w-2 h-2 rounded-full" style="background:' + catColour + '"></span>' +
+          '<span class="text-sm font-semibold text-white">' + r.description + '</span>' +
+          '<span class="text-xs ' + statusClass + '">' + statusLabel + '</span>' +
+        '</div>' +
+        '<div class="text-xs text-neutral-500 mt-1">' +
+          '\u00A3' + parseFloat(r.amount).toFixed(2) + ' &middot; ' + freqLabel +
+          ' &middot; ' + catName +
+          (r.supplier ? ' &middot; ' + r.supplier : '') +
+        '</div>' +
+        '<div class="text-xs mt-1 ' + (isPastDue ? 'text-orange-400' : 'text-neutral-500') + '">Next due: ' + r.next_due_date + (isPastDue ? ' (overdue)' : '') + '</div>' +
+      '</div>' +
+      '<div class="flex gap-2">' +
+        (r.is_active && isPastDue ? '<button onclick="finGenerateRecurring(\'' + r.id + '\')" class="bg-lime-400 hover:bg-lime-300 text-black text-xs font-semibold px-3 py-1.5 rounded-lg">Generate</button>' : '') +
+        '<button onclick="finToggleRecurring(\'' + r.id + '\',' + !r.is_active + ')" class="bg-neutral-800 hover:bg-neutral-700 text-white text-xs px-3 py-1.5 rounded-lg">' + toggleLabel + '</button>' +
+        '<button onclick="finDeleteRecurring(\'' + r.id + '\')" class="text-red-400 hover:text-red-300 text-xs px-2 py-1.5">Delete</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+async function finCreateRecurring() {
+  var desc = document.getElementById('fin-rec-description').value.trim();
+  var amount = document.getElementById('fin-rec-amount').value;
+  var nextDue = document.getElementById('fin-rec-next-due').value;
+  if (!desc || !amount || !nextDue) { showToast('Please enter description, amount, and next due date', 'error'); return; }
+
+  try {
+    var data = await apiRequest('/admin/finance/recurring', {
+      method: 'POST',
+      body: {
+        description: desc,
+        amount: parseFloat(amount),
+        category_id: document.getElementById('fin-rec-category').value || null,
+        frequency: document.getElementById('fin-rec-frequency').value,
+        next_due_date: nextDue,
+        supplier: document.getElementById('fin-rec-supplier').value.trim() || null,
+        payment_method: document.getElementById('fin-rec-method').value
+      }
+    });
+    if (data.success) {
+      showToast('Recurring expense added');
+      document.getElementById('fin-rec-description').value = '';
+      document.getElementById('fin-rec-amount').value = '';
+      document.getElementById('fin-rec-supplier').value = '';
+      finLoadRecurring();
+      finLoadSummary();
+    }
+  } catch (e) { showToast('Failed to add recurring expense', 'error'); }
+}
+
+async function finToggleRecurring(id, active) {
+  try {
+    var data = await apiRequest('/admin/finance/recurring/' + id, { method: 'PATCH', body: { is_active: active } });
+    if (data.success) {
+      showToast(active ? 'Recurring expense resumed' : 'Recurring expense paused');
+      finLoadRecurring();
+    }
+  } catch (e) { showToast('Failed to update', 'error'); }
+}
+
+async function finGenerateRecurring(id) {
+  try {
+    var data = await apiRequest('/admin/finance/recurring/' + id + '/generate', { method: 'POST' });
+    if (data.success) {
+      showToast(data.generated + ' expense(s) generated');
+      finLoadRecurring();
+      finLoadExpenses();
+      finLoadSummary();
+      finLoadCashflow();
+    }
+  } catch (e) { showToast('Failed to generate expenses', 'error'); }
+}
+
+async function finDeleteRecurring(id) {
+  if (!confirm('Delete this recurring expense?')) return;
+  try {
+    var data = await apiRequest('/admin/finance/recurring/' + id, { method: 'DELETE' });
+    if (data.success) {
+      showToast('Recurring expense deleted');
+      finLoadRecurring();
+    }
+  } catch (e) { showToast('Failed to delete', 'error'); }
+}
+
+// ============================
+// INCOME
+// ============================
+async function finLoadIncome() {
+  try {
+    var data = await apiRequest('/admin/finance/income');
+    if (data.success) {
+      finState.income = data.data;
+      finRenderIncome();
+    }
+  } catch (e) { console.error('[Finance] Load income error:', e); }
+}
+
+function finRenderIncome() {
+  var tbody = document.getElementById('fin-income-table');
+  var empty = document.getElementById('fin-income-empty');
+
+  if (!finState.income || finState.income.length === 0) {
+    tbody.innerHTML = '';
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  tbody.innerHTML = finState.income.map(function(i) {
+    var dateStr = new Date(i.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' });
+    var sourceLabel = (i.source || '').replace(/_/g, ' ').replace(/\b\w/g, function(l) { return l.toUpperCase(); });
+
+    return '<tr class="border-b border-neutral-800 hover:bg-neutral-800/50">' +
+      '<td class="px-4 py-3 text-xs text-neutral-300">' + dateStr + '</td>' +
+      '<td class="px-4 py-3 text-xs text-white">' + (i.description || '') + '</td>' +
+      '<td class="px-4 py-3 text-xs text-right font-semibold text-lime-400">\u00A3' + parseFloat(i.amount).toFixed(2) + '</td>' +
+      '<td class="px-4 py-3 text-xs text-neutral-400 hidden md:table-cell">' + sourceLabel + '</td>' +
+      '<td class="px-4 py-3 text-xs text-right"><button onclick="finDeleteIncome(\'' + i.id + '\')" class="text-red-400 hover:text-red-300 text-xs">Delete</button></td>' +
+    '</tr>';
+  }).join('');
+}
+
+async function finCreateIncome() {
+  var desc = document.getElementById('fin-inc-description').value.trim();
+  var amount = document.getElementById('fin-inc-amount').value;
+  if (!desc || !amount) { showToast('Please enter description and amount', 'error'); return; }
+
+  try {
+    var data = await apiRequest('/admin/finance/income', {
+      method: 'POST',
+      body: {
+        date: document.getElementById('fin-inc-date').value,
+        description: desc,
+        amount: parseFloat(amount)
+      }
+    });
+    if (data.success) {
+      showToast('Income entry added');
+      document.getElementById('fin-inc-description').value = '';
+      document.getElementById('fin-inc-amount').value = '';
+      finLoadIncome();
+      finLoadSummary();
+      finLoadCashflow();
+    }
+  } catch (e) { showToast('Failed to add income', 'error'); }
+}
+
+async function finDeleteIncome(id) {
+  if (!confirm('Delete this income entry?')) return;
+  try {
+    var data = await apiRequest('/admin/finance/income/' + id, { method: 'DELETE' });
+    if (data.success) {
+      showToast('Income entry deleted');
+      finLoadIncome();
+      finLoadSummary();
+    }
+  } catch (e) { showToast('Failed to delete', 'error'); }
+}
+
+// ============================
+// REPORTS
+// ============================
+async function finLoadReports() {
+  var from = document.getElementById('fin-report-from').value;
+  var to = document.getElementById('fin-report-to').value;
+  if (!from || !to) { showToast('Please select a date range', 'error'); return; }
+
+  // Load category breakdown
+  try {
+    var catData = await apiRequest('/admin/finance/category-breakdown?date_from=' + from + '&date_to=' + to);
+    if (catData.success) {
+      var catContainer = document.getElementById('fin-report-categories');
+      if (catData.data.length === 0) {
+        catContainer.innerHTML = '<div class="text-neutral-600 text-xs">No expenses in this period.</div>';
+      } else {
+        catContainer.innerHTML = catData.data.map(function(c) {
+          return '<div class="flex items-center gap-3">' +
+            '<span class="inline-block w-2 h-2 rounded-full flex-shrink-0" style="background:' + c.colour + '"></span>' +
+            '<span class="text-xs text-white flex-1">' + c.name + ' <span class="text-neutral-500">(' + c.count + ')</span></span>' +
+            '<div class="w-32 bg-neutral-800 rounded-full h-2 hidden sm:block"><div class="h-2 rounded-full" style="width:' + Math.min(100, c.percentage) + '%;background:' + c.colour + '"></div></div>' +
+            '<span class="text-xs font-semibold text-white w-20 text-right">\u00A3' + c.total.toFixed(2) + '</span>' +
+            '<span class="text-xs text-neutral-500 w-12 text-right">' + c.percentage.toFixed(1) + '%</span>' +
+          '</div>';
+        }).join('');
+      }
+
+      // P&L summary
+      var pnlContainer = document.getElementById('fin-report-pnl');
+      var totalExpenses = catData.total || 0;
+
+      // Get income for the period from summary
+      var summaryData = await apiRequest('/admin/finance/summary');
+      if (summaryData.success) {
+        var s = summaryData.data;
+        // Use YTD figures as approximate for the period
+        var income = s.ytd.income;
+        var expenses = s.ytd.expenses;
+        var profit = s.ytd.profit;
+
+        pnlContainer.innerHTML =
+          '<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">' +
+            '<div class="bg-black rounded-lg p-3">' +
+              '<div class="text-[10px] text-neutral-500 uppercase tracking-wider">Total Income</div>' +
+              '<div class="text-lg font-bold text-lime-400 mt-1">\u00A3' + income.toFixed(2) + '</div>' +
+            '</div>' +
+            '<div class="bg-black rounded-lg p-3">' +
+              '<div class="text-[10px] text-neutral-500 uppercase tracking-wider">Total Expenses</div>' +
+              '<div class="text-lg font-bold text-red-400 mt-1">\u00A3' + expenses.toFixed(2) + '</div>' +
+            '</div>' +
+            '<div class="bg-black rounded-lg p-3">' +
+              '<div class="text-[10px] text-neutral-500 uppercase tracking-wider">Net Profit</div>' +
+              '<div class="text-lg font-bold ' + (profit >= 0 ? 'text-lime-400' : 'text-red-400') + ' mt-1">\u00A3' + profit.toFixed(2) + '</div>' +
+            '</div>' +
+          '</div>';
+      }
+    }
+  } catch (e) { console.error('[Finance] Reports error:', e); }
+
+  // Load tax summary
+  try {
+    var taxData = await apiRequest('/admin/finance/tax-summary');
+    if (taxData.success) {
+      var t = taxData.data;
+      var taxContainer = document.getElementById('fin-report-tax');
+
+      var hmrcNames = {
+        cost_of_sales: 'Cost of Sales',
+        motor_expenses: 'Motor Expenses',
+        admin: 'Administrative Costs',
+        capital_allowance: 'Capital Allowances'
+      };
+
+      var hmrcHtml = '<div class="text-xs text-neutral-500 mb-3">Tax year: ' + t.tax_year + '</div>';
+      hmrcHtml += '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">';
+      Object.keys(t.hmrc_categories).forEach(function(key) {
+        var cat = t.hmrc_categories[key];
+        hmrcHtml += '<div class="bg-black rounded-lg p-3">' +
+          '<div class="text-[10px] text-neutral-500 uppercase tracking-wider">' + (hmrcNames[key] || key) + '</div>' +
+          '<div class="text-sm font-bold text-white mt-1">\u00A3' + cat.total.toFixed(2) + ' <span class="text-neutral-500 font-normal text-xs">(' + cat.count + ' items)</span></div>' +
+          (cat.vat > 0 ? '<div class="text-xs text-neutral-500">VAT paid: \u00A3' + cat.vat.toFixed(2) + '</div>' : '') +
+        '</div>';
+      });
+      hmrcHtml += '</div>';
+
+      hmrcHtml += '<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 border-t border-neutral-800 pt-3">' +
+        '<div><div class="text-[10px] text-neutral-500 uppercase">Total Income</div><div class="text-sm font-bold text-lime-400">\u00A3' + t.total_income.toFixed(2) + '</div></div>' +
+        '<div><div class="text-[10px] text-neutral-500 uppercase">Deductible Expenses</div><div class="text-sm font-bold text-white">\u00A3' + t.total_deductible_expenses.toFixed(2) + '</div></div>' +
+        '<div><div class="text-[10px] text-neutral-500 uppercase">Wages</div><div class="text-sm font-bold text-white">\u00A3' + t.total_wages.toFixed(2) + '</div></div>' +
+        '<div><div class="text-[10px] text-neutral-500 uppercase">Mileage (' + t.mileage.total_miles.toFixed(0) + ' mi)</div><div class="text-sm font-bold text-white">\u00A3' + t.mileage.total_claim.toFixed(2) + '</div></div>' +
+      '</div>';
+
+      hmrcHtml += '<div class="border-t border-neutral-800 pt-3 mt-3">' +
+        '<div class="text-[10px] text-neutral-500 uppercase">Taxable Profit</div>' +
+        '<div class="text-lg font-bold ' + (t.taxable_profit >= 0 ? 'text-lime-400' : 'text-red-400') + '">\u00A3' + t.taxable_profit.toFixed(2) + '</div>' +
+        '<div class="text-xs text-neutral-600 mt-1">Total VAT paid on purchases: \u00A3' + t.total_vat_paid.toFixed(2) + '</div>' +
+      '</div>';
+
+      taxContainer.innerHTML = hmrcHtml;
+    }
+  } catch (e) { console.error('[Finance] Tax summary error:', e); }
+}
+
+function finExport(type) {
+  var from = document.getElementById('fin-report-from').value;
+  var to = document.getElementById('fin-report-to').value;
+  var url = API_BASE + '/admin/finance/export?type=' + type;
+  if (from) url += '&date_from=' + from;
+  if (to) url += '&date_to=' + to;
+
+  // Open download in new tab with auth header via fetch
+  fetch(url, {
+    headers: { 'Authorization': 'Bearer ' + state.token }
+  }).then(function(res) { return res.blob(); })
+  .then(function(blob) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = type + '-export.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    showToast(type + ' exported');
+  }).catch(function() { showToast('Export failed', 'error'); });
 }
 
 // ============================

@@ -36,6 +36,7 @@ const adminRoutes = require('./routes/admin');
 const jobRoutes = require('./routes/jobs');
 const customerRoutes = require('./routes/customers');
 const invoiceRoutes = require('./routes/invoices');
+const financeRoutes = require('./routes/finance');
 
 // Create Express app
 const app = express();
@@ -54,6 +55,7 @@ adminRoutes.setSupabaseClient(supabase);
 jobRoutes.setSupabaseClient(supabase);
 customerRoutes.setSupabaseClient(supabase);
 invoiceRoutes.setSupabaseClient(supabase);
+financeRoutes.setSupabaseClient(supabase);
 pricingConfig.setSupabaseClient(supabase);
 
 // =======================
@@ -1193,6 +1195,52 @@ app.patch('/admin/invoices/:id', requireAdminAuth, invoiceRoutes.updateInvoice);
 app.post('/admin/invoices/:id/send', requireAdminAuth, invoiceRoutes.sendInvoice);
 app.post('/admin/jobs/:id/invoice', requireAdminAuth, invoiceRoutes.createInvoice);
 app.get('/admin/jobs/:id/invoice', requireAdminAuth, invoiceRoutes.getJobInvoice);
+
+// =======================
+// FINANCE & EXPENSE TRACKING (Protected)
+// =======================
+
+// Categories
+app.get('/admin/finance/categories', requireAdminAuth, financeRoutes.listCategories);
+app.post('/admin/finance/categories', requireAdminAuth, financeRoutes.createCategory);
+app.patch('/admin/finance/categories/:id', requireAdminAuth, financeRoutes.updateCategory);
+
+// Expenses
+app.get('/admin/finance/expenses', requireAdminAuth, financeRoutes.listExpenses);
+app.post('/admin/finance/expenses', requireAdminAuth, financeRoutes.createExpense);
+app.patch('/admin/finance/expenses/:id', requireAdminAuth, financeRoutes.updateExpense);
+app.delete('/admin/finance/expenses/:id', requireAdminAuth, financeRoutes.deleteExpense);
+
+// Wages
+app.get('/admin/finance/wages', requireAdminAuth, financeRoutes.listWages);
+app.post('/admin/finance/wages', requireAdminAuth, financeRoutes.createWage);
+app.patch('/admin/finance/wages/:id', requireAdminAuth, financeRoutes.updateWage);
+app.delete('/admin/finance/wages/:id', requireAdminAuth, financeRoutes.deleteWage);
+
+// Mileage
+app.get('/admin/finance/mileage', requireAdminAuth, financeRoutes.listMileage);
+app.post('/admin/finance/mileage', requireAdminAuth, financeRoutes.createMileage);
+app.patch('/admin/finance/mileage/:id', requireAdminAuth, financeRoutes.updateMileage);
+app.delete('/admin/finance/mileage/:id', requireAdminAuth, financeRoutes.deleteMileage);
+
+// Recurring expenses
+app.get('/admin/finance/recurring', requireAdminAuth, financeRoutes.listRecurring);
+app.post('/admin/finance/recurring', requireAdminAuth, financeRoutes.createRecurring);
+app.patch('/admin/finance/recurring/:id', requireAdminAuth, financeRoutes.updateRecurring);
+app.delete('/admin/finance/recurring/:id', requireAdminAuth, financeRoutes.deleteRecurring);
+app.post('/admin/finance/recurring/:id/generate', requireAdminAuth, financeRoutes.generateFromRecurring);
+
+// Income entries
+app.get('/admin/finance/income', requireAdminAuth, financeRoutes.listIncome);
+app.post('/admin/finance/income', requireAdminAuth, financeRoutes.createIncome);
+app.delete('/admin/finance/income/:id', requireAdminAuth, financeRoutes.deleteIncome);
+
+// Reports & summaries
+app.get('/admin/finance/summary', requireAdminAuth, financeRoutes.getSummary);
+app.get('/admin/finance/cashflow', requireAdminAuth, financeRoutes.getCashflow);
+app.get('/admin/finance/category-breakdown', requireAdminAuth, financeRoutes.getCategoryBreakdown);
+app.get('/admin/finance/tax-summary', requireAdminAuth, financeRoutes.getTaxSummary);
+app.get('/admin/finance/export', requireAdminAuth, financeRoutes.exportFinance);
 
 // =======================
 // PRICING SETTINGS (Protected)
