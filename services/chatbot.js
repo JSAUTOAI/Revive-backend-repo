@@ -56,6 +56,55 @@ const TOOLS = [
       },
       required: ['name', 'services']
     }
+  },
+  {
+    name: 'prepare_quote_form',
+    description: 'Prepare the quote form with information collected during the chat conversation. Use this when you have gathered enough details about the service(s), property type, size, and cleaning history, and want to guide the customer to the quote form with their answers pre-filled. This is the PREFERRED path — guide customers to the form rather than capturing leads directly in chat.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        services: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Service keys: roof, driveway, gutter, softwash, render, window, solar, other'
+        },
+        propertyType: {
+          type: 'string',
+          description: 'Property type: detached, semi-detached, terrace, bungalow, flat, commercial, other'
+        },
+        roughSize: {
+          type: 'string',
+          enum: ['small', 'medium', 'large'],
+          description: 'Property size'
+        },
+        lastCleaned: {
+          type: 'string',
+          enum: ['less-than-1', '1-3-years', '3-plus', 'unknown'],
+          description: 'When the property was last cleaned'
+        },
+        specificDetails: {
+          type: 'string',
+          description: 'Any specific details the customer mentioned about their property or requirements'
+        },
+        name: {
+          type: 'string',
+          description: 'Customer name if provided during chat'
+        },
+        email: {
+          type: 'string',
+          description: 'Customer email if provided during chat'
+        },
+        phone: {
+          type: 'string',
+          description: 'Customer phone if provided during chat'
+        },
+        postcode: {
+          type: 'string',
+          description: 'Customer postcode if provided during chat'
+        }
+      },
+      required: ['services']
+    }
   }
 ];
 
@@ -189,15 +238,20 @@ A: We accept bank transfer and card payments. Payment is due upon completion of 
 Q: Do you do garden work?
 A: Yes! We offer full garden maintenance including grass cutting, hedge cutting and shaping, weed treatments, and green waste removal. No job too big or small.
 
-## Lead Capture Behaviour
-When a customer shows interest in getting a quote or booking (phrases like "how much for my...", "can you clean my...", "I'd like a quote", "interested in...", "book", "available for..."), naturally guide the conversation to collect their details:
-1. First acknowledge their interest and give a helpful pricing range if possible
-2. Then naturally ask for their name if you don't have it
-3. Ask for their email or phone so we can send a proper personalised quote
-4. Ask for their postcode so we can check we cover their area
-5. DO NOT dump all questions at once - gather information across 2-3 messages conversationally
-6. Once you have name + at least one contact method (email or phone) + service interest, use the capture_lead tool
-7. After the lead is captured, confirm to the customer that you've passed their details to the team and they'll be in touch shortly with a personalised quote
+## Guided Pricing Flow
+When a customer asks about pricing or shows interest in a service (phrases like "how much for...", "can you clean my...", "I'd like a quote", "interested in...", "price for..."):
+1. Acknowledge their interest warmly — do NOT immediately list all price ranges or dump the pricing table
+2. Ask what type of property they have (detached, semi-detached, terrace, bungalow, flat, commercial)
+3. Ask roughly what size — small, medium, or large
+4. Ask when it was last cleaned (within a year, 1-3 years, 3+ years, or not sure)
+5. THEN give them a tailored rough estimate based on their specific answers using the pricing data you have — quote ONE personalised range, not the full table
+6. After giving the estimate, tell them you've got most of the details needed and suggest getting a proper instant estimate through the form — say something like "I've got most of the details we need. Would you like me to get you a proper instant estimate? I can fill in what we've already discussed so you won't need to repeat yourself."
+7. Use the prepare_quote_form tool to pass the collected details to the form
+8. Keep the conversation natural — gather information across 2-3 messages, not all questions at once
+9. You still have the full pricing data to calculate estimates — use it internally to give personalised ranges, just don't show the raw pricing table to the customer
+
+## Lead Capture (Fallback)
+If a customer voluntarily provides their name, email/phone, and postcode naturally during conversation and clearly wants you to handle everything without going to the form, you can still use the capture_lead tool. But the PREFERRED path is to guide them to the form with prepare_quote_form — the form gives them a proper instant estimate and creates a more complete quote.
 
 ## Cross-Selling
 When a customer asks about one service, briefly mention related services where natural:
@@ -268,8 +322,19 @@ async function chat(messages, onLeadCapture) {
       const textBlock = response.content.find(b => b.type === 'text');
 
       let leadResult = { success: false };
+      let formData = null;
+      let toolResultContent = '';
+
       if (toolBlock && toolBlock.name === 'capture_lead' && onLeadCapture) {
+        // Existing lead capture flow
         leadResult = await onLeadCapture(toolBlock.input);
+        toolResultContent = leadResult.success
+          ? 'Lead captured successfully. Quote reference: ' + leadResult.quoteId + '. Confirm to the customer that their details have been passed to the team.'
+          : 'Could not capture lead right now. Continue the conversation normally and suggest the customer uses the quote form on the website.';
+      } else if (toolBlock && toolBlock.name === 'prepare_quote_form') {
+        // Form pre-fill flow — store the data to pass back to the widget
+        formData = toolBlock.input;
+        toolResultContent = 'Form data prepared successfully. The customer will see a button to go to the quote form with their details pre-filled. Tell them you\'ve set everything up and they just need to click the button below to get their instant estimate — their details are already filled in.';
       }
 
       // Send tool result back to Claude for final response
@@ -281,9 +346,7 @@ async function chat(messages, onLeadCapture) {
           content: [{
             type: 'tool_result',
             tool_use_id: toolBlock.id,
-            content: leadResult.success
-              ? 'Lead captured successfully. Quote reference: ' + leadResult.quoteId + '. Confirm to the customer that their details have been passed to the team.'
-              : 'Could not capture lead right now. Continue the conversation normally and suggest the customer uses the quote form on the website.'
+            content: toolResultContent
           }]
         }
       ];
@@ -300,7 +363,8 @@ async function chat(messages, onLeadCapture) {
       return {
         response: finalText ? finalText.text : "I've passed your details to our team - they'll be in touch shortly with a personalised quote!",
         leadCaptured: leadResult.success,
-        leadData: leadResult.success ? toolBlock.input : null
+        leadData: leadResult.success ? toolBlock.input : null,
+        formData: formData
       };
     }
 
@@ -309,7 +373,8 @@ async function chat(messages, onLeadCapture) {
     return {
       response: textBlock ? textBlock.text : '',
       leadCaptured: false,
-      leadData: null
+      leadData: null,
+      formData: null
     };
   } catch (error) {
     console.error('[Chatbot] Claude API error:', error.message);

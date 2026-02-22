@@ -421,7 +421,8 @@ app.post('/api/chat', async (req, res) => {
     res.json({
       success: true,
       response: result.response,
-      leadCaptured: result.leadCaptured || false
+      leadCaptured: result.leadCaptured || false,
+      formData: result.formData || null
     });
 
   } catch (err) {

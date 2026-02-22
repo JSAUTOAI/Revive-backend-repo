@@ -285,6 +285,28 @@
       letter-spacing: -0.01em;
     }
 
+    .revive-chat-cta-btn {
+      display: block;
+      margin: 8px 0 4px;
+      padding: 10px 16px;
+      background: #a3e635;
+      color: #000000;
+      font-weight: 600;
+      font-size: 13px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.2s, box-shadow 0.2s;
+      max-width: 85%;
+      font-family: inherit;
+      letter-spacing: -0.01em;
+    }
+    .revive-chat-cta-btn:hover {
+      background: #bef264;
+      box-shadow: 0 0 12px rgba(163, 230, 53, 0.3);
+    }
+
     /* Mobile responsive */
     @media (max-width: 480px) {
       #revive-chat-window {
@@ -421,6 +443,17 @@
     scrollToBottom();
   }
 
+  function showFormCTA() {
+    var btn = document.createElement('button');
+    btn.className = 'revive-chat-cta-btn';
+    btn.textContent = 'Get Instant Estimate \u2192';
+    btn.addEventListener('click', function() {
+      window.location.href = '/instant-quote-page';
+    });
+    messagesContainer.appendChild(btn);
+    scrollToBottom();
+  }
+
   function showTyping() {
     var div = document.createElement('div');
     div.className = 'revive-chat-typing';
@@ -495,6 +528,12 @@
           leadAlreadyCaptured = true;
           showLeadConfirmation();
         }
+
+        // Show form CTA button if chatbot prepared form data
+        if (data.formData) {
+          localStorage.setItem('revive-chat-prefill', JSON.stringify(data.formData));
+          showFormCTA();
+        }
       } else {
         addBotMessage("Sorry, something went wrong. Please try again or contact us directly.");
       }
@@ -504,6 +543,115 @@
     }
 
     setLoading(false);
+  }
+
+  // ========================
+  // FORM PRE-FILL
+  // ========================
+
+  function tryPrefillForm() {
+    var raw = localStorage.getItem('revive-chat-prefill');
+    if (!raw) return;
+
+    try {
+      var data = JSON.parse(raw);
+      localStorage.removeItem('revive-chat-prefill');
+
+      // Wait for DOM to be fully ready (Aura renders client-side)
+      setTimeout(function() {
+        var form = document.getElementById('quote-form');
+        if (!form) return;
+
+        var textInputs = document.querySelectorAll('input[type="text"]');
+        var selects = document.querySelectorAll('select');
+
+        // Property type (first select)
+        if (data.propertyType && selects[0]) {
+          var propVal = data.propertyType.toLowerCase();
+          for (var i = 0; i < selects[0].options.length; i++) {
+            if (selects[0].options[i].value.toLowerCase() === propVal ||
+                selects[0].options[i].text.toLowerCase().indexOf(propVal) !== -1) {
+              selects[0].selectedIndex = i;
+              break;
+            }
+          }
+        }
+
+        // Address (text input [0])
+        // Not typically collected in chat, skip
+
+        // Postcode (text input [1])
+        if (data.postcode && textInputs[1]) {
+          textInputs[1].value = data.postcode.toUpperCase();
+        }
+
+        // Specific details (first textarea)
+        if (data.specificDetails) {
+          var textarea = document.querySelector('textarea');
+          if (textarea) textarea.value = data.specificDetails;
+        }
+
+        // Services (checkboxes)
+        if (data.services && data.services.length > 0) {
+          data.services.forEach(function(svc) {
+            var cb = document.querySelector('input[name="services"][value="' + svc + '"]');
+            if (cb) {
+              cb.checked = true;
+              // Trigger change event for UI update (Aura styling)
+              cb.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+          });
+        }
+
+        // Rough size (select [1])
+        if (data.roughSize && selects[1]) {
+          for (var j = 0; j < selects[1].options.length; j++) {
+            if (selects[1].options[j].value === data.roughSize) {
+              selects[1].selectedIndex = j;
+              break;
+            }
+          }
+        }
+
+        // Last cleaned (select [2])
+        if (data.lastCleaned && selects[2]) {
+          var cleanMap = {
+            'less-than-1': 'less-than-1',
+            '1-3-years': '1-3-years',
+            '3-plus': '3-plus',
+            'unknown': 'unknown'
+          };
+          var cleanVal = cleanMap[data.lastCleaned] || data.lastCleaned;
+          for (var k = 0; k < selects[2].options.length; k++) {
+            if (selects[2].options[k].value === cleanVal) {
+              selects[2].selectedIndex = k;
+              break;
+            }
+          }
+        }
+
+        // Name (text input [2]) — step 4
+        if (data.name && textInputs[2]) {
+          textInputs[2].value = data.name;
+        }
+
+        // Email
+        if (data.email) {
+          var emailInput = document.querySelector('input[type="email"]');
+          if (emailInput) emailInput.value = data.email;
+        }
+
+        // Phone
+        if (data.phone) {
+          var phoneInput = document.querySelector('input[type="tel"]');
+          if (phoneInput) phoneInput.value = data.phone;
+        }
+
+        console.log('[Revive Chat] Form pre-filled from chat conversation');
+      }, 800);
+    } catch(e) {
+      // Silently fail if pre-fill doesn't work
+    }
   }
 
   // ========================
@@ -521,5 +669,8 @@
       sendMessage();
     }
   });
+
+  // Try to pre-fill form if coming from chat
+  tryPrefillForm();
 
 })();
