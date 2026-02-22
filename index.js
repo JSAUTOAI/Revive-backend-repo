@@ -286,6 +286,51 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
+// Persist chat conversation to Supabase (non-blocking helper)
+async function persistConversation(sessionId, messages, result, ip) {
+  try {
+    const now = new Date().toISOString();
+
+    // Build messages array with latest assistant response
+    const allMessages = [
+      ...messages.map(m => ({ role: m.role, content: typeof m.content === 'string' ? m.content : '', timestamp: m.timestamp || now })),
+      { role: 'assistant', content: result.response, timestamp: now }
+    ];
+
+    // Check if session exists
+    const { data: existing } = await supabase
+      .from('chat_conversations')
+      .select('id')
+      .eq('session_id', sessionId)
+      .single();
+
+    if (existing) {
+      await supabase
+        .from('chat_conversations')
+        .update({
+          messages: allMessages,
+          message_count: allMessages.length,
+          last_message_at: now,
+          updated_at: now
+        })
+        .eq('session_id', sessionId);
+    } else {
+      await supabase
+        .from('chat_conversations')
+        .insert({
+          session_id: sessionId,
+          ip_address: ip,
+          messages: allMessages,
+          message_count: allMessages.length,
+          first_message_at: now,
+          last_message_at: now
+        });
+    }
+  } catch (err) {
+    console.error('[Chat Persist] Error:', err.message);
+  }
+}
+
 app.post('/api/chat', async (req, res) => {
   try {
     const ip = req.ip || req.socket?.remoteAddress || 'unknown';
@@ -293,7 +338,7 @@ app.post('/api/chat', async (req, res) => {
       return res.status(429).json({ success: false, error: 'Too many messages. Please wait a moment.' });
     }
 
-    const { messages } = req.body;
+    const { messages, sessionId } = req.body;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return res.status(400).json({ success: false, error: 'Messages array is required' });
@@ -302,13 +347,146 @@ app.post('/api/chat', async (req, res) => {
     // Limit conversation length to prevent abuse
     const trimmedMessages = messages.slice(-20);
 
-    const response = await chat(trimmedMessages);
+    // Lead capture callback - creates quote in Supabase when chatbot gathers enough info
+    const onLeadCapture = async (leadData) => {
+      try {
+        const quoteData = {
+          name: leadData.name,
+          email: leadData.email || null,
+          phone: leadData.phone || null,
+          address_line1: 'From chat - details TBC',
+          postcode: leadData.postcode || 'TBC',
+          services: leadData.services || [],
+          answers: { chatNotes: leadData.notes || '', source: 'chat' },
+          status: 'new',
+          source: 'chat'
+        };
 
-    res.json({ success: true, response });
+        const { data, error } = await supabase
+          .from('quotes')
+          .insert([quoteData])
+          .select();
+
+        if (error) {
+          console.error('[Chat Lead] Supabase insert error:', error);
+          return { success: false, error: error.message };
+        }
+
+        const savedQuote = data[0];
+        console.log(`[Chat Lead] Created quote ${savedQuote.id} from chat session ${sessionId}`);
+
+        // Link conversation to quote
+        if (sessionId) {
+          await supabase
+            .from('chat_conversations')
+            .update({
+              lead_captured: true,
+              quote_id: savedQuote.id,
+              customer_name: leadData.name,
+              customer_email: leadData.email || null,
+              customer_phone: leadData.phone || null,
+              customer_postcode: leadData.postcode || null
+            })
+            .eq('session_id', sessionId);
+        }
+
+        // Trigger estimation (non-blocking)
+        queueEstimation(supabase, savedQuote.id, savedQuote);
+
+        // Send admin alert for chat leads (non-blocking)
+        sendAdminAlert({ ...savedQuote, lead_score: 70 }).catch(err => {
+          console.error('[Chat Lead] Admin alert failed:', err);
+        });
+
+        return { success: true, quoteId: savedQuote.id };
+      } catch (err) {
+        console.error('[Chat Lead] Error capturing lead:', err);
+        return { success: false, error: err.message };
+      }
+    };
+
+    const result = await chat(trimmedMessages, onLeadCapture);
+
+    // Persist conversation (non-blocking)
+    if (sessionId) {
+      persistConversation(sessionId, trimmedMessages, result, ip).catch(err => {
+        console.error('[Chat] Failed to persist conversation:', err);
+      });
+    }
+
+    res.json({
+      success: true,
+      response: result.response,
+      leadCaptured: result.leadCaptured || false
+    });
 
   } catch (err) {
     console.error('[Chat Route] Error:', err.message);
     res.status(500).json({ success: false, error: 'Failed to process chat message' });
+  }
+});
+
+// Restore chat history for returning visitors
+app.get('/api/chat/history', async (req, res) => {
+  try {
+    const { sessionId } = req.query;
+    if (!sessionId) {
+      return res.json({ success: true, messages: [] });
+    }
+
+    const { data, error } = await supabase
+      .from('chat_conversations')
+      .select('messages, lead_captured')
+      .eq('session_id', sessionId)
+      .single();
+
+    if (error || !data) {
+      return res.json({ success: true, messages: [] });
+    }
+
+    res.json({
+      success: true,
+      messages: data.messages || [],
+      leadCaptured: data.lead_captured || false
+    });
+  } catch (err) {
+    console.error('[Chat History] Error:', err.message);
+    res.json({ success: true, messages: [] });
+  }
+});
+
+// Admin: list chat conversations
+app.get('/admin/chats', requireAdminAuth, async (req, res) => {
+  try {
+    const { limit = 50, offset = 0, leadOnly } = req.query;
+
+    let query = supabase
+      .from('chat_conversations')
+      .select('*', { count: 'exact' })
+      .order('last_message_at', { ascending: false });
+
+    if (leadOnly === 'true') {
+      query = query.eq('lead_captured', true);
+    }
+
+    const limitNum = Math.min(parseInt(limit) || 50, 200);
+    const offsetNum = parseInt(offset) || 0;
+    query = query.range(offsetNum, offsetNum + limitNum - 1);
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      return res.status(500).json({ success: false, error: 'Database query failed' });
+    }
+
+    res.json({
+      success: true,
+      data: data || [],
+      pagination: { total: count, limit: limitNum, offset: offsetNum }
+    });
+  } catch (err) {
+    console.error('[Admin Chats] Error:', err.message);
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
 

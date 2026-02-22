@@ -1,7 +1,11 @@
 /**
  * Revive Exterior Cleaning - Chat Widget
  *
- * Self-contained embeddable chat widget.
+ * Self-contained embeddable chat widget with:
+ * - Conversation persistence (survives page reloads)
+ * - Lead capture UI feedback
+ * - Session management via localStorage
+ *
  * Embed on any site with:
  * <script src="https://your-backend-url/chat-widget.js"></script>
  */
@@ -12,10 +16,20 @@
   var scriptEl = document.currentScript;
   var API_BASE = scriptEl ? new URL(scriptEl.src).origin : '';
 
+  // Session management
+  var SESSION_KEY = 'revive-chat-session';
+  var sessionId = localStorage.getItem(SESSION_KEY);
+  if (!sessionId) {
+    sessionId = 'cs_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+    localStorage.setItem(SESSION_KEY, sessionId);
+  }
+
   // Conversation state
   var messages = [];
   var isOpen = false;
   var isLoading = false;
+  var hasRestored = false;
+  var leadAlreadyCaptured = false;
 
   // ========================
   // STYLES (matches Revive site: dark theme, lime-400 accent, Poppins font)
@@ -165,6 +179,18 @@
       color: #000000;
       font-weight: 500;
       border-bottom-right-radius: 4px;
+    }
+
+    .revive-chat-lead-confirm {
+      align-self: center;
+      background: #1a2e05;
+      border: 1px solid #a3e635;
+      color: #a3e635;
+      font-size: 11px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      text-align: center;
+      font-weight: 500;
     }
 
     .revive-chat-typing {
@@ -331,13 +357,43 @@
       chatWindow.classList.add('revive-chat-open');
       bubble.style.display = 'none';
       input.focus();
-      // Show welcome message on first open
-      if (messages.length === 0) {
-        addBotMessage("Hi! I'm the Revive assistant. Ask me about our services, pricing, or anything else. How can I help?");
+      // Restore conversation or show welcome on first open
+      if (!hasRestored) {
+        hasRestored = true;
+        restoreConversation();
       }
     } else {
       chatWindow.classList.remove('revive-chat-open');
       bubble.style.display = 'flex';
+    }
+  }
+
+  async function restoreConversation() {
+    try {
+      var response = await fetch(API_BASE + '/api/chat/history?sessionId=' + encodeURIComponent(sessionId));
+      var data = await response.json();
+
+      if (data.success && data.messages && data.messages.length > 0) {
+        leadAlreadyCaptured = data.leadCaptured || false;
+        // Rebuild UI from stored messages
+        data.messages.forEach(function(msg) {
+          var content = typeof msg.content === 'string' ? msg.content : '';
+          if (!content) return;
+          if (msg.role === 'user') {
+            messages.push({ role: 'user', content: content });
+            addUserMessage(content);
+          } else if (msg.role === 'assistant') {
+            messages.push({ role: 'assistant', content: content });
+            addBotMessage(content);
+          }
+        });
+      } else {
+        // No stored conversation, show welcome
+        addBotMessage("Hi! I'm the Revive assistant. Ask me about our services, pricing, or anything else. How can I help?");
+      }
+    } catch (err) {
+      // If restore fails, just show welcome
+      addBotMessage("Hi! I'm the Revive assistant. Ask me about our services, pricing, or anything else. How can I help?");
     }
   }
 
@@ -353,6 +409,14 @@
     var div = document.createElement('div');
     div.className = 'revive-chat-msg revive-chat-msg-user';
     div.textContent = text;
+    messagesContainer.appendChild(div);
+    scrollToBottom();
+  }
+
+  function showLeadConfirmation() {
+    var div = document.createElement('div');
+    div.className = 'revive-chat-lead-confirm';
+    div.innerHTML = '&#10003; Details sent to our team';
     messagesContainer.appendChild(div);
     scrollToBottom();
   }
@@ -401,7 +465,8 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: messages
+          messages: messages,
+          sessionId: sessionId
         })
       });
 
@@ -424,6 +489,12 @@
         // Add bot response to conversation history
         messages.push({ role: 'assistant', content: data.response });
         addBotMessage(data.response);
+
+        // Show lead capture confirmation
+        if (data.leadCaptured && !leadAlreadyCaptured) {
+          leadAlreadyCaptured = true;
+          showLeadConfirmation();
+        }
       } else {
         addBotMessage("Sorry, something went wrong. Please try again or contact us directly.");
       }

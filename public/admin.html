@@ -88,6 +88,7 @@
       <button onclick="switchTab('team')" id="tab-team" class="tab-btn px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300">Team</button>
       <button onclick="switchTab('customers')" id="tab-customers" class="tab-btn px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300">Customers</button>
       <button onclick="switchTab('invoices')" id="tab-invoices" class="tab-btn px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300">Invoices</button>
+      <button onclick="switchTab('chats')" id="tab-chats" class="tab-btn px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300">Chats</button>
     </div>
   </header>
 
@@ -530,6 +531,65 @@
     <div id="invoiceEmpty" class="hidden text-center text-neutral-600 text-sm py-12">No invoices yet. Generate an invoice from a completed job.</div>
   </div>
 
+  <!-- ===== CHATS TAB ===== -->
+  <div id="content-chats" class="tab-content hidden max-w-7xl mx-auto px-4 sm:px-6 py-6">
+    <!-- Stats -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+        <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Total Chats</div>
+        <div class="text-xl font-bold text-white mt-1" id="chat-stat-total">-</div>
+      </div>
+      <div class="bg-neutral-900 border border-lime-900/40 rounded-xl p-4">
+        <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Leads Captured</div>
+        <div class="text-xl font-bold text-lime-400 mt-1" id="chat-stat-leads">-</div>
+      </div>
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+        <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Today</div>
+        <div class="text-xl font-bold text-white mt-1" id="chat-stat-today">-</div>
+      </div>
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+        <div class="text-neutral-500 text-[10px] uppercase tracking-wider">Conversion</div>
+        <div class="text-xl font-bold text-lime-400 mt-1" id="chat-stat-conversion">-</div>
+      </div>
+    </div>
+
+    <!-- Filter -->
+    <div class="flex items-center gap-3 mb-4">
+      <select id="chat-filter" onchange="loadChats()" class="bg-neutral-900 border border-neutral-800 text-neutral-300 text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+        <option value="">All Conversations</option>
+        <option value="leads">Leads Only</option>
+      </select>
+      <div class="ml-auto text-neutral-500 text-xs" id="chatResultCount"></div>
+    </div>
+
+    <!-- Chat List -->
+    <div id="chatList" class="space-y-2"></div>
+    <div id="chatEmpty" class="hidden text-center text-neutral-600 text-sm py-12">No chat conversations yet.</div>
+  </div>
+
+</div>
+
+<!-- ============ CHAT DETAIL MODAL ============ -->
+<div id="chatModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-8 overflow-y-auto" onclick="if(event.target===this)closeChatModal()">
+  <div class="bg-neutral-900 border border-neutral-800 rounded-2xl max-w-lg w-full fade-in my-4">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-neutral-800">
+      <div>
+        <h2 class="text-white font-semibold text-sm" id="chatModal-title">Conversation</h2>
+        <p class="text-neutral-500 text-xs mt-1" id="chatModal-meta"></p>
+      </div>
+      <button onclick="closeChatModal()" class="text-neutral-500 hover:text-white">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="chatModal-messages" class="p-4 max-h-96 overflow-y-auto space-y-3"></div>
+    <div id="chatModal-lead" class="hidden px-6 py-3 border-t border-neutral-800 bg-neutral-950/50">
+      <div class="flex items-center gap-2 text-xs">
+        <span class="w-2 h-2 rounded-full bg-lime-400"></span>
+        <span class="text-lime-400 font-semibold">Lead Captured</span>
+      </div>
+      <div class="text-neutral-400 text-xs mt-1" id="chatModal-leadInfo"></div>
+    </div>
+  </div>
 </div>
 
 <!-- ============ QUOTE DETAIL MODAL ============ -->
@@ -2550,6 +2610,7 @@ function switchTab(tab) {
   if (tab === 'team') loadTeam();
   if (tab === 'customers') { loadCustomers(); loadCustStats(); loadAnalytics(); }
   if (tab === 'invoices') loadInvoices();
+  if (tab === 'chats') loadChats();
 }
 
 // ============================
@@ -4830,6 +4891,135 @@ async function loadCustInvoices(customerId) {
   } catch (e) {
     empty.classList.remove('hidden');
   }
+}
+
+// ============================
+// HELPERS
+// ============================
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ============================
+// CHATS TAB
+// ============================
+
+var chatState = { conversations: [] };
+
+async function loadChats() {
+  try {
+    var filter = document.getElementById('chat-filter').value;
+    var url = '/admin/chats?limit=100';
+    if (filter === 'leads') url += '&leadOnly=true';
+
+    var res = await apiRequest(url);
+    if (!res.success) return;
+
+    chatState.conversations = res.data || [];
+    renderChatStats();
+    renderChatList();
+  } catch (e) {
+    console.error('Failed to load chats:', e);
+  }
+}
+
+function renderChatStats() {
+  var all = chatState.conversations;
+  var leads = all.filter(function(c) { return c.lead_captured; });
+  var today = new Date().toISOString().split('T')[0];
+  var todayCount = all.filter(function(c) { return c.created_at && c.created_at.startsWith(today); }).length;
+  var conversion = all.length > 0 ? Math.round((leads.length / all.length) * 100) : 0;
+
+  document.getElementById('chat-stat-total').textContent = all.length;
+  document.getElementById('chat-stat-leads').textContent = leads.length;
+  document.getElementById('chat-stat-today').textContent = todayCount;
+  document.getElementById('chat-stat-conversion').textContent = conversion + '%';
+  document.getElementById('chatResultCount').textContent = all.length + ' conversation' + (all.length !== 1 ? 's' : '');
+}
+
+function renderChatList() {
+  var list = document.getElementById('chatList');
+  var empty = document.getElementById('chatEmpty');
+  list.innerHTML = '';
+
+  if (chatState.conversations.length === 0) {
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  chatState.conversations.forEach(function(conv) {
+    var timeAgo = relativeTime(conv.last_message_at);
+    var preview = getChatPreview(conv);
+
+    var card = document.createElement('div');
+    card.className = 'bg-neutral-900 border border-neutral-800 rounded-xl p-4 cursor-pointer hover:border-neutral-700 transition-colors';
+    card.onclick = function() { openChatModal(conv); };
+
+    card.innerHTML =
+      '<div class="flex items-center justify-between mb-2">' +
+        '<div class="flex items-center gap-2">' +
+          (conv.lead_captured
+            ? '<span class="w-2 h-2 rounded-full bg-lime-400"></span><span class="text-lime-400 text-xs font-semibold">' + escapeHtml(conv.customer_name || 'Lead') + '</span>'
+            : '<span class="w-2 h-2 rounded-full bg-neutral-600"></span><span class="text-neutral-400 text-xs">Anonymous</span>') +
+        '</div>' +
+        '<span class="text-neutral-600 text-[10px]">' + timeAgo + '</span>' +
+      '</div>' +
+      '<p class="text-neutral-500 text-xs truncate">' + escapeHtml(preview) + '</p>' +
+      '<div class="flex items-center gap-3 mt-2">' +
+        '<span class="text-neutral-600 text-[10px]">' + (conv.message_count || 0) + ' messages</span>' +
+        (conv.customer_email ? '<span class="text-neutral-600 text-[10px]">' + escapeHtml(conv.customer_email) + '</span>' : '') +
+        (conv.customer_postcode ? '<span class="text-neutral-600 text-[10px]">' + escapeHtml(conv.customer_postcode) + '</span>' : '') +
+      '</div>';
+
+    list.appendChild(card);
+  });
+}
+
+function getChatPreview(conv) {
+  if (!conv.messages || conv.messages.length === 0) return 'No messages';
+  // Find last user message for preview
+  for (var i = conv.messages.length - 1; i >= 0; i--) {
+    if (conv.messages[i].role === 'user' && typeof conv.messages[i].content === 'string') {
+      return conv.messages[i].content.substring(0, 100);
+    }
+  }
+  var last = conv.messages[conv.messages.length - 1];
+  return (typeof last.content === 'string' ? last.content : '').substring(0, 100);
+}
+
+function openChatModal(conv) {
+  document.getElementById('chatModal').classList.remove('hidden');
+  document.getElementById('chatModal-title').textContent = conv.customer_name || 'Anonymous Conversation';
+  document.getElementById('chatModal-meta').textContent = (conv.message_count || 0) + ' messages \u2022 ' + relativeTime(conv.first_message_at);
+
+  var container = document.getElementById('chatModal-messages');
+  container.innerHTML = '';
+
+  (conv.messages || []).forEach(function(msg) {
+    var content = typeof msg.content === 'string' ? msg.content : '';
+    if (!content) return;
+    var div = document.createElement('div');
+    var isUser = msg.role === 'user';
+    div.className = 'p-3 rounded-lg text-xs leading-relaxed ' + (isUser ? 'bg-lime-400/10 text-lime-300 ml-8' : 'bg-neutral-800 text-neutral-300 mr-8');
+    div.textContent = content;
+    container.appendChild(div);
+  });
+
+  var leadSection = document.getElementById('chatModal-lead');
+  if (conv.lead_captured) {
+    leadSection.classList.remove('hidden');
+    var info = [conv.customer_name, conv.customer_email, conv.customer_phone, conv.customer_postcode].filter(Boolean).join(' \u2022 ');
+    document.getElementById('chatModal-leadInfo').textContent = info;
+  } else {
+    leadSection.classList.add('hidden');
+  }
+}
+
+function closeChatModal() {
+  document.getElementById('chatModal').classList.add('hidden');
 }
 
 // ============================
