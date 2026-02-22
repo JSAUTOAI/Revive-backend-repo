@@ -89,6 +89,7 @@
       <button onclick="switchTab('customers')" id="tab-customers" class="tab-btn px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300">Customers</button>
       <button onclick="switchTab('invoices')" id="tab-invoices" class="tab-btn px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300">Invoices</button>
       <button onclick="switchTab('chats')" id="tab-chats" class="tab-btn px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300">Chats</button>
+      <button onclick="switchTab('settings')" id="tab-settings" class="tab-btn px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300">Settings</button>
     </div>
   </header>
 
@@ -565,6 +566,173 @@
     <!-- Chat List -->
     <div id="chatList" class="space-y-2"></div>
     <div id="chatEmpty" class="hidden text-center text-neutral-600 text-sm py-12">No chat conversations yet.</div>
+  </div>
+
+  <!-- ===== SETTINGS TAB ===== -->
+  <div id="content-settings" class="tab-content hidden max-w-7xl mx-auto px-4 sm:px-6 py-6">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h2 class="text-white text-lg font-semibold">Pricing & Estimation Settings</h2>
+        <p class="text-neutral-500 text-xs mt-1">Adjust pricing parameters, modifiers, and lead scoring. Changes take effect on new estimates immediately.</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <span id="settings-source-badge" class="text-[10px] uppercase tracking-wider px-2 py-1 rounded-full border"></span>
+        <button onclick="resetPricingSettings()" class="bg-neutral-900 border border-neutral-700 hover:border-red-400 text-neutral-400 hover:text-red-400 px-3 py-2 rounded-lg text-xs font-medium transition-colors">Reset to Defaults</button>
+        <button onclick="savePricingSettings()" class="bg-lime-400 hover:bg-lime-300 text-black font-semibold px-4 py-2 rounded-lg text-xs transition-colors">Save All Changes</button>
+      </div>
+    </div>
+
+    <!-- Section 1: Service Pricing -->
+    <div class="bg-neutral-900 border border-neutral-800 rounded-xl mb-4">
+      <div class="px-5 py-4 border-b border-neutral-800 flex items-center justify-between cursor-pointer" onclick="toggleSettingsSection('servicePricing')">
+        <h3 class="text-white text-sm font-semibold">Service Price Ranges</h3>
+        <svg id="chevron-servicePricing" class="w-4 h-4 text-neutral-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      </div>
+      <div id="section-servicePricing" class="p-5">
+        <p class="text-neutral-500 text-xs mb-4">Set minimum and maximum price ranges for each service at each property size. All prices in £.</p>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="text-neutral-500 text-[10px] uppercase tracking-wider">
+                <th class="text-left pb-3 pr-3">Service</th>
+                <th class="pb-3 px-1 text-center" colspan="2">Small</th>
+                <th class="pb-3 px-1 text-center" colspan="2">Medium</th>
+                <th class="pb-3 px-1 text-center" colspan="2">Large</th>
+              </tr>
+              <tr class="text-neutral-600 text-[9px]">
+                <th></th>
+                <th class="pb-2 px-1">Min</th><th class="pb-2 px-1">Max</th>
+                <th class="pb-2 px-1">Min</th><th class="pb-2 px-1">Max</th>
+                <th class="pb-2 px-1">Min</th><th class="pb-2 px-1">Max</th>
+              </tr>
+            </thead>
+            <tbody id="pricing-table-body">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 2: Pricing Modifiers -->
+    <div class="bg-neutral-900 border border-neutral-800 rounded-xl mb-4">
+      <div class="px-5 py-4 border-b border-neutral-800 flex items-center justify-between cursor-pointer" onclick="toggleSettingsSection('modifiers')">
+        <h3 class="text-white text-sm font-semibold">Pricing Modifiers</h3>
+        <svg id="chevron-modifiers" class="w-4 h-4 text-neutral-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      </div>
+      <div id="section-modifiers" class="p-5">
+        <p class="text-neutral-500 text-xs mb-4">Percentage surcharges applied to estimates based on property conditions. Enter as percentage (e.g. 20 for 20% surcharge).</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="modifiers-grid">
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 3: Multi-Service Discount -->
+    <div class="bg-neutral-900 border border-neutral-800 rounded-xl mb-4">
+      <div class="px-5 py-4 border-b border-neutral-800 flex items-center justify-between cursor-pointer" onclick="toggleSettingsSection('multiDiscount')">
+        <h3 class="text-white text-sm font-semibold">Multi-Service Discount</h3>
+        <svg id="chevron-multiDiscount" class="w-4 h-4 text-neutral-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      </div>
+      <div id="section-multiDiscount" class="p-5">
+        <p class="text-neutral-500 text-xs mb-4">Discount applied when a customer books multiple services at once.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">Services Required</label>
+            <input type="number" id="settings-msd-threshold" min="2" max="10" class="w-full mt-1 bg-black border border-neutral-700 text-white text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+          </div>
+          <div>
+            <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">Discount %</label>
+            <input type="number" id="settings-msd-discount" min="1" max="50" step="1" class="w-full mt-1 bg-black border border-neutral-700 text-white text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 4: Lead Scoring & Qualification -->
+    <div class="bg-neutral-900 border border-neutral-800 rounded-xl mb-4">
+      <div class="px-5 py-4 border-b border-neutral-800 flex items-center justify-between cursor-pointer" onclick="toggleSettingsSection('leadScoring')">
+        <h3 class="text-white text-sm font-semibold">Lead Scoring & Qualification</h3>
+        <span class="text-[10px] text-neutral-600 mr-2">Advanced</span>
+        <svg id="chevron-leadScoring" class="w-4 h-4 text-neutral-500 transition-transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      </div>
+      <div id="section-leadScoring" class="p-5 hidden">
+        <p class="text-neutral-500 text-xs mb-4">Configure how leads are scored and classified. Higher scores = hotter leads.</p>
+
+        <h4 class="text-neutral-400 text-xs font-semibold mb-3 uppercase tracking-wider">Scoring Weights (points)</h4>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-6" id="lead-scoring-grid">
+        </div>
+
+        <h4 class="text-neutral-400 text-xs font-semibold mb-3 uppercase tracking-wider">Qualification Thresholds (score needed)</h4>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6" id="qualification-grid">
+        </div>
+
+        <h4 class="text-neutral-400 text-xs font-semibold mb-3 uppercase tracking-wider">Conversion Likelihood (0-1)</h4>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="conversion-grid">
+        </div>
+      </div>
+    </div>
+
+    <!-- Test Estimate Preview -->
+    <div class="bg-neutral-900 border border-lime-900/30 rounded-xl mb-4">
+      <div class="px-5 py-4 border-b border-neutral-800">
+        <h3 class="text-white text-sm font-semibold">Test Estimate Preview</h3>
+        <p class="text-neutral-500 text-xs mt-1">See what estimate your current settings would produce.</p>
+      </div>
+      <div class="p-5">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+          <div>
+            <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">Service</label>
+            <select id="test-service" class="w-full mt-1 bg-black border border-neutral-700 text-neutral-300 text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+              <option value="roof">Roof Cleaning</option>
+              <option value="driveway">Driveway</option>
+              <option value="gutter">Gutter Cleaning</option>
+              <option value="softwash">Soft Wash</option>
+              <option value="render">Render Cleaning</option>
+              <option value="window">Window Cleaning</option>
+              <option value="solar">Solar Panel</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">Property Size</label>
+            <select id="test-size" class="w-full mt-1 bg-black border border-neutral-700 text-neutral-300 text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+              <option value="small">Small</option>
+              <option value="medium" selected>Medium</option>
+              <option value="large">Large</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">Modifiers</label>
+            <div class="flex flex-wrap gap-2 mt-2">
+              <label class="flex items-center gap-1 text-neutral-400 text-xs cursor-pointer"><input type="checkbox" id="test-mod-first" class="accent-lime-400"> First time</label>
+              <label class="flex items-center gap-1 text-neutral-400 text-xs cursor-pointer"><input type="checkbox" id="test-mod-soiled" class="accent-lime-400"> Soiled</label>
+              <label class="flex items-center gap-1 text-neutral-400 text-xs cursor-pointer"><input type="checkbox" id="test-mod-access" class="accent-lime-400"> Difficult access</label>
+              <label class="flex items-center gap-1 text-neutral-400 text-xs cursor-pointer"><input type="checkbox" id="test-mod-height" class="accent-lime-400"> Height work</label>
+              <label class="flex items-center gap-1 text-neutral-400 text-xs cursor-pointer"><input type="checkbox" id="test-mod-urgent" class="accent-lime-400"> Urgent</label>
+            </div>
+          </div>
+        </div>
+        <div class="flex items-center gap-4">
+          <button onclick="runTestEstimate()" class="bg-lime-400 hover:bg-lime-300 text-black font-semibold px-4 py-2 rounded-lg text-xs transition-colors">Calculate Preview</button>
+          <div id="test-estimate-result" class="text-white text-sm font-semibold"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Change History -->
+    <div class="bg-neutral-900 border border-neutral-800 rounded-xl">
+      <div class="px-5 py-4 border-b border-neutral-800 flex items-center justify-between cursor-pointer" onclick="toggleSettingsSection('history')">
+        <h3 class="text-white text-sm font-semibold">Change History</h3>
+        <svg id="chevron-history" class="w-4 h-4 text-neutral-500 transition-transform rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      </div>
+      <div id="section-history" class="p-5 hidden">
+        <div id="pricing-history-list" class="space-y-2">
+          <p class="text-neutral-600 text-xs text-center py-4">No changes recorded yet.</p>
+        </div>
+      </div>
+    </div>
+
   </div>
 
 </div>
@@ -2611,6 +2779,7 @@ function switchTab(tab) {
   if (tab === 'customers') { loadCustomers(); loadCustStats(); loadAnalytics(); }
   if (tab === 'invoices') loadInvoices();
   if (tab === 'chats') loadChats();
+  if (tab === 'settings') loadSettings();
 }
 
 // ============================
@@ -5020,6 +5189,343 @@ function openChatModal(conv) {
 
 function closeChatModal() {
   document.getElementById('chatModal').classList.add('hidden');
+}
+
+// ============================
+// SETTINGS TAB
+// ============================
+
+var settingsState = {
+  config: null,
+  defaults: null,
+  source: 'defaults',
+  loaded: false
+};
+
+var SERVICE_LABELS = {
+  roof: 'Roof Cleaning',
+  driveway: 'Driveway',
+  gutter: 'Gutter Cleaning',
+  softwash: 'Soft Wash',
+  render: 'Render Cleaning',
+  window: 'Window Cleaning',
+  solar: 'Solar Panel',
+  other: 'Other'
+};
+
+var MODIFIER_LABELS = {
+  firstTimeCleaning: 'First Time Cleaning',
+  heavilySoiled: 'Heavily Soiled',
+  difficultAccess: 'Difficult Access',
+  heightWork: 'Height Work',
+  urgent: 'Urgent Request'
+};
+
+var SCORING_LABELS = {
+  baseScore: 'Base Score',
+  highValueThreshold: 'High Value Threshold (£)',
+  highValueBonus: 'High Value Bonus',
+  veryHighValueThreshold: 'Very High Value (£)',
+  veryHighValueBonus: 'Very High Value Bonus',
+  multipleServicesBonus: '2 Services Bonus',
+  manyServicesBonus: '3+ Services Bonus',
+  remindersOptIn: 'Reminders Opt-In',
+  phonePreferred: 'Phone Preferred',
+  emailPreferred: 'Email Preferred',
+  commercialProperty: 'Commercial Property',
+  urgentLanguage: 'Urgent Language'
+};
+
+async function loadSettings() {
+  try {
+    var res = await apiRequest('/admin/settings/pricing');
+    if (res.success) {
+      settingsState.config = res.data;
+      settingsState.defaults = res.defaults;
+      settingsState.source = res.source;
+      settingsState.loaded = true;
+      renderSettings();
+      loadPricingHistory();
+    }
+  } catch (e) {
+    showToast('Failed to load settings', 'error');
+  }
+}
+
+function renderSettings() {
+  var c = settingsState.config;
+  if (!c) return;
+
+  // Source badge
+  var badge = document.getElementById('settings-source-badge');
+  if (settingsState.source === 'database') {
+    badge.textContent = 'Custom';
+    badge.className = 'text-[10px] uppercase tracking-wider px-2 py-1 rounded-full border text-lime-400 border-lime-400/30 bg-lime-400/10';
+  } else {
+    badge.textContent = 'Defaults';
+    badge.className = 'text-[10px] uppercase tracking-wider px-2 py-1 rounded-full border text-neutral-500 border-neutral-700';
+  }
+
+  renderPricingTable(c.servicePricing);
+  renderModifiers(c.modifiers);
+  renderMultiDiscount(c.multiServiceDiscount);
+  renderLeadScoring(c.leadScoring, c.qualificationThresholds, c.conversionFactors);
+}
+
+function renderPricingTable(pricing) {
+  var tbody = document.getElementById('pricing-table-body');
+  var html = '';
+  var services = ['roof', 'driveway', 'gutter', 'softwash', 'render', 'window', 'solar', 'other'];
+
+  services.forEach(function(svc) {
+    var p = pricing[svc] || { small: [0, 0], medium: [0, 0], large: [0, 0] };
+    html += '<tr class="border-b border-neutral-800/50">';
+    html += '<td class="py-2 pr-3 text-neutral-300 font-medium text-xs">' + (SERVICE_LABELS[svc] || svc) + '</td>';
+
+    ['small', 'medium', 'large'].forEach(function(size) {
+      var range = p[size] || [0, 0];
+      html += '<td class="py-2 px-1"><input type="number" min="0" step="5" value="' + range[0] + '" data-service="' + svc + '" data-size="' + size + '" data-idx="0" class="pricing-input w-full bg-black border border-neutral-700 text-white text-xs px-2 py-1.5 rounded-lg focus:border-lime-400 focus:outline-none text-center" style="max-width:80px"></td>';
+      html += '<td class="py-2 px-1"><input type="number" min="0" step="5" value="' + range[1] + '" data-service="' + svc + '" data-size="' + size + '" data-idx="1" class="pricing-input w-full bg-black border border-neutral-700 text-white text-xs px-2 py-1.5 rounded-lg focus:border-lime-400 focus:outline-none text-center" style="max-width:80px"></td>';
+    });
+
+    html += '</tr>';
+  });
+
+  tbody.innerHTML = html;
+}
+
+function renderModifiers(modifiers) {
+  var grid = document.getElementById('modifiers-grid');
+  var html = '';
+
+  Object.keys(MODIFIER_LABELS).forEach(function(key) {
+    var pct = Math.round((modifiers[key] - 1) * 100);
+    if (key === 'multipleServices') pct = Math.round((1 - modifiers[key]) * 100);
+    html += '<div>';
+    html += '<label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">' + MODIFIER_LABELS[key] + '</label>';
+    html += '<div class="flex items-center gap-2 mt-1">';
+    html += '<input type="number" min="0" max="100" step="1" value="' + pct + '" id="mod-' + key + '" class="w-full bg-black border border-neutral-700 text-white text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">';
+    html += '<span class="text-neutral-500 text-xs">%</span>';
+    html += '</div>';
+    html += '</div>';
+  });
+
+  grid.innerHTML = html;
+}
+
+function renderMultiDiscount(msd) {
+  document.getElementById('settings-msd-threshold').value = msd.threshold;
+  document.getElementById('settings-msd-discount').value = Math.round((1 - msd.discount) * 100);
+}
+
+function renderLeadScoring(scoring, thresholds, conversion) {
+  // Scoring weights
+  var grid = document.getElementById('lead-scoring-grid');
+  var html = '';
+  Object.keys(SCORING_LABELS).forEach(function(key) {
+    html += '<div>';
+    html += '<label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">' + SCORING_LABELS[key] + '</label>';
+    html += '<input type="number" min="0" value="' + (scoring[key] || 0) + '" id="ls-' + key + '" class="w-full mt-1 bg-black border border-neutral-700 text-white text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">';
+    html += '</div>';
+  });
+  grid.innerHTML = html;
+
+  // Qualification thresholds
+  var qGrid = document.getElementById('qualification-grid');
+  var qHtml = '';
+  ['hot', 'warm', 'cold'].forEach(function(level) {
+    var colors = { hot: 'text-red-400', warm: 'text-orange-400', cold: 'text-blue-400' };
+    qHtml += '<div>';
+    qHtml += '<label class="text-[10px] uppercase tracking-wider font-semibold ' + colors[level] + '">' + capitalize(level) + ' Lead</label>';
+    qHtml += '<input type="number" min="0" max="100" value="' + (thresholds[level] || 0) + '" id="qt-' + level + '" class="w-full mt-1 bg-black border border-neutral-700 text-white text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">';
+    qHtml += '</div>';
+  });
+  qGrid.innerHTML = qHtml;
+
+  // Conversion factors
+  var cGrid = document.getElementById('conversion-grid');
+  var cHtml = '';
+  var cfLabels = { hotLead: 'Hot', warmLead: 'Warm', coldLead: 'Cold', unqualified: 'Unqualified' };
+  Object.keys(cfLabels).forEach(function(key) {
+    cHtml += '<div>';
+    cHtml += '<label class="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">' + cfLabels[key] + '</label>';
+    cHtml += '<input type="number" min="0" max="1" step="0.05" value="' + (conversion[key] || 0) + '" id="cf-' + key + '" class="w-full mt-1 bg-black border border-neutral-700 text-white text-sm px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">';
+    cHtml += '</div>';
+  });
+  cGrid.innerHTML = cHtml;
+}
+
+function toggleSettingsSection(section) {
+  var el = document.getElementById('section-' + section);
+  var chevron = document.getElementById('chevron-' + section);
+  if (el.classList.contains('hidden')) {
+    el.classList.remove('hidden');
+    chevron.classList.remove('rotate-180');
+  } else {
+    el.classList.add('hidden');
+    chevron.classList.add('rotate-180');
+  }
+}
+
+function collectPricingFromUI() {
+  var servicePricing = {};
+  var inputs = document.querySelectorAll('.pricing-input');
+  inputs.forEach(function(input) {
+    var svc = input.dataset.service;
+    var size = input.dataset.size;
+    var idx = parseInt(input.dataset.idx);
+    if (!servicePricing[svc]) servicePricing[svc] = {};
+    if (!servicePricing[svc][size]) servicePricing[svc][size] = [0, 0];
+    servicePricing[svc][size][idx] = parseFloat(input.value) || 0;
+  });
+
+  // Add default = medium for each service
+  Object.keys(servicePricing).forEach(function(svc) {
+    servicePricing[svc].default = servicePricing[svc].medium;
+  });
+
+  return servicePricing;
+}
+
+function collectModifiersFromUI() {
+  var modifiers = {};
+  Object.keys(MODIFIER_LABELS).forEach(function(key) {
+    var el = document.getElementById('mod-' + key);
+    if (el) {
+      var pct = parseFloat(el.value) || 0;
+      modifiers[key] = 1 + (pct / 100);
+    }
+  });
+  // Keep multipleServices from existing config (it's handled by multi-service discount)
+  modifiers.multipleServices = settingsState.config.modifiers.multipleServices || 0.9;
+  return modifiers;
+}
+
+function collectMultiDiscountFromUI() {
+  var threshold = parseInt(document.getElementById('settings-msd-threshold').value) || 3;
+  var discountPct = parseFloat(document.getElementById('settings-msd-discount').value) || 10;
+  return {
+    threshold: threshold,
+    discount: 1 - (discountPct / 100)
+  };
+}
+
+function collectLeadScoringFromUI() {
+  var scoring = {};
+  Object.keys(SCORING_LABELS).forEach(function(key) {
+    var el = document.getElementById('ls-' + key);
+    if (el) scoring[key] = parseFloat(el.value) || 0;
+  });
+  return scoring;
+}
+
+function collectQualificationFromUI() {
+  return {
+    hot: parseInt(document.getElementById('qt-hot').value) || 75,
+    warm: parseInt(document.getElementById('qt-warm').value) || 50,
+    cold: parseInt(document.getElementById('qt-cold').value) || 30
+  };
+}
+
+function collectConversionFromUI() {
+  var factors = {};
+  ['hotLead', 'warmLead', 'coldLead', 'unqualified'].forEach(function(key) {
+    var el = document.getElementById('cf-' + key);
+    if (el) factors[key] = parseFloat(el.value) || 0;
+  });
+  return factors;
+}
+
+async function savePricingSettings() {
+  try {
+    var body = {
+      servicePricing: collectPricingFromUI(),
+      modifiers: collectModifiersFromUI(),
+      multiServiceDiscount: collectMultiDiscountFromUI(),
+      leadScoring: collectLeadScoringFromUI(),
+      qualificationThresholds: collectQualificationFromUI(),
+      conversionFactors: collectConversionFromUI()
+    };
+
+    var res = await apiRequest('/admin/settings/pricing', {
+      method: 'PUT',
+      body: body
+    });
+
+    if (res.success) {
+      showToast('Pricing settings saved', 'success');
+      loadSettings();
+    } else {
+      showToast(res.error || 'Failed to save', 'error');
+    }
+  } catch (e) {
+    showToast('Failed to save settings', 'error');
+  }
+}
+
+async function resetPricingSettings() {
+  if (!confirm('Reset all pricing settings to file defaults? This cannot be undone.')) return;
+
+  try {
+    var res = await apiRequest('/admin/settings/pricing/reset', { method: 'POST', body: {} });
+    if (res.success) {
+      showToast('Settings reset to defaults', 'success');
+      loadSettings();
+    }
+  } catch (e) {
+    showToast('Failed to reset settings', 'error');
+  }
+}
+
+async function runTestEstimate() {
+  try {
+    var service = document.getElementById('test-service').value;
+    var size = document.getElementById('test-size').value;
+    var modifiers = {
+      firstTimeCleaning: document.getElementById('test-mod-first').checked,
+      heavilySoiled: document.getElementById('test-mod-soiled').checked,
+      difficultAccess: document.getElementById('test-mod-access').checked,
+      heightWork: document.getElementById('test-mod-height').checked,
+      urgent: document.getElementById('test-mod-urgent').checked
+    };
+
+    var res = await apiRequest('/admin/settings/pricing/test-estimate', {
+      method: 'POST',
+      body: { services: [service], size: size, modifiers: modifiers }
+    });
+
+    if (res.success && res.data) {
+      var result = document.getElementById('test-estimate-result');
+      var reasons = res.data.modifierReasons.length > 0 ? ' (' + res.data.modifierReasons.join(', ') + ')' : '';
+      result.innerHTML = '<span class="text-lime-400 text-lg font-bold">&pound;' + res.data.min + ' &mdash; &pound;' + res.data.max + '</span><span class="text-neutral-500 text-xs ml-2">' + escapeHtml(reasons) + '</span>';
+    }
+  } catch (e) {
+    showToast('Failed to calculate test estimate', 'error');
+  }
+}
+
+async function loadPricingHistory() {
+  try {
+    var res = await apiRequest('/admin/settings/pricing/history');
+    if (res.success && res.data && res.data.length > 0) {
+      var list = document.getElementById('pricing-history-list');
+      var html = '';
+      res.data.forEach(function(entry) {
+        var section = (entry.changed_section || '').replace(/_/g, ' ');
+        var time = relativeTime(entry.created_at);
+        html += '<div class="bg-black border border-neutral-800 rounded-lg p-3">';
+        html += '<div class="flex items-center justify-between">';
+        html += '<span class="text-neutral-300 text-xs font-medium">' + capitalize(section) + '</span>';
+        html += '<span class="text-neutral-600 text-[10px]">' + time + '</span>';
+        html += '</div>';
+        html += '<p class="text-neutral-500 text-xs mt-1">' + escapeHtml(entry.description || '') + '</p>';
+        html += '</div>';
+      });
+      list.innerHTML = html;
+    }
+  } catch (e) {
+    // Silently fail
+  }
 }
 
 // ============================

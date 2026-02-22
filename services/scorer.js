@@ -3,22 +3,26 @@
  *
  * Calculates lead quality scores and qualification status
  * based on multiple signals from the quote data.
+ *
+ * Loads scoring config from database (admin-editable) with file fallback.
  */
 
-const {
-  LEAD_SCORING,
-  QUALIFICATION_THRESHOLDS,
-  CONVERSION_FACTORS
-} = require('../config/pricing');
+const { getPricingConfig } = require('./pricingConfig');
 
 /**
  * Calculate lead score and qualification
  * @param {Object} quote - The quote object
  * @param {Object} estimate - The price estimate { min, max }
- * @returns {Object} - { score, qualification, conversionLikelihood, reasons }
+ * @returns {Promise<Object>} - { score, qualification, conversionLikelihood, reasons }
  */
-function calculateLeadScore(quote, estimate) {
+async function calculateLeadScore(quote, estimate) {
   const { services, answers, remindersOk, preferredContact } = quote;
+
+  // Load config from DB (or file defaults)
+  const config = await getPricingConfig();
+  const LEAD_SCORING = config.LEAD_SCORING;
+  const QUALIFICATION_THRESHOLDS = config.QUALIFICATION_THRESHOLDS;
+  const CONVERSION_FACTORS = config.CONVERSION_FACTORS;
 
   let score = LEAD_SCORING.baseScore;
   const reasons = [];

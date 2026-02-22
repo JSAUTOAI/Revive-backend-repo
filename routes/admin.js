@@ -709,6 +709,251 @@ async function deleteAttachment(req, res) {
   }
 }
 
+// ========================
+// PRICING SETTINGS
+// ========================
+
+const pricingConfig = require('../services/pricingConfig');
+const { calculateTestEstimate } = require('../services/estimator');
+
+/**
+ * GET /admin/settings/pricing
+ * Returns the active pricing configuration
+ */
+async function getPricingSettings(req, res) {
+  try {
+    const config = await pricingConfig.getPricingConfig();
+    const defaults = pricingConfig.getFileDefaults();
+
+    // Check if using DB config or file defaults
+    let source = 'defaults';
+    let lastUpdated = null;
+
+    const { data } = await supabase
+      .from('settings')
+      .select('updated_at')
+      .eq('key', 'pricing_config')
+      .single();
+
+    if (data) {
+      source = 'database';
+      lastUpdated = data.updated_at;
+    }
+
+    res.json({
+      success: true,
+      data: {
+        servicePricing: config.SERVICE_PRICING,
+        modifiers: config.MODIFIERS,
+        multiServiceDiscount: config.MULTI_SERVICE_DISCOUNT,
+        leadScoring: config.LEAD_SCORING,
+        qualificationThresholds: config.QUALIFICATION_THRESHOLDS,
+        conversionFactors: config.CONVERSION_FACTORS
+      },
+      defaults: {
+        servicePricing: defaults.SERVICE_PRICING,
+        modifiers: defaults.MODIFIERS,
+        multiServiceDiscount: defaults.MULTI_SERVICE_DISCOUNT,
+        leadScoring: defaults.LEAD_SCORING,
+        qualificationThresholds: defaults.QUALIFICATION_THRESHOLDS,
+        conversionFactors: defaults.CONVERSION_FACTORS
+      },
+      source,
+      lastUpdated
+    });
+  } catch (error) {
+    console.error('[Admin] Get pricing settings error:', error);
+    res.status(500).json({ success: false, error: 'Failed to load pricing settings' });
+  }
+}
+
+/**
+ * PUT /admin/settings/pricing
+ * Save updated pricing configuration
+ */
+async function updatePricingSettings(req, res) {
+  try {
+    const updates = req.body;
+    if (!updates || Object.keys(updates).length === 0) {
+      return res.status(400).json({ success: false, error: 'No data provided' });
+    }
+
+    // Get current config for comparison/history
+    const currentConfig = await pricingConfig.getPricingConfig();
+
+    // Build the new config by merging updates with current
+    const newConfig = {};
+    const changedSections = [];
+
+    if (updates.servicePricing) {
+      // Validate service pricing
+      for (const [service, sizes] of Object.entries(updates.servicePricing)) {
+        for (const [size, range] of Object.entries(sizes)) {
+          if (!Array.isArray(range) || range.length !== 2) continue;
+          if (range[0] < 0 || range[1] < 0) {
+            return res.status(400).json({ success: false, error: `Prices cannot be negative (${service} ${size})` });
+          }
+          if (range[0] > range[1]) {
+            return res.status(400).json({ success: false, error: `Min price cannot exceed max price (${service} ${size})` });
+          }
+        }
+      }
+      newConfig.SERVICE_PRICING = updates.servicePricing;
+      changedSections.push('service_pricing');
+    } else {
+      newConfig.SERVICE_PRICING = currentConfig.SERVICE_PRICING;
+    }
+
+    if (updates.modifiers) {
+      // Validate modifiers (must be positive numbers)
+      for (const [key, value] of Object.entries(updates.modifiers)) {
+        if (typeof value !== 'number' || value <= 0) {
+          return res.status(400).json({ success: false, error: `Invalid modifier value for ${key}` });
+        }
+      }
+      newConfig.MODIFIERS = updates.modifiers;
+      changedSections.push('modifiers');
+    } else {
+      newConfig.MODIFIERS = currentConfig.MODIFIERS;
+    }
+
+    if (updates.multiServiceDiscount) {
+      const msd = updates.multiServiceDiscount;
+      if (msd.threshold < 2) {
+        return res.status(400).json({ success: false, error: 'Multi-service threshold must be at least 2' });
+      }
+      if (msd.discount <= 0 || msd.discount > 1) {
+        return res.status(400).json({ success: false, error: 'Discount must be between 0 and 1' });
+      }
+      newConfig.MULTI_SERVICE_DISCOUNT = msd;
+      changedSections.push('multi_service_discount');
+    } else {
+      newConfig.MULTI_SERVICE_DISCOUNT = currentConfig.MULTI_SERVICE_DISCOUNT;
+    }
+
+    if (updates.leadScoring) {
+      newConfig.LEAD_SCORING = updates.leadScoring;
+      changedSections.push('lead_scoring');
+    } else {
+      newConfig.LEAD_SCORING = currentConfig.LEAD_SCORING;
+    }
+
+    if (updates.qualificationThresholds) {
+      const qt = updates.qualificationThresholds;
+      if (qt.hot <= qt.warm || qt.warm <= qt.cold) {
+        return res.status(400).json({ success: false, error: 'Thresholds must be in order: hot > warm > cold' });
+      }
+      newConfig.QUALIFICATION_THRESHOLDS = qt;
+      changedSections.push('qualification_thresholds');
+    } else {
+      newConfig.QUALIFICATION_THRESHOLDS = currentConfig.QUALIFICATION_THRESHOLDS;
+    }
+
+    if (updates.conversionFactors) {
+      newConfig.CONVERSION_FACTORS = updates.conversionFactors;
+      changedSections.push('conversion_factors');
+    } else {
+      newConfig.CONVERSION_FACTORS = currentConfig.CONVERSION_FACTORS;
+    }
+
+    // Save to database
+    await pricingConfig.savePricingConfig(newConfig);
+
+    // Log changes to pricing history
+    for (const section of changedSections) {
+      const sectionKeyMap = {
+        service_pricing: ['SERVICE_PRICING', 'servicePricing'],
+        modifiers: ['MODIFIERS', 'modifiers'],
+        multi_service_discount: ['MULTI_SERVICE_DISCOUNT', 'multiServiceDiscount'],
+        lead_scoring: ['LEAD_SCORING', 'leadScoring'],
+        qualification_thresholds: ['QUALIFICATION_THRESHOLDS', 'qualificationThresholds'],
+        conversion_factors: ['CONVERSION_FACTORS', 'conversionFactors']
+      };
+      const [configKey, updateKey] = sectionKeyMap[section];
+      await pricingConfig.logPricingChange(
+        section,
+        currentConfig[configKey],
+        newConfig[configKey],
+        `Updated ${section.replace(/_/g, ' ')}`
+      );
+    }
+
+    console.log(`[Admin] Pricing settings updated: ${changedSections.join(', ')}`);
+    res.json({ success: true, changedSections });
+
+  } catch (error) {
+    console.error('[Admin] Update pricing settings error:', error);
+    res.status(500).json({ success: false, error: 'Failed to save pricing settings' });
+  }
+}
+
+/**
+ * POST /admin/settings/pricing/reset
+ * Reset pricing to file defaults
+ */
+async function resetPricingSettings(req, res) {
+  try {
+    const currentConfig = await pricingConfig.getPricingConfig();
+
+    await pricingConfig.resetPricingConfig();
+
+    // Log the reset
+    await pricingConfig.logPricingChange(
+      'full_reset',
+      currentConfig,
+      null,
+      'Reset all pricing to file defaults'
+    );
+
+    console.log('[Admin] Pricing settings reset to defaults');
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error('[Admin] Reset pricing settings error:', error);
+    res.status(500).json({ success: false, error: 'Failed to reset pricing settings' });
+  }
+}
+
+/**
+ * POST /admin/settings/pricing/test-estimate
+ * Preview what an estimate would produce with current settings
+ */
+async function testEstimate(req, res) {
+  try {
+    const { services, size, modifiers } = req.body;
+
+    if (!services || !Array.isArray(services) || services.length === 0) {
+      return res.status(400).json({ success: false, error: 'At least one service is required' });
+    }
+
+    const config = await pricingConfig.getPricingConfig();
+    const result = calculateTestEstimate({ services, size, modifiers }, config);
+
+    res.json({ success: true, data: result });
+
+  } catch (error) {
+    console.error('[Admin] Test estimate error:', error);
+    res.status(500).json({ success: false, error: 'Failed to calculate test estimate' });
+  }
+}
+
+/**
+ * GET /admin/settings/pricing/history
+ * Get pricing change history
+ */
+async function getPricingHistory(req, res) {
+  try {
+    const limit = parseInt(req.query.limit) || 20;
+    const history = await pricingConfig.getPricingHistory(limit);
+
+    res.json({ success: true, data: history });
+
+  } catch (error) {
+    console.error('[Admin] Get pricing history error:', error);
+    res.status(500).json({ success: false, error: 'Failed to load pricing history' });
+  }
+}
+
 module.exports = {
   setSupabaseClient,
   listQuotes,
@@ -721,5 +966,10 @@ module.exports = {
   addQuoteActivity,
   uploadAttachment,
   listAttachments,
-  deleteAttachment
+  deleteAttachment,
+  getPricingSettings,
+  updatePricingSettings,
+  resetPricingSettings,
+  testEstimate,
+  getPricingHistory
 };

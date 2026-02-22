@@ -7,7 +7,7 @@
  */
 
 const Anthropic = require('@anthropic-ai/sdk');
-const { SERVICE_PRICING, MODIFIERS, MULTI_SERVICE_DISCOUNT } = require('../config/pricing');
+const { getPricingConfig } = require('./pricingConfig');
 
 // Initialize Anthropic client
 const client = new Anthropic({
@@ -65,9 +65,9 @@ const TOOLS = [
 
 /**
  * Build the system prompt with business knowledge
- * Pulls real pricing data from config/pricing.js
+ * Pulls real pricing data from DB config (or file fallback)
  */
-function buildSystemPrompt() {
+function buildSystemPrompt(SERVICE_PRICING, MODIFIERS, MULTI_SERVICE_DISCOUNT) {
   // Format pricing ranges for the prompt
   const pricingInfo = Object.entries(SERVICE_PRICING).map(([service, sizes]) => {
     const name = service.charAt(0).toUpperCase() + service.slice(1);
@@ -232,9 +232,10 @@ Weave seasonal relevance into responses when it fits naturally - don't force it.
 11. If asked about a service not on our list, say "That's not something we currently offer, but feel free to get in touch and we may be able to help or point you in the right direction."`;
 }
 
-// Build system prompt (rebuilt on each call to include current date/season)
-function getSystemPrompt() {
-  return buildSystemPrompt();
+// Build system prompt (rebuilt on each call to include current date/season + live pricing)
+async function getSystemPrompt() {
+  const config = await getPricingConfig();
+  return buildSystemPrompt(config.SERVICE_PRICING, config.MODIFIERS, config.MULTI_SERVICE_DISCOUNT);
 }
 
 // ========================
@@ -251,7 +252,7 @@ function getSystemPrompt() {
  */
 async function chat(messages, onLeadCapture) {
   try {
-    const systemPrompt = getSystemPrompt();
+    const systemPrompt = await getSystemPrompt();
 
     const response = await client.messages.create({
       model: CHAT_MODEL,

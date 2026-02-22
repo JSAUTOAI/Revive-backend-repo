@@ -27,6 +27,9 @@ const { chat } = require('./services/chatbot');
 const { sendAdminAlert } = require('./services/emailer');
 const { sendAdminAlertWhatsApp } = require('./services/whatsapp');
 
+// Import pricing config loader
+const pricingConfig = require('./services/pricingConfig');
+
 // Import admin middleware and routes
 const { requireAdminAuth } = require('./middleware/auth');
 const adminRoutes = require('./routes/admin');
@@ -46,11 +49,12 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// Pass Supabase client to admin routes, job routes, and customer routes
+// Pass Supabase client to admin routes, job routes, customer routes, and pricing config
 adminRoutes.setSupabaseClient(supabase);
 jobRoutes.setSupabaseClient(supabase);
 customerRoutes.setSupabaseClient(supabase);
 invoiceRoutes.setSupabaseClient(supabase);
+pricingConfig.setSupabaseClient(supabase);
 
 // =======================
 // MIDDLEWARE
@@ -1186,6 +1190,16 @@ app.patch('/admin/invoices/:id', requireAdminAuth, invoiceRoutes.updateInvoice);
 app.post('/admin/invoices/:id/send', requireAdminAuth, invoiceRoutes.sendInvoice);
 app.post('/admin/jobs/:id/invoice', requireAdminAuth, invoiceRoutes.createInvoice);
 app.get('/admin/jobs/:id/invoice', requireAdminAuth, invoiceRoutes.getJobInvoice);
+
+// =======================
+// PRICING SETTINGS (Protected)
+// =======================
+
+app.get('/admin/settings/pricing', requireAdminAuth, adminRoutes.getPricingSettings);
+app.put('/admin/settings/pricing', requireAdminAuth, adminRoutes.updatePricingSettings);
+app.post('/admin/settings/pricing/reset', requireAdminAuth, adminRoutes.resetPricingSettings);
+app.post('/admin/settings/pricing/test-estimate', requireAdminAuth, adminRoutes.testEstimate);
+app.get('/admin/settings/pricing/history', requireAdminAuth, adminRoutes.getPricingHistory);
 
 // Public invoice view (no auth - token acts as access key)
 app.get('/invoice/:token', invoiceRoutes.viewInvoice);

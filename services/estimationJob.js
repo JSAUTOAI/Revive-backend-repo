@@ -22,13 +22,13 @@ async function processEstimation(supabase, quoteId, quote) {
   try {
     console.log(`[Estimation Job] Starting for quote ${quoteId}`);
 
-    // Step 1: Calculate price estimate
-    const estimate = calculateEstimate(quote);
+    // Step 1: Calculate price estimate (async - loads config from DB)
+    const estimate = await calculateEstimate(quote);
 
     console.log(`[Estimation Job] Estimate calculated: £${estimate.min}-£${estimate.max} (${estimate.confidence} confidence)`);
 
-    // Step 2: Calculate lead score
-    const scoring = calculateLeadScore(quote, estimate);
+    // Step 2: Calculate lead score (async - loads config from DB)
+    const scoring = await calculateLeadScore(quote, estimate);
 
     console.log(`[Estimation Job] Lead score: ${scoring.score}/100 (${scoring.qualification})`);
     if (scoring.reasons.length > 0) {
