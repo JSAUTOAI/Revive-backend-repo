@@ -1431,27 +1431,39 @@ IMPORTANT: The receipt image may be rotated, sideways, upside down, or at any an
 Required JSON format:
 {
   "date": "YYYY-MM-DD or null if not readable",
-  "amount": 0.00,
-  "vat_amount": 0.00,
   "supplier": "Business/shop name or null",
-  "description": "Brief description of items purchased (max 60 chars)",
-  "suggested_category": "one of: ${categoryList}",
   "payment_method": "card or cash or bank_transfer",
-  "is_business": true,
-  "confidence": "high or medium or low"
+  "confidence": "high or medium or low",
+  "items": [
+    {
+      "description": "Brief description (max 60 chars)",
+      "amount": 0.00,
+      "vat_amount": 0.00,
+      "suggested_category": "one of: ${categoryList}",
+      "is_business": true
+    }
+  ]
 }
 
-Rules:
-- AMOUNT: Use the final TOTAL line on the receipt. Do NOT use subtotals, individual line items, or the amount tendered/given. If the receipt shows "Total: £17.54" and "Cash: £20.00", the amount is 17.54, not 20.00.
-- VAT: UK receipts often have multiple VAT-registered entities on one receipt (common at petrol stations where fuel and shop items have separate VAT breakdowns). SUM all VAT amounts across ALL entities for the total vat_amount. If VAT is not shown, calculate as amount/6 for 20% VAT-inclusive items. If no VAT info at all, set to 0.
+Rules for ITEMS:
+- If ALL items on the receipt belong to the SAME category, return a SINGLE item with the receipt total. Do NOT split unnecessarily. E.g. a Screwfix receipt for 3 types of screws = 1 item "Screws and fixings" with the total.
+- If items clearly belong to DIFFERENT categories (e.g. fuel + snacks at a petrol station, or tools + PPE at Screwfix), split them into separate items by category.
+- Each item's amount should be the actual price of that item or group. The sum of all item amounts MUST equal the receipt total.
+- Each item's vat_amount should reflect the VAT for that item. If the receipt shows a single VAT total without per-item breakdown, distribute proportionally. If no VAT visible, set to 0.
+- is_business: true for business-related items (fuel, tools, materials, cleaning supplies, PPE), false for personal items (snacks, drinks, food, personal goods).
+- For fuel items, include fuel type and litres in the description (e.g. "Unleaded 10.72L").
+
+Rules for receipt-level fields:
 - DATE: Use YYYY-MM-DD format. UK receipts typically show DD/MM/YYYY — convert correctly. If only day/month visible, assume current year (2026).
-- SUPPLIER: Use the business name at the top of the receipt (e.g., "Eagle Service Station", "Screwfix", "Toolstation"). Not the VAT entity name.
-- DESCRIPTION: Summarise concisely. For fuel receipts include fuel type and litres (e.g., "Unleaded 10.72L"). For mixed purchases, list the main items.
+- SUPPLIER: Use the business name at the top of the receipt (e.g., "Eagle Service Station", "Screwfix"). Not the VAT entity name.
 - PAYMENT METHOD: If receipt shows "Cash", "Change Due", or "Tendered", it's "cash". If it shows "Card", "Visa", "Mastercard", "Contactless", "Debit", it's "card". Otherwise "bank_transfer".
-- CATEGORY: Pick closest match from the list. Common for this business: "fuel" for petrol/diesel, "materials" for building supplies, "cleaning-solutions" for chemicals, "tools" for hand/power tools, "equipment-purchase" for machinery.
-- IS_BUSINESS: true unless items are clearly personal (groceries, clothing, entertainment). Mixed receipts (fuel + snacks) should be true — the primary purpose is business.
 - CONFIDENCE: "high" if all fields clearly readable, "medium" if some guessed, "low" if receipt hard to read.
-- Return ONLY the JSON object, nothing else.`
+
+Rules for CATEGORY:
+- Pick closest match from: ${categoryList}
+- Common: "fuel" for petrol/diesel, "materials" for building supplies, "cleaning-solutions" for chemicals, "tools" for hand/power tools, "equipment-purchase" for machinery, "uniforms-ppe" for PPE/workwear, "personal" for snacks/drinks/food.
+
+Return ONLY the JSON object, nothing else.`
               }
             ]
           }
@@ -1467,12 +1479,34 @@ Rules:
         }
         extracted = JSON.parse(jsonStr);
 
-        // Sanitise extracted values
-        if (extracted.amount) extracted.amount = parseFloat(extracted.amount) || 0;
-        if (extracted.vat_amount) extracted.vat_amount = parseFloat(extracted.vat_amount) || 0;
+        // Sanitise date
         if (extracted.date && !/^\d{4}-\d{2}-\d{2}$/.test(extracted.date)) {
           extracted.date = null;
         }
+
+        // Sanitise items array (or create from flat fields as fallback)
+        if (extracted.items && Array.isArray(extracted.items)) {
+          extracted.items = extracted.items.map(item => ({
+            description: String(item.description || '').substring(0, 100),
+            amount: parseFloat(item.amount) || 0,
+            vat_amount: parseFloat(item.vat_amount) || 0,
+            suggested_category: item.suggested_category || 'other',
+            is_business: item.is_business !== false
+          }));
+        } else {
+          // Fallback: wrap flat response as single item
+          extracted.items = [{
+            description: extracted.description || '',
+            amount: parseFloat(extracted.amount) || 0,
+            vat_amount: parseFloat(extracted.vat_amount) || 0,
+            suggested_category: extracted.suggested_category || 'other',
+            is_business: extracted.is_business !== false
+          }];
+        }
+
+        // Compute flat totals from items for backward compat
+        extracted.amount = extracted.items.reduce((sum, i) => sum + i.amount, 0);
+        extracted.vat_amount = extracted.items.reduce((sum, i) => sum + i.vat_amount, 0);
       }
     } catch (ocrError) {
       console.error('[Finance] Receipt OCR error:', ocrError.message);

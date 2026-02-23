@@ -617,10 +617,10 @@
         <h3 class="text-sm font-semibold text-white mb-3">Add Expense</h3>
         <!-- Receipt Scan -->
         <div class="flex items-center gap-3 mb-4 pb-4 border-b border-neutral-800">
-          <input type="file" id="fin-exp-receipt-input" accept="image/*" capture="environment" class="hidden" onchange="finHandleReceiptUpload(this)">
+          <input type="file" id="fin-exp-receipt-input" accept="image/*" capture="environment" multiple class="hidden" onchange="finHandleReceiptUpload(this)">
           <button onclick="document.getElementById('fin-exp-receipt-input').click()" class="bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
-            Scan Receipt
+            Scan Receipt(s)
           </button>
           <span id="fin-exp-receipt-status" class="text-xs text-neutral-500"></span>
           <span id="fin-exp-receipt-preview" class="hidden">
@@ -628,35 +628,77 @@
             <button onclick="finClearReceipt()" class="text-xs text-red-400 hover:text-red-300 ml-2">Remove</button>
           </span>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <input type="date" id="fin-exp-date" class="bg-black border border-neutral-700 text-white text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
-          <input type="text" id="fin-exp-description" placeholder="Description" class="bg-black border border-neutral-700 text-white text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
-          <div class="relative">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-xs">&pound;</span>
-            <input type="number" id="fin-exp-amount" placeholder="0.00" step="0.01" min="0" class="bg-black border border-neutral-700 text-white text-xs pl-7 pr-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none w-full">
+        <!-- SINGLE ENTRY MODE -->
+        <div id="fin-exp-single-form">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <input type="date" id="fin-exp-date" class="bg-black border border-neutral-700 text-white text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+            <input type="text" id="fin-exp-description" placeholder="Description" class="bg-black border border-neutral-700 text-white text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-xs">&pound;</span>
+              <input type="number" id="fin-exp-amount" placeholder="0.00" step="0.01" min="0" class="bg-black border border-neutral-700 text-white text-xs pl-7 pr-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none w-full">
+            </div>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-xs">VAT &pound;</span>
+              <input type="number" id="fin-exp-vat" placeholder="0.00" step="0.01" min="0" class="bg-black border border-neutral-700 text-white text-xs pl-14 pr-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none w-full">
+            </div>
           </div>
-          <div class="relative">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500 text-xs">VAT &pound;</span>
-            <input type="number" id="fin-exp-vat" placeholder="0.00" step="0.01" min="0" class="bg-black border border-neutral-700 text-white text-xs pl-14 pr-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none w-full">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
+            <select id="fin-exp-category" class="bg-black border border-neutral-700 text-neutral-300 text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+              <option value="">Select Category</option>
+            </select>
+            <select id="fin-exp-method" class="bg-black border border-neutral-700 text-neutral-300 text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
+              <option value="bank_transfer">Bank Transfer</option>
+              <option value="card">Card</option>
+              <option value="cash">Cash</option>
+              <option value="petty_cash">Petty Cash</option>
+            </select>
+            <div class="flex items-center gap-3">
+              <label class="flex items-center gap-2 text-xs text-neutral-400 cursor-pointer">
+                <input type="checkbox" id="fin-exp-business" checked class="accent-lime-400"> Business
+              </label>
+              <input type="text" id="fin-exp-supplier" placeholder="Supplier" class="bg-black border border-neutral-700 text-white text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none flex-1">
+            </div>
+            <button onclick="finCreateExpense()" class="bg-lime-400 hover:bg-lime-300 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors">Save Expense</button>
           </div>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
-          <select id="fin-exp-category" class="bg-black border border-neutral-700 text-neutral-300 text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
-            <option value="">Select Category</option>
-          </select>
-          <select id="fin-exp-method" class="bg-black border border-neutral-700 text-neutral-300 text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
-            <option value="bank_transfer">Bank Transfer</option>
-            <option value="card">Card</option>
-            <option value="cash">Cash</option>
-            <option value="petty_cash">Petty Cash</option>
-          </select>
-          <div class="flex items-center gap-3">
-            <label class="flex items-center gap-2 text-xs text-neutral-400 cursor-pointer">
-              <input type="checkbox" id="fin-exp-business" checked class="accent-lime-400"> Business
-            </label>
-            <input type="text" id="fin-exp-supplier" placeholder="Supplier" class="bg-black border border-neutral-700 text-white text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none flex-1">
+        <!-- BULK QUEUE MODE -->
+        <div id="fin-exp-bulk-queue" class="hidden">
+          <div id="fin-bulk-progress" class="hidden mb-4">
+            <div class="flex items-center justify-between mb-1">
+              <span id="fin-bulk-progress-text" class="text-xs text-yellow-400 animate-pulse">Scanning receipts...</span>
+              <button onclick="finCancelBulkScan()" class="text-xs text-red-400 hover:text-red-300">Cancel</button>
+            </div>
+            <div class="w-full bg-neutral-800 rounded-full h-1.5">
+              <div id="fin-bulk-progress-bar" class="bg-purple-500 h-1.5 rounded-full transition-all" style="width: 0%"></div>
+            </div>
           </div>
-          <button onclick="finCreateExpense()" class="bg-lime-400 hover:bg-lime-300 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors">Save Expense</button>
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead>
+                <tr class="border-b border-neutral-800">
+                  <th class="text-left text-[10px] uppercase tracking-wider text-neutral-500 px-3 py-2">Receipt</th>
+                  <th class="text-left text-[10px] uppercase tracking-wider text-neutral-500 px-3 py-2">Description</th>
+                  <th class="text-left text-[10px] uppercase tracking-wider text-neutral-500 px-3 py-2">Category</th>
+                  <th class="text-right text-[10px] uppercase tracking-wider text-neutral-500 px-3 py-2">Amount</th>
+                  <th class="text-right text-[10px] uppercase tracking-wider text-neutral-500 px-3 py-2">VAT</th>
+                  <th class="text-center text-[10px] uppercase tracking-wider text-neutral-500 px-3 py-2">Biz</th>
+                  <th class="text-right text-[10px] uppercase tracking-wider text-neutral-500 px-3 py-2 w-12"></th>
+                </tr>
+              </thead>
+              <tbody id="fin-bulk-queue-body"></tbody>
+            </table>
+          </div>
+          <div class="flex items-center justify-between mt-4 pt-4 border-t border-neutral-800">
+            <div class="text-xs text-neutral-400">
+              <span id="fin-bulk-item-count">0</span> items |
+              Total: <span id="fin-bulk-total" class="text-white font-semibold">&pound;0.00</span> |
+              Business: <span id="fin-bulk-biz-total" class="text-lime-400 font-semibold">&pound;0.00</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="finClearBulkQueue()" class="text-xs text-red-400 hover:text-red-300 px-3 py-1.5 border border-red-400/30 rounded-lg">Clear All</button>
+              <button onclick="finSaveBulkQueue()" id="fin-bulk-save-btn" class="bg-lime-400 hover:bg-lime-300 text-black text-xs font-semibold px-4 py-2 rounded-lg transition-colors">Save All</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -6524,7 +6566,10 @@ var finState = {
   income: [],
   summary: null,
   activeSubTab: 'overview',
-  expPagination: { total: 0, limit: 50, offset: 0 }
+  expPagination: { total: 0, limit: 50, offset: 0 },
+  bulkQueue: [],
+  bulkScanning: false,
+  bulkCancelled: false
 };
 
 // ============================
@@ -6821,103 +6866,304 @@ async function finDeleteExpense(id) {
 }
 
 // ============================
-// RECEIPT SCANNING
+// RECEIPT SCANNING + BULK QUEUE
 // ============================
 
 var finReceiptData = { receipt_path: null, receipt_url: null };
 
 async function finHandleReceiptUpload(input) {
-  var file = input.files[0];
-  if (!file) return;
+  var files = Array.from(input.files);
+  if (!files.length) return;
 
-  if (file.size > 10 * 1024 * 1024) {
-    showToast('Image too large (max 10MB)', 'error');
-    input.value = '';
-    return;
+  // Validate all files
+  var validFiles = [];
+  for (var i = 0; i < files.length; i++) {
+    if (files[i].size > 10 * 1024 * 1024) { showToast(files[i].name + ' too large (max 10MB)', 'error'); continue; }
+    if (!files[i].type.startsWith('image/')) { showToast(files[i].name + ' is not an image', 'error'); continue; }
+    validFiles.push(files[i]);
   }
+  if (!validFiles.length) { input.value = ''; return; }
 
-  if (!file.type.startsWith('image/')) {
-    showToast('Please select an image file', 'error');
-    input.value = '';
-    return;
-  }
-
+  // Show scanning status
   var statusEl = document.getElementById('fin-exp-receipt-status');
-  statusEl.textContent = 'Uploading and scanning receipt...';
-  statusEl.className = 'text-xs text-yellow-400 animate-pulse';
+  finState.bulkScanning = true;
+  finState.bulkCancelled = false;
 
-  try {
-    var base64 = await fileToBase64(file);
+  // For bulk or multi-item: use queue mode
+  finShowBulkMode();
+  var progressEl = document.getElementById('fin-bulk-progress');
+  var progressText = document.getElementById('fin-bulk-progress-text');
+  var progressBar = document.getElementById('fin-bulk-progress-bar');
+  progressEl.classList.remove('hidden');
 
-    var result = await apiRequest('/admin/finance/expenses/scan-receipt', {
-      method: 'POST',
-      body: {
-        filename: file.name,
-        contentType: file.type,
-        data: base64
-      }
-    });
+  for (var i = 0; i < validFiles.length; i++) {
+    if (finState.bulkCancelled) break;
+    progressText.textContent = 'Scanning ' + (i + 1) + ' of ' + validFiles.length + ' receipt(s)...';
+    progressBar.style.width = Math.round((i / validFiles.length) * 100) + '%';
 
-    if (!result.success) {
-      throw new Error(result.error || 'Scan failed');
-    }
+    try {
+      var base64 = await fileToBase64(validFiles[i]);
+      var result = await apiRequest('/admin/finance/expenses/scan-receipt', {
+        method: 'POST',
+        body: { filename: validFiles[i].name, contentType: validFiles[i].type, data: base64 }
+      });
 
-    finReceiptData.receipt_path = result.receipt_path;
-    finReceiptData.receipt_url = result.receipt_url;
+      if (!result.success) { showToast('Failed to scan ' + validFiles[i].name, 'error'); continue; }
 
-    document.getElementById('fin-exp-receipt-link').href = result.receipt_url;
-    document.getElementById('fin-exp-receipt-preview').classList.remove('hidden');
+      var entry = {
+        id: 'receipt-' + Date.now() + '-' + i,
+        receipt_path: result.receipt_path,
+        receipt_url: result.receipt_url,
+        date: (result.extracted && result.extracted.date) || new Date().toISOString().split('T')[0],
+        supplier: (result.extracted && result.extracted.supplier) || '',
+        payment_method: (result.extracted && result.extracted.payment_method) || 'card',
+        confidence: (result.extracted && result.extracted.confidence) || 'low',
+        items: []
+      };
 
-    if (result.extracted) {
-      finPopulateFromReceipt(result.extracted);
-
-      var conf = result.extracted.confidence || 'medium';
-      if (conf === 'high') {
-        statusEl.textContent = 'Receipt scanned successfully - review details below';
-        statusEl.className = 'text-xs text-lime-400';
-      } else if (conf === 'medium') {
-        statusEl.textContent = 'Receipt scanned (some fields may need checking)';
-        statusEl.className = 'text-xs text-yellow-400';
+      if (result.extracted && result.extracted.items && result.extracted.items.length > 0) {
+        entry.items = result.extracted.items.map(function(item, idx) {
+          var cat = finState.categories.find(function(c) { return c.slug === item.suggested_category; });
+          return {
+            tempId: entry.id + '-item-' + idx,
+            description: item.description || '',
+            amount: parseFloat(item.amount) || 0,
+            vat_amount: parseFloat(item.vat_amount) || 0,
+            suggested_category: item.suggested_category || 'other',
+            category_id: cat ? cat.id : '',
+            is_business: item.is_business !== false,
+            removed: false
+          };
+        });
       } else {
-        statusEl.textContent = 'Receipt partially read - please verify all fields';
-        statusEl.className = 'text-xs text-orange-400';
+        entry.items = [{ tempId: entry.id + '-item-0', description: '', amount: 0, vat_amount: 0, suggested_category: 'other', category_id: '', is_business: true, removed: false }];
       }
-    } else {
-      statusEl.textContent = result.extraction_error || 'Could not read receipt - fill in manually';
-      statusEl.className = 'text-xs text-orange-400';
-    }
 
-  } catch (e) {
-    console.error('[Finance] Receipt scan error:', e);
-    statusEl.textContent = 'Scan failed - enter details manually';
-    statusEl.className = 'text-xs text-red-400';
-    showToast('Failed to scan receipt', 'error');
+      finState.bulkQueue.push(entry);
+      finRenderBulkQueue();
+    } catch (e) {
+      console.error('[Finance] Bulk scan error:', e);
+      showToast('Failed to scan ' + validFiles[i].name, 'error');
+    }
+  }
+
+  // Scanning complete
+  finState.bulkScanning = false;
+  progressBar.style.width = '100%';
+  progressText.textContent = 'Scanning complete — review items below';
+  progressText.className = 'text-xs text-lime-400';
+  setTimeout(function() { progressEl.classList.add('hidden'); }, 3000);
+
+  // Single-receipt shortcut: if 1 file with 1 item, use the simple form
+  if (validFiles.length === 1 && finState.bulkQueue.length === 1) {
+    var receipt = finState.bulkQueue[0];
+    var activeItems = receipt.items.filter(function(i) { return !i.removed; });
+    if (activeItems.length === 1) {
+      var item = activeItems[0];
+      finState.bulkQueue = [];
+      finShowSingleMode();
+
+      finReceiptData.receipt_path = receipt.receipt_path;
+      finReceiptData.receipt_url = receipt.receipt_url;
+      document.getElementById('fin-exp-receipt-link').href = receipt.receipt_url;
+      document.getElementById('fin-exp-receipt-preview').classList.remove('hidden');
+      document.getElementById('fin-exp-date').value = receipt.date || '';
+      document.getElementById('fin-exp-description').value = item.description || '';
+      document.getElementById('fin-exp-amount').value = item.amount ? item.amount.toFixed(2) : '';
+      document.getElementById('fin-exp-vat').value = item.vat_amount ? item.vat_amount.toFixed(2) : '';
+      document.getElementById('fin-exp-supplier').value = receipt.supplier || '';
+      if (receipt.payment_method) document.getElementById('fin-exp-method').value = receipt.payment_method;
+      document.getElementById('fin-exp-business').checked = item.is_business;
+      if (item.category_id) document.getElementById('fin-exp-category').value = item.category_id;
+
+      var conf = receipt.confidence || 'medium';
+      if (conf === 'high') { statusEl.textContent = 'Receipt scanned successfully'; statusEl.className = 'text-xs text-lime-400'; }
+      else if (conf === 'medium') { statusEl.textContent = 'Receipt scanned (check fields)'; statusEl.className = 'text-xs text-yellow-400'; }
+      else { statusEl.textContent = 'Receipt partially read — verify fields'; statusEl.className = 'text-xs text-orange-400'; }
+
+      var form = document.getElementById('fin-exp-description').closest('.rounded-xl');
+      if (form) { form.style.borderColor = '#a855f7'; setTimeout(function() { form.style.borderColor = ''; }, 2000); }
+    }
   }
 
   input.value = '';
 }
 
-function finPopulateFromReceipt(data) {
-  if (data.date) document.getElementById('fin-exp-date').value = data.date;
-  if (data.description) document.getElementById('fin-exp-description').value = data.description;
-  if (data.amount) document.getElementById('fin-exp-amount').value = parseFloat(data.amount).toFixed(2);
-  if (data.vat_amount) document.getElementById('fin-exp-vat').value = parseFloat(data.vat_amount).toFixed(2);
-  if (data.supplier) document.getElementById('fin-exp-supplier').value = data.supplier;
-  if (data.payment_method) {
-    var opts = ['bank_transfer', 'card', 'cash', 'petty_cash'];
-    if (opts.includes(data.payment_method)) document.getElementById('fin-exp-method').value = data.payment_method;
+function finShowBulkMode() {
+  document.getElementById('fin-exp-single-form').classList.add('hidden');
+  document.getElementById('fin-exp-bulk-queue').classList.remove('hidden');
+  document.getElementById('fin-exp-receipt-preview').classList.add('hidden');
+}
+
+function finShowSingleMode() {
+  document.getElementById('fin-exp-single-form').classList.remove('hidden');
+  document.getElementById('fin-exp-bulk-queue').classList.add('hidden');
+}
+
+function finCancelBulkScan() {
+  finState.bulkCancelled = true;
+  if (finState.bulkQueue.length === 0) finShowSingleMode();
+}
+
+function finRenderBulkQueue() {
+  var tbody = document.getElementById('fin-bulk-queue-body');
+  var html = '';
+  var totalAmount = 0, bizAmount = 0, itemCount = 0;
+
+  finState.bulkQueue.forEach(function(receipt) {
+    var activeItems = receipt.items.filter(function(i) { return !i.removed; });
+    if (!activeItems.length) return;
+
+    var confClass = receipt.confidence === 'high' ? 'text-lime-400' : (receipt.confidence === 'medium' ? 'text-yellow-400' : 'text-red-400');
+
+    html += '<tr class="border-b border-neutral-700 bg-neutral-800/30">' +
+      '<td colspan="7" class="px-3 py-2 text-xs">' +
+        '<div class="flex items-center gap-3 flex-wrap">' +
+          '<span class="text-neutral-300 font-semibold">' + (receipt.supplier || 'Unknown') + '</span>' +
+          '<input type="date" value="' + (receipt.date || '') + '" onchange="finBulkUpdateReceipt(\'' + receipt.id + '\',\'date\',this.value)" class="bg-black border border-neutral-700 text-white text-xs px-2 py-1 rounded focus:border-lime-400 focus:outline-none w-32">' +
+          '<select onchange="finBulkUpdateReceipt(\'' + receipt.id + '\',\'payment_method\',this.value)" class="bg-black border border-neutral-700 text-neutral-300 text-xs px-2 py-1 rounded focus:border-lime-400 focus:outline-none">' +
+            '<option value="card"' + (receipt.payment_method === 'card' ? ' selected' : '') + '>Card</option>' +
+            '<option value="cash"' + (receipt.payment_method === 'cash' ? ' selected' : '') + '>Cash</option>' +
+            '<option value="bank_transfer"' + (receipt.payment_method === 'bank_transfer' ? ' selected' : '') + '>Bank Transfer</option>' +
+            '<option value="petty_cash"' + (receipt.payment_method === 'petty_cash' ? ' selected' : '') + '>Petty Cash</option>' +
+          '</select>' +
+          (receipt.receipt_url ? '<a href="' + receipt.receipt_url + '" target="_blank" class="text-purple-400 hover:text-purple-300 text-xs underline">View</a>' : '') +
+          '<span class="' + confClass + ' text-[10px]">' + (receipt.confidence || '') + '</span>' +
+        '</div>' +
+      '</td>' +
+    '</tr>';
+
+    receipt.items.forEach(function(item) {
+      if (item.removed) return;
+      itemCount++;
+      totalAmount += item.amount;
+      if (item.is_business) bizAmount += item.amount;
+
+      var catOptions = '<option value="">--</option>';
+      finState.categories.forEach(function(c) {
+        if (!c.is_active) return;
+        catOptions += '<option value="' + c.id + '"' + (c.id === item.category_id ? ' selected' : '') + '>' + c.name + '</option>';
+      });
+
+      html += '<tr class="border-b border-neutral-800 hover:bg-neutral-800/50">' +
+        '<td class="px-3 py-2 text-xs text-neutral-500 pl-6">&#8627;</td>' +
+        '<td class="px-3 py-2"><input type="text" value="' + (item.description || '').replace(/"/g, '&quot;') + '" onchange="finBulkUpdateItem(\'' + item.tempId + '\',\'description\',this.value)" class="bg-black border border-neutral-700 text-white text-xs px-2 py-1 rounded focus:border-lime-400 focus:outline-none w-full"></td>' +
+        '<td class="px-3 py-2"><select onchange="finBulkUpdateItem(\'' + item.tempId + '\',\'category_id\',this.value)" class="bg-black border border-neutral-700 text-neutral-300 text-xs px-2 py-1 rounded focus:border-lime-400 focus:outline-none w-full">' + catOptions + '</select></td>' +
+        '<td class="px-3 py-2 text-right"><input type="number" value="' + item.amount.toFixed(2) + '" step="0.01" min="0" onchange="finBulkUpdateItem(\'' + item.tempId + '\',\'amount\',this.value)" class="bg-black border border-neutral-700 text-white text-xs px-2 py-1 rounded focus:border-lime-400 focus:outline-none w-20 text-right"></td>' +
+        '<td class="px-3 py-2 text-right"><input type="number" value="' + item.vat_amount.toFixed(2) + '" step="0.01" min="0" onchange="finBulkUpdateItem(\'' + item.tempId + '\',\'vat_amount\',this.value)" class="bg-black border border-neutral-700 text-white text-xs px-2 py-1 rounded focus:border-lime-400 focus:outline-none w-20 text-right"></td>' +
+        '<td class="px-3 py-2 text-center"><input type="checkbox"' + (item.is_business ? ' checked' : '') + ' onchange="finBulkUpdateItem(\'' + item.tempId + '\',\'is_business\',this.checked)" class="accent-lime-400"></td>' +
+        '<td class="px-3 py-2 text-right"><button onclick="finBulkRemoveItem(\'' + item.tempId + '\')" class="text-red-400 hover:text-red-300 text-xs" title="Remove">&times;</button></td>' +
+      '</tr>';
+    });
+  });
+
+  tbody.innerHTML = html;
+  document.getElementById('fin-bulk-item-count').textContent = itemCount;
+  document.getElementById('fin-bulk-total').textContent = '\u00A3' + totalAmount.toFixed(2);
+  document.getElementById('fin-bulk-biz-total').textContent = '\u00A3' + bizAmount.toFixed(2);
+}
+
+function finBulkUpdateReceipt(receiptId, field, value) {
+  var receipt = finState.bulkQueue.find(function(r) { return r.id === receiptId; });
+  if (receipt) receipt[field] = value;
+}
+
+function finBulkUpdateItem(tempId, field, value) {
+  for (var i = 0; i < finState.bulkQueue.length; i++) {
+    for (var j = 0; j < finState.bulkQueue[i].items.length; j++) {
+      if (finState.bulkQueue[i].items[j].tempId === tempId) {
+        if (field === 'amount' || field === 'vat_amount') finState.bulkQueue[i].items[j][field] = parseFloat(value) || 0;
+        else if (field === 'is_business') finState.bulkQueue[i].items[j][field] = !!value;
+        else finState.bulkQueue[i].items[j][field] = value;
+        if (field === 'amount' || field === 'is_business') finRenderBulkQueueTotals();
+        return;
+      }
+    }
   }
-  if (data.is_business !== undefined) document.getElementById('fin-exp-business').checked = data.is_business;
-  if (data.suggested_category) {
-    var cat = finState.categories.find(function(c) { return c.slug === data.suggested_category; });
-    if (cat) document.getElementById('fin-exp-category').value = cat.id;
+}
+
+function finBulkRemoveItem(tempId) {
+  for (var i = 0; i < finState.bulkQueue.length; i++) {
+    for (var j = 0; j < finState.bulkQueue[i].items.length; j++) {
+      if (finState.bulkQueue[i].items[j].tempId === tempId) {
+        finState.bulkQueue[i].items[j].removed = true;
+        finRenderBulkQueue();
+        return;
+      }
+    }
+  }
+}
+
+function finRenderBulkQueueTotals() {
+  var totalAmount = 0, bizAmount = 0, itemCount = 0;
+  finState.bulkQueue.forEach(function(r) {
+    r.items.forEach(function(i) {
+      if (i.removed) return;
+      itemCount++;
+      totalAmount += i.amount;
+      if (i.is_business) bizAmount += i.amount;
+    });
+  });
+  document.getElementById('fin-bulk-item-count').textContent = itemCount;
+  document.getElementById('fin-bulk-total').textContent = '\u00A3' + totalAmount.toFixed(2);
+  document.getElementById('fin-bulk-biz-total').textContent = '\u00A3' + bizAmount.toFixed(2);
+}
+
+function finClearBulkQueue() {
+  if (finState.bulkQueue.length > 0 && !confirm('Discard all scanned receipts?')) return;
+  finState.bulkQueue = [];
+  finState.bulkScanning = false;
+  finShowSingleMode();
+  finClearReceipt();
+}
+
+async function finSaveBulkQueue() {
+  var toSave = [];
+  finState.bulkQueue.forEach(function(receipt) {
+    receipt.items.forEach(function(item) {
+      if (item.removed) return;
+      toSave.push({
+        date: receipt.date,
+        description: item.description,
+        amount: item.amount,
+        vat_amount: item.vat_amount,
+        category_id: item.category_id || null,
+        payment_method: receipt.payment_method,
+        is_business: item.is_business,
+        supplier: receipt.supplier || null,
+        receipt_path: receipt.receipt_path,
+        receipt_url: receipt.receipt_url
+      });
+    });
+  });
+
+  if (!toSave.length) { showToast('No items to save', 'error'); return; }
+
+  var btn = document.getElementById('fin-bulk-save-btn');
+  btn.disabled = true;
+  btn.textContent = 'Saving...';
+
+  var saved = 0, failed = 0;
+  for (var i = 0; i < toSave.length; i++) {
+    try {
+      var result = await apiRequest('/admin/finance/expenses', { method: 'POST', body: toSave[i] });
+      if (result.success) saved++; else failed++;
+    } catch (e) { failed++; }
   }
 
-  // Brief purple flash to show fields were populated
-  var form = document.getElementById('fin-exp-description').closest('.rounded-xl');
-  if (form) {
-    form.style.borderColor = '#a855f7';
-    setTimeout(function() { form.style.borderColor = ''; }, 2000);
+  btn.disabled = false;
+  btn.textContent = 'Save All';
+
+  if (failed === 0) {
+    showToast(saved + ' expense' + (saved !== 1 ? 's' : '') + ' saved');
+    finState.bulkQueue = [];
+    finShowSingleMode();
+    finClearReceipt();
+    finLoadExpenses();
+    finLoadSummary();
+    finLoadCashflow();
+  } else {
+    showToast(saved + ' saved, ' + failed + ' failed', 'error');
   }
 }
 
