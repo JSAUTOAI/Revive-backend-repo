@@ -6,6 +6,8 @@
  * All routes require ADMIN_TOKEN in Authorization header.
  */
 
+const Anthropic = require('@anthropic-ai/sdk');
+
 let supabase;
 
 function setSupabaseClient(client) {
@@ -183,7 +185,7 @@ async function createExpense(req, res) {
     const {
       date, description, amount, vat_amount, category_id,
       payment_method, is_business, job_id, supplier, reference,
-      recurring_expense_id, notes
+      recurring_expense_id, notes, receipt_path, receipt_url
     } = req.body;
 
     if (!description || amount === undefined) {
@@ -204,7 +206,9 @@ async function createExpense(req, res) {
         supplier: supplier || null,
         reference: reference || null,
         recurring_expense_id: recurring_expense_id || null,
-        notes: notes || null
+        notes: notes || null,
+        receipt_path: receipt_path || null,
+        receipt_url: receipt_url || null
       })
       .select('*, expense_categories(name, slug, colour)');
 
@@ -229,7 +233,8 @@ async function updateExpense(req, res) {
     const { id } = req.params;
     const allowed = [
       'date', 'description', 'amount', 'vat_amount', 'category_id',
-      'payment_method', 'is_business', 'job_id', 'supplier', 'reference', 'notes'
+      'payment_method', 'is_business', 'job_id', 'supplier', 'reference', 'notes',
+      'receipt_path', 'receipt_url'
     ];
     const updates = {};
     for (const key of allowed) {
@@ -1338,6 +1343,155 @@ function sendCSV(res, rows, filename) {
 }
 
 // ========================
+// RECEIPT SCANNING
+// ========================
+
+/**
+ * POST /admin/finance/expenses/scan-receipt
+ * Upload receipt image → Supabase Storage, OCR via Claude Vision
+ */
+async function scanReceipt(req, res) {
+  try {
+    const { filename, contentType, data: fileData } = req.body;
+
+    if (!filename || !fileData) {
+      return res.status(400).json({ success: false, error: 'Filename and image data are required' });
+    }
+
+    // Validate image type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
+    if (contentType && !allowedTypes.includes(contentType)) {
+      return res.status(400).json({ success: false, error: 'File type not allowed. Please upload a JPEG, PNG, or WebP image.' });
+    }
+
+    // Decode and validate size
+    const buffer = Buffer.from(fileData, 'base64');
+    if (buffer.length > 10 * 1024 * 1024) {
+      return res.status(400).json({ success: false, error: 'Image too large (max 10MB)' });
+    }
+
+    // Step 1: Upload to Supabase Storage
+    const filePath = `${Date.now()}-${filename.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('expense-receipts')
+      .upload(filePath, buffer, {
+        contentType: contentType || 'image/jpeg',
+        upsert: false
+      });
+
+    if (uploadError) {
+      console.error('[Finance] Receipt upload error:', uploadError);
+      return res.status(500).json({ success: false, error: 'Failed to upload receipt: ' + uploadError.message });
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('expense-receipts')
+      .getPublicUrl(filePath);
+
+    const receiptUrl = urlData.publicUrl;
+
+    // Step 2: OCR via Claude Vision
+    let extracted = null;
+    let extractionError = null;
+
+    try {
+      const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+      // Fetch current categories for matching
+      const { data: categories } = await supabase
+        .from('expense_categories')
+        .select('name, slug')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true });
+
+      const categoryList = (categories || []).map(c => c.slug).join(', ');
+
+      const response = await client.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1000,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: contentType || 'image/jpeg',
+                  data: fileData
+                }
+              },
+              {
+                type: 'text',
+                text: `You are an expense receipt scanner for a UK exterior cleaning business. Extract the following details from this receipt image and return ONLY valid JSON (no markdown, no explanation).
+
+Required JSON format:
+{
+  "date": "YYYY-MM-DD or null if not readable",
+  "amount": 0.00,
+  "vat_amount": 0.00,
+  "supplier": "Business/shop name or null",
+  "description": "Brief description of items purchased (max 60 chars)",
+  "suggested_category": "one of: ${categoryList}",
+  "payment_method": "card or cash or bank_transfer",
+  "is_business": true,
+  "confidence": "high or medium or low"
+}
+
+Rules:
+- amount should be the TOTAL amount paid (including VAT)
+- vat_amount should be the VAT portion if shown, or calculate as amount/6 if the receipt shows VAT-inclusive pricing at 20%. If no VAT info visible, set to 0
+- For date, use YYYY-MM-DD format. If only day/month visible, assume current year (2026)
+- For suggested_category, pick the closest match from the list. This is an exterior cleaning/property services business, so "materials", "cleaning-solutions", "fuel", "tools", "equipment-purchase" are common
+- For description, summarise the main items purchased concisely
+- confidence: "high" if receipt is clear and complete, "medium" if some fields are guessed, "low" if receipt is hard to read
+- is_business should be true unless the items are clearly personal (food, clothing, etc.)
+- Return ONLY the JSON object, nothing else`
+              }
+            ]
+          }
+        ]
+      });
+
+      const textBlock = response.content.find(b => b.type === 'text');
+      if (textBlock) {
+        let jsonStr = textBlock.text.trim();
+        // Strip markdown code fences if present
+        if (jsonStr.startsWith('```')) {
+          jsonStr = jsonStr.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
+        }
+        extracted = JSON.parse(jsonStr);
+
+        // Sanitise extracted values
+        if (extracted.amount) extracted.amount = parseFloat(extracted.amount) || 0;
+        if (extracted.vat_amount) extracted.vat_amount = parseFloat(extracted.vat_amount) || 0;
+        if (extracted.date && !/^\d{4}-\d{2}-\d{2}$/.test(extracted.date)) {
+          extracted.date = null;
+        }
+      }
+    } catch (ocrError) {
+      console.error('[Finance] Receipt OCR error:', ocrError.message);
+      extractionError = 'Could not read receipt automatically. Please enter details manually.';
+    }
+
+    console.log(`[Finance] Receipt scanned: ${filename}, extracted: ${extracted ? 'yes' : 'no'}`);
+
+    res.json({
+      success: true,
+      extracted,
+      extraction_error: extractionError,
+      receipt_path: filePath,
+      receipt_url: receiptUrl
+    });
+
+  } catch (error) {
+    console.error('[Finance] Scan receipt error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+// ========================
 // EXPORTS
 // ========================
 
@@ -1350,6 +1504,7 @@ module.exports = {
   createExpense,
   updateExpense,
   deleteExpense,
+  scanReceipt,
   listWages,
   createWage,
   updateWage,

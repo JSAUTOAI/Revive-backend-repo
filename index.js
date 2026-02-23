@@ -1208,6 +1208,7 @@ app.patch('/admin/finance/categories/:id', requireAdminAuth, financeRoutes.updat
 // Expenses
 app.get('/admin/finance/expenses', requireAdminAuth, financeRoutes.listExpenses);
 app.post('/admin/finance/expenses', requireAdminAuth, financeRoutes.createExpense);
+app.post('/admin/finance/expenses/scan-receipt', requireAdminAuth, financeRoutes.scanReceipt);
 app.patch('/admin/finance/expenses/:id', requireAdminAuth, financeRoutes.updateExpense);
 app.delete('/admin/finance/expenses/:id', requireAdminAuth, financeRoutes.deleteExpense);
 

@@ -615,6 +615,19 @@
       <!-- Quick Add Form -->
       <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4 mb-6">
         <h3 class="text-sm font-semibold text-white mb-3">Add Expense</h3>
+        <!-- Receipt Scan -->
+        <div class="flex items-center gap-3 mb-4 pb-4 border-b border-neutral-800">
+          <input type="file" id="fin-exp-receipt-input" accept="image/*" capture="environment" class="hidden" onchange="finHandleReceiptUpload(this)">
+          <button onclick="document.getElementById('fin-exp-receipt-input').click()" class="bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
+            Scan Receipt
+          </button>
+          <span id="fin-exp-receipt-status" class="text-xs text-neutral-500"></span>
+          <span id="fin-exp-receipt-preview" class="hidden">
+            <a id="fin-exp-receipt-link" href="#" target="_blank" class="text-xs text-purple-400 hover:text-purple-300 underline">View Receipt</a>
+            <button onclick="finClearReceipt()" class="text-xs text-red-400 hover:text-red-300 ml-2">Remove</button>
+          </span>
+        </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <input type="date" id="fin-exp-date" class="bg-black border border-neutral-700 text-white text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
           <input type="text" id="fin-exp-description" placeholder="Description" class="bg-black border border-neutral-700 text-white text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
@@ -6738,13 +6751,13 @@ function finRenderExpenses() {
 
     return '<tr class="border-b border-neutral-800 hover:bg-neutral-800/50' + dimClass + '">' +
       '<td class="px-4 py-3 text-xs text-neutral-300">' + dateStr + '</td>' +
-      '<td class="px-4 py-3 text-xs text-white">' + (e.description || '') + (e.supplier ? '<span class="text-neutral-500 ml-1">(' + e.supplier + ')</span>' : '') + '</td>' +
+      '<td class="px-4 py-3 text-xs text-white">' + (e.receipt_url ? '<a href="' + e.receipt_url + '" target="_blank" title="View receipt" class="text-purple-400 hover:text-purple-300 mr-1">&#128206;</a>' : '') + (e.description || '') + (e.supplier ? '<span class="text-neutral-500 ml-1">(' + e.supplier + ')</span>' : '') + '</td>' +
       '<td class="px-4 py-3 text-xs hidden md:table-cell"><span class="inline-block w-2 h-2 rounded-full mr-1" style="background:' + catColour + '"></span>' + catName + '</td>' +
       '<td class="px-4 py-3 text-xs text-right font-semibold text-white">\u00A3' + parseFloat(e.amount).toFixed(2) + '</td>' +
       '<td class="px-4 py-3 text-xs text-right text-neutral-500 hidden lg:table-cell">\u00A3' + parseFloat(e.vat_amount || 0).toFixed(2) + '</td>' +
       '<td class="px-4 py-3 text-xs text-neutral-400 hidden lg:table-cell">' + methodLabel + '</td>' +
       '<td class="px-4 py-3 text-xs text-center hidden md:table-cell">' + typeLabel + '</td>' +
-      '<td class="px-4 py-3 text-xs text-right"><button onclick="finDeleteExpense(\'' + e.id + '\')" class="text-red-400 hover:text-red-300 text-xs">Delete</button></td>' +
+      '<td class="px-4 py-3 text-xs text-right">' + (!e.receipt_url ? '<button onclick="finAttachReceipt(\'' + e.id + '\')" class="text-purple-400 hover:text-purple-300 text-xs mr-2">Attach</button>' : '') + '<button onclick="finDeleteExpense(\'' + e.id + '\')" class="text-red-400 hover:text-red-300 text-xs">Delete</button></td>' +
     '</tr>';
   }).join('');
 }
@@ -6775,7 +6788,9 @@ async function finCreateExpense() {
         category_id: document.getElementById('fin-exp-category').value || null,
         payment_method: document.getElementById('fin-exp-method').value,
         is_business: document.getElementById('fin-exp-business').checked,
-        supplier: document.getElementById('fin-exp-supplier').value.trim() || null
+        supplier: document.getElementById('fin-exp-supplier').value.trim() || null,
+        receipt_path: finReceiptData.receipt_path || null,
+        receipt_url: finReceiptData.receipt_url || null
       }
     });
     if (data.success) {
@@ -6784,6 +6799,7 @@ async function finCreateExpense() {
       document.getElementById('fin-exp-amount').value = '';
       document.getElementById('fin-exp-vat').value = '';
       document.getElementById('fin-exp-supplier').value = '';
+      finClearReceipt();
       finLoadExpenses();
       finLoadSummary();
       finLoadCashflow();
@@ -6802,6 +6818,147 @@ async function finDeleteExpense(id) {
       finLoadCashflow();
     }
   } catch (e) { showToast('Failed to delete expense', 'error'); }
+}
+
+// ============================
+// RECEIPT SCANNING
+// ============================
+
+var finReceiptData = { receipt_path: null, receipt_url: null };
+
+async function finHandleReceiptUpload(input) {
+  var file = input.files[0];
+  if (!file) return;
+
+  if (file.size > 10 * 1024 * 1024) {
+    showToast('Image too large (max 10MB)', 'error');
+    input.value = '';
+    return;
+  }
+
+  if (!file.type.startsWith('image/')) {
+    showToast('Please select an image file', 'error');
+    input.value = '';
+    return;
+  }
+
+  var statusEl = document.getElementById('fin-exp-receipt-status');
+  statusEl.textContent = 'Uploading and scanning receipt...';
+  statusEl.className = 'text-xs text-yellow-400 animate-pulse';
+
+  try {
+    var base64 = await fileToBase64(file);
+
+    var result = await apiRequest('/admin/finance/expenses/scan-receipt', {
+      method: 'POST',
+      body: {
+        filename: file.name,
+        contentType: file.type,
+        data: base64
+      }
+    });
+
+    if (!result.success) {
+      throw new Error(result.error || 'Scan failed');
+    }
+
+    finReceiptData.receipt_path = result.receipt_path;
+    finReceiptData.receipt_url = result.receipt_url;
+
+    document.getElementById('fin-exp-receipt-link').href = result.receipt_url;
+    document.getElementById('fin-exp-receipt-preview').classList.remove('hidden');
+
+    if (result.extracted) {
+      finPopulateFromReceipt(result.extracted);
+
+      var conf = result.extracted.confidence || 'medium';
+      if (conf === 'high') {
+        statusEl.textContent = 'Receipt scanned successfully - review details below';
+        statusEl.className = 'text-xs text-lime-400';
+      } else if (conf === 'medium') {
+        statusEl.textContent = 'Receipt scanned (some fields may need checking)';
+        statusEl.className = 'text-xs text-yellow-400';
+      } else {
+        statusEl.textContent = 'Receipt partially read - please verify all fields';
+        statusEl.className = 'text-xs text-orange-400';
+      }
+    } else {
+      statusEl.textContent = result.extraction_error || 'Could not read receipt - fill in manually';
+      statusEl.className = 'text-xs text-orange-400';
+    }
+
+  } catch (e) {
+    console.error('[Finance] Receipt scan error:', e);
+    statusEl.textContent = 'Scan failed - enter details manually';
+    statusEl.className = 'text-xs text-red-400';
+    showToast('Failed to scan receipt', 'error');
+  }
+
+  input.value = '';
+}
+
+function finPopulateFromReceipt(data) {
+  if (data.date) document.getElementById('fin-exp-date').value = data.date;
+  if (data.description) document.getElementById('fin-exp-description').value = data.description;
+  if (data.amount) document.getElementById('fin-exp-amount').value = parseFloat(data.amount).toFixed(2);
+  if (data.vat_amount) document.getElementById('fin-exp-vat').value = parseFloat(data.vat_amount).toFixed(2);
+  if (data.supplier) document.getElementById('fin-exp-supplier').value = data.supplier;
+  if (data.payment_method) {
+    var opts = ['bank_transfer', 'card', 'cash', 'petty_cash'];
+    if (opts.includes(data.payment_method)) document.getElementById('fin-exp-method').value = data.payment_method;
+  }
+  if (data.is_business !== undefined) document.getElementById('fin-exp-business').checked = data.is_business;
+  if (data.suggested_category) {
+    var cat = finState.categories.find(function(c) { return c.slug === data.suggested_category; });
+    if (cat) document.getElementById('fin-exp-category').value = cat.id;
+  }
+
+  // Brief purple flash to show fields were populated
+  var form = document.getElementById('fin-exp-description').closest('.rounded-xl');
+  if (form) {
+    form.style.borderColor = '#a855f7';
+    setTimeout(function() { form.style.borderColor = ''; }, 2000);
+  }
+}
+
+function finClearReceipt() {
+  finReceiptData.receipt_path = null;
+  finReceiptData.receipt_url = null;
+  document.getElementById('fin-exp-receipt-preview').classList.add('hidden');
+  document.getElementById('fin-exp-receipt-status').textContent = '';
+  document.getElementById('fin-exp-receipt-status').className = 'text-xs text-neutral-500';
+}
+
+async function finAttachReceipt(expenseId) {
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.capture = 'environment';
+  input.onchange = async function() {
+    var file = input.files[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { showToast('Image too large (max 10MB)', 'error'); return; }
+
+    showToast('Uploading receipt...');
+    try {
+      var base64 = await fileToBase64(file);
+      var scanResult = await apiRequest('/admin/finance/expenses/scan-receipt', {
+        method: 'POST',
+        body: { filename: file.name, contentType: file.type, data: base64 }
+      });
+      if (!scanResult.success) throw new Error(scanResult.error);
+
+      var updateResult = await apiRequest('/admin/finance/expenses/' + expenseId, {
+        method: 'PATCH',
+        body: { receipt_path: scanResult.receipt_path, receipt_url: scanResult.receipt_url }
+      });
+      if (updateResult.success) {
+        showToast('Receipt attached');
+        finLoadExpenses();
+      }
+    } catch (e) { showToast('Failed to attach receipt', 'error'); }
+  };
+  input.click();
 }
 
 // ============================
