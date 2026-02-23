@@ -1408,7 +1408,7 @@ async function scanReceipt(req, res) {
       const categoryList = (categories || []).map(c => c.slug).join(', ');
 
       const response = await client.messages.create({
-        model: 'claude-haiku-4-5-20251001',
+        model: 'claude-sonnet-4-5-20250929',
         max_tokens: 1000,
         messages: [
           {
@@ -1424,7 +1424,9 @@ async function scanReceipt(req, res) {
               },
               {
                 type: 'text',
-                text: `You are an expense receipt scanner for a UK exterior cleaning business. Extract the following details from this receipt image and return ONLY valid JSON (no markdown, no explanation).
+                text: `You are an expense receipt scanner for a UK exterior cleaning business. Extract details from this receipt image and return ONLY valid JSON (no markdown, no explanation).
+
+IMPORTANT: The receipt image may be rotated, sideways, upside down, or at any angle. Read the text regardless of orientation. Receipts may also be crumpled, folded, or partially obscured — extract what you can.
 
 Required JSON format:
 {
@@ -1440,14 +1442,16 @@ Required JSON format:
 }
 
 Rules:
-- amount should be the TOTAL amount paid (including VAT)
-- vat_amount should be the VAT portion if shown, or calculate as amount/6 if the receipt shows VAT-inclusive pricing at 20%. If no VAT info visible, set to 0
-- For date, use YYYY-MM-DD format. If only day/month visible, assume current year (2026)
-- For suggested_category, pick the closest match from the list. This is an exterior cleaning/property services business, so "materials", "cleaning-solutions", "fuel", "tools", "equipment-purchase" are common
-- For description, summarise the main items purchased concisely
-- confidence: "high" if receipt is clear and complete, "medium" if some fields are guessed, "low" if receipt is hard to read
-- is_business should be true unless the items are clearly personal (food, clothing, etc.)
-- Return ONLY the JSON object, nothing else`
+- AMOUNT: Use the final TOTAL line on the receipt. Do NOT use subtotals, individual line items, or the amount tendered/given. If the receipt shows "Total: £17.54" and "Cash: £20.00", the amount is 17.54, not 20.00.
+- VAT: UK receipts often have multiple VAT-registered entities on one receipt (common at petrol stations where fuel and shop items have separate VAT breakdowns). SUM all VAT amounts across ALL entities for the total vat_amount. If VAT is not shown, calculate as amount/6 for 20% VAT-inclusive items. If no VAT info at all, set to 0.
+- DATE: Use YYYY-MM-DD format. UK receipts typically show DD/MM/YYYY — convert correctly. If only day/month visible, assume current year (2026).
+- SUPPLIER: Use the business name at the top of the receipt (e.g., "Eagle Service Station", "Screwfix", "Toolstation"). Not the VAT entity name.
+- DESCRIPTION: Summarise concisely. For fuel receipts include fuel type and litres (e.g., "Unleaded 10.72L"). For mixed purchases, list the main items.
+- PAYMENT METHOD: If receipt shows "Cash", "Change Due", or "Tendered", it's "cash". If it shows "Card", "Visa", "Mastercard", "Contactless", "Debit", it's "card". Otherwise "bank_transfer".
+- CATEGORY: Pick closest match from the list. Common for this business: "fuel" for petrol/diesel, "materials" for building supplies, "cleaning-solutions" for chemicals, "tools" for hand/power tools, "equipment-purchase" for machinery.
+- IS_BUSINESS: true unless items are clearly personal (groceries, clothing, entertainment). Mixed receipts (fuel + snacks) should be true — the primary purpose is business.
+- CONFIDENCE: "high" if all fields clearly readable, "medium" if some guessed, "low" if receipt hard to read.
+- Return ONLY the JSON object, nothing else.`
               }
             ]
           }
