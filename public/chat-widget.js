@@ -12,6 +12,10 @@
 (function () {
   'use strict';
 
+  // Prevent multiple initializations (Aura can load the script multiple times)
+  if (window.__reviveChatLoaded) return;
+  window.__reviveChatLoaded = true;
+
   // Detect API base URL from script source
   var scriptEl = document.currentScript;
   var API_BASE = scriptEl ? new URL(scriptEl.src).origin : '';
