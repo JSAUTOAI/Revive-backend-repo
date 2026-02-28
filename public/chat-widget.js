@@ -16,6 +16,12 @@
   if (window.__reviveChatLoaded) return;
   window.__reviveChatLoaded = true;
 
+  // Clean up any pre-existing chat elements baked into the page by Aura
+  // Aura serialises dynamically-created DOM into static HTML, creating dead
+  // duplicates with no event listeners. Remove them all before we create fresh ones.
+  document.querySelectorAll('#revive-chat-bubble').forEach(function(el) { el.remove(); });
+  document.querySelectorAll('#revive-chat-window').forEach(function(el) { el.remove(); });
+
   // Detect API base URL from script source
   var scriptEl = document.currentScript;
   var API_BASE = scriptEl ? new URL(scriptEl.src).origin : '';
