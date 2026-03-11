@@ -6,18 +6,19 @@
  */
 
 function requireAdminAuth(req, res, next) {
-  // Get token from Authorization header
+  // Get token from Authorization header or query parameter (for new-tab endpoints like tax-report)
   const authHeader = req.headers.authorization;
+  const queryToken = req.query.token;
 
-  if (!authHeader) {
+  if (!authHeader && !queryToken) {
     return res.status(401).json({
       success: false,
       error: 'Unauthorized - No authorization header provided'
     });
   }
 
-  // Extract token (format: "Bearer <token>")
-  const token = authHeader.replace('Bearer ', '');
+  // Extract token (format: "Bearer <token>" or ?token=xxx)
+  const token = queryToken || authHeader.replace('Bearer ', '');
 
   // Compare with environment variable
   const validToken = process.env.ADMIN_TOKEN;

@@ -15,6 +15,67 @@ function setSupabaseClient(client) {
 }
 
 // ========================
+// AUDIT LOG HELPER
+// ========================
+
+/**
+ * Log a finance action to the audit trail
+ */
+async function logAudit(tableName, recordId, action, oldValues, newValues) {
+  try {
+    let changedFields = null;
+    if (action === 'update' && oldValues && newValues) {
+      changedFields = {};
+      for (const key of Object.keys(newValues)) {
+        if (JSON.stringify(oldValues[key]) !== JSON.stringify(newValues[key])) {
+          changedFields[key] = { from: oldValues[key], to: newValues[key] };
+        }
+      }
+      if (Object.keys(changedFields).length === 0) return;
+    }
+
+    await supabase.from('finance_audit_log').insert({
+      table_name: tableName,
+      record_id: recordId,
+      action,
+      changed_fields: changedFields,
+      old_values: oldValues,
+      new_values: newValues
+    });
+  } catch (err) {
+    console.error('[Finance] Audit log error:', err.message);
+  }
+}
+
+/**
+ * Check for duplicate expenses (same date ±1 day, same amount, same supplier)
+ */
+async function checkDuplicateExpense(date, amount, supplier) {
+  if (!date || !amount) return [];
+
+  const d = new Date(date);
+  const dayBefore = new Date(d);
+  dayBefore.setDate(dayBefore.getDate() - 1);
+  const dayAfter = new Date(d);
+  dayAfter.setDate(dayAfter.getDate() + 1);
+
+  let query = supabase
+    .from('expenses')
+    .select('id, date, description, amount, supplier')
+    .is('deleted_at', null)
+    .gte('date', dayBefore.toISOString().split('T')[0])
+    .lte('date', dayAfter.toISOString().split('T')[0])
+    .eq('amount', parseFloat(amount));
+
+  if (supplier) {
+    query = query.ilike('supplier', supplier);
+  }
+
+  const { data } = await query;
+  return data || [];
+}
+
+// ========================
 // EXPENSE CATEGORIES
 // ========================
 
@@ -144,6 +205,7 @@ async function listExpenses(req, res) {
     let query = supabase
       .from('expenses')
       .select('*, expense_categories(name, slug, colour)', { count: 'exact' })
+      .is('deleted_at', null)
       .order('date', { ascending: false })
       .order('created_at', { ascending: false });
 
@@ -192,6 +254,26 @@ async function createExpense(req, res) {
       return res.status(400).json({ success: false, error: 'Description and amount are required' });
     }
 
+    // Check for duplicates (unless explicitly skipped)
+    const skipDuplicateCheck = req.body.skip_duplicate_check === true;
+    let duplicates = [];
+    if (!skipDuplicateCheck) {
+      duplicates = await checkDuplicateExpense(
+        date || new Date().toISOString().split('T')[0],
+        amount,
+        supplier
+      );
+    }
+
+    if (duplicates.length > 0) {
+      return res.status(409).json({
+        success: false,
+        error: 'Possible duplicate expense found',
+        duplicates,
+        message: 'An expense with the same amount' + (supplier ? ' and supplier' : '') + ' exists within ±1 day. Resubmit with skip_duplicate_check: true to create anyway.'
+      });
+    }
+
     const { data, error } = await supabase
       .from('expenses')
       .insert({
@@ -216,6 +298,8 @@ async function createExpense(req, res) {
       console.error('[Finance] Create expense error:', error);
       return res.status(500).json({ success: false, error: 'Failed to create expense' });
     }
+
+    await logAudit('expenses', data[0].id, 'create', null, data[0]);
 
     res.json({ success: true, data: data[0] });
   } catch (error) {
@@ -244,6 +328,9 @@ async function updateExpense(req, res) {
     if (updates.amount !== undefined) updates.amount = parseFloat(updates.amount);
     if (updates.vat_amount !== undefined) updates.vat_amount = parseFloat(updates.vat_amount);
 
+    // Fetch old values for audit log
+    const { data: oldRecord } = await supabase.from('expenses').select('*').eq('id', id).single();
+
     const { data, error } = await supabase
       .from('expenses')
       .update(updates)
@@ -254,6 +341,8 @@ async function updateExpense(req, res) {
       console.error('[Finance] Update expense error:', error);
       return res.status(500).json({ success: false, error: 'Failed to update expense' });
     }
+
+    if (oldRecord) await logAudit('expenses', id, 'update', oldRecord, updates);
 
     res.json({ success: true, data: data[0] });
   } catch (error) {
@@ -270,15 +359,20 @@ async function deleteExpense(req, res) {
   try {
     const { id } = req.params;
 
+    // Fetch record for audit log before soft-deleting
+    const { data: oldRecord } = await supabase.from('expenses').select('*').eq('id', id).single();
+
     const { error } = await supabase
       .from('expenses')
-      .delete()
+      .update({ deleted_at: new Date().toISOString(), deleted_by: 'admin' })
       .eq('id', id);
 
     if (error) {
       console.error('[Finance] Delete expense error:', error);
       return res.status(500).json({ success: false, error: 'Failed to delete expense' });
     }
+
+    if (oldRecord) await logAudit('expenses', id, 'delete', oldRecord, null);
 
     res.json({ success: true });
   } catch (error) {
@@ -302,6 +396,7 @@ async function listWages(req, res) {
     let query = supabase
       .from('wage_payments')
       .select('*', { count: 'exact' })
+      .is('deleted_at', null)
       .order('date', { ascending: false })
       .order('created_at', { ascending: false });
 
@@ -363,6 +458,8 @@ async function createWage(req, res) {
       return res.status(500).json({ success: false, error: 'Failed to create wage payment' });
     }
 
+    await logAudit('wage_payments', data[0].id, 'create', null, data[0]);
+
     res.json({ success: true, data: data[0] });
   } catch (error) {
     console.error('[Finance] Create wage error:', error);
@@ -387,6 +484,8 @@ async function updateWage(req, res) {
     }
     if (updates.amount !== undefined) updates.amount = parseFloat(updates.amount);
 
+    const { data: oldRecord } = await supabase.from('wage_payments').select('*').eq('id', id).single();
+
     const { data, error } = await supabase
       .from('wage_payments')
       .update(updates)
@@ -398,6 +497,8 @@ async function updateWage(req, res) {
       return res.status(500).json({ success: false, error: 'Failed to update wage payment' });
     }
 
+    if (oldRecord) await logAudit('wage_payments', id, 'update', oldRecord, updates);
+
     res.json({ success: true, data: data[0] });
   } catch (error) {
     console.error('[Finance] Update wage error:', error);
@@ -407,17 +508,24 @@ async function updateWage(req, res) {
 
 /**
  * DELETE /admin/finance/wages/:id
- * Delete a wage payment
+ * Soft-delete a wage payment
  */
 async function deleteWage(req, res) {
   try {
     const { id } = req.params;
-    const { error } = await supabase.from('wage_payments').delete().eq('id', id);
+    const { data: oldRecord } = await supabase.from('wage_payments').select('*').eq('id', id).single();
+
+    const { error } = await supabase
+      .from('wage_payments')
+      .update({ deleted_at: new Date().toISOString(), deleted_by: 'admin' })
+      .eq('id', id);
 
     if (error) {
       console.error('[Finance] Delete wage error:', error);
       return res.status(500).json({ success: false, error: 'Failed to delete wage payment' });
     }
+
+    if (oldRecord) await logAudit('wage_payments', id, 'delete', oldRecord, null);
 
     res.json({ success: true });
   } catch (error) {
@@ -441,6 +549,7 @@ async function listMileage(req, res) {
     let query = supabase
       .from('mileage_log')
       .select('*', { count: 'exact' })
+      .is('deleted_at', null)
       .order('date', { ascending: false })
       .order('created_at', { ascending: false });
 
@@ -497,6 +606,8 @@ async function createMileage(req, res) {
       return res.status(500).json({ success: false, error: 'Failed to create mileage entry' });
     }
 
+    await logAudit('mileage_log', data[0].id, 'create', null, data[0]);
+
     res.json({ success: true, data: data[0] });
   } catch (error) {
     console.error('[Finance] Create mileage error:', error);
@@ -519,6 +630,8 @@ async function updateMileage(req, res) {
     if (updates.miles !== undefined) updates.miles = parseFloat(updates.miles);
     if (updates.rate_per_mile !== undefined) updates.rate_per_mile = parseFloat(updates.rate_per_mile);
 
+    const { data: oldRecord } = await supabase.from('mileage_log').select('*').eq('id', id).single();
+
     const { data, error } = await supabase
       .from('mileage_log')
       .update(updates)
@@ -530,6 +643,8 @@ async function updateMileage(req, res) {
       return res.status(500).json({ success: false, error: 'Failed to update mileage entry' });
     }
 
+    if (oldRecord) await logAudit('mileage_log', id, 'update', oldRecord, updates);
+
     res.json({ success: true, data: data[0] });
   } catch (error) {
     console.error('[Finance] Update mileage error:', error);
@@ -539,17 +654,24 @@ async function updateMileage(req, res) {
 
 /**
  * DELETE /admin/finance/mileage/:id
- * Delete a mileage entry
+ * Soft-delete a mileage entry
  */
 async function deleteMileage(req, res) {
   try {
     const { id } = req.params;
-    const { error } = await supabase.from('mileage_log').delete().eq('id', id);
+    const { data: oldRecord } = await supabase.from('mileage_log').select('*').eq('id', id).single();
+
+    const { error } = await supabase
+      .from('mileage_log')
+      .update({ deleted_at: new Date().toISOString(), deleted_by: 'admin' })
+      .eq('id', id);
 
     if (error) {
       console.error('[Finance] Delete mileage error:', error);
       return res.status(500).json({ success: false, error: 'Failed to delete mileage entry' });
     }
+
+    if (oldRecord) await logAudit('mileage_log', id, 'delete', oldRecord, null);
 
     res.json({ success: true });
   } catch (error) {
@@ -571,6 +693,7 @@ async function listRecurring(req, res) {
     const { data, error } = await supabase
       .from('recurring_expenses')
       .select('*, expense_categories(name, slug, colour)')
+      .is('deleted_at', null)
       .order('next_due_date', { ascending: true });
 
     if (error) {
@@ -677,12 +800,18 @@ async function updateRecurring(req, res) {
 async function deleteRecurring(req, res) {
   try {
     const { id } = req.params;
-    const { error } = await supabase.from('recurring_expenses').delete().eq('id', id);
+
+    const { error } = await supabase
+      .from('recurring_expenses')
+      .update({ deleted_at: new Date().toISOString(), deleted_by: 'admin' })
+      .eq('id', id);
 
     if (error) {
       console.error('[Finance] Delete recurring error:', error);
       return res.status(500).json({ success: false, error: 'Failed to delete recurring expense' });
     }
+
+    await logAudit('recurring_expenses', id, 'delete', null, null);
 
     res.json({ success: true });
   } catch (error) {
@@ -796,6 +925,7 @@ async function listIncome(req, res) {
     let query = supabase
       .from('income_entries')
       .select('*')
+      .is('deleted_at', null)
       .order('date', { ascending: false });
 
     if (date_from) query = query.gte('date', date_from);
@@ -844,6 +974,8 @@ async function createIncome(req, res) {
       return res.status(500).json({ success: false, error: 'Failed to create income entry' });
     }
 
+    await logAudit('income_entries', data[0].id, 'create', null, data[0]);
+
     res.json({ success: true, data: data[0] });
   } catch (error) {
     console.error('[Finance] Create income error:', error);
@@ -853,17 +985,24 @@ async function createIncome(req, res) {
 
 /**
  * DELETE /admin/finance/income/:id
- * Delete a manual income entry
+ * Soft-delete a manual income entry
  */
 async function deleteIncome(req, res) {
   try {
     const { id } = req.params;
-    const { error } = await supabase.from('income_entries').delete().eq('id', id);
+    const { data: oldRecord } = await supabase.from('income_entries').select('*').eq('id', id).single();
+
+    const { error } = await supabase
+      .from('income_entries')
+      .update({ deleted_at: new Date().toISOString(), deleted_by: 'admin' })
+      .eq('id', id);
 
     if (error) {
       console.error('[Finance] Delete income error:', error);
       return res.status(500).json({ success: false, error: 'Failed to delete income entry' });
     }
+
+    if (oldRecord) await logAudit('income_entries', id, 'delete', oldRecord, null);
 
     res.json({ success: true });
   } catch (error) {
@@ -907,6 +1046,7 @@ async function getSummary(req, res) {
     const { data: monthManualIncome } = await supabase
       .from('income_entries')
       .select('amount')
+      .is('deleted_at', null)
       .gte('date', monthStart)
       .lte('date', today);
 
@@ -914,6 +1054,7 @@ async function getSummary(req, res) {
     const { data: ytdManualIncome } = await supabase
       .from('income_entries')
       .select('amount')
+      .is('deleted_at', null)
       .gte('date', yearStart)
       .lte('date', today);
 
@@ -921,6 +1062,7 @@ async function getSummary(req, res) {
     const { data: monthExpenses } = await supabase
       .from('expenses')
       .select('amount')
+      .is('deleted_at', null)
       .eq('is_business', true)
       .gte('date', monthStart)
       .lte('date', today);
@@ -929,6 +1071,7 @@ async function getSummary(req, res) {
     const { data: ytdExpenses } = await supabase
       .from('expenses')
       .select('amount')
+      .is('deleted_at', null)
       .eq('is_business', true)
       .gte('date', yearStart)
       .lte('date', today);
@@ -937,6 +1080,7 @@ async function getSummary(req, res) {
     const { data: monthWages } = await supabase
       .from('wage_payments')
       .select('amount')
+      .is('deleted_at', null)
       .gte('date', monthStart)
       .lte('date', today);
 
@@ -944,6 +1088,7 @@ async function getSummary(req, res) {
     const { data: ytdWages } = await supabase
       .from('wage_payments')
       .select('amount')
+      .is('deleted_at', null)
       .gte('date', yearStart)
       .lte('date', today);
 
@@ -951,6 +1096,7 @@ async function getSummary(req, res) {
     const { data: monthMileage } = await supabase
       .from('mileage_log')
       .select('calculated_amount')
+      .is('deleted_at', null)
       .gte('date', monthStart)
       .lte('date', today);
 
@@ -958,6 +1104,7 @@ async function getSummary(req, res) {
     const { data: ytdMileage } = await supabase
       .from('mileage_log')
       .select('calculated_amount')
+      .is('deleted_at', null)
       .gte('date', yearStart)
       .lte('date', today);
 
@@ -967,6 +1114,7 @@ async function getSummary(req, res) {
     const { data: upcomingRecurring } = await supabase
       .from('recurring_expenses')
       .select('description, amount, next_due_date')
+      .is('deleted_at', null)
       .eq('is_active', true)
       .lte('next_due_date', thirtyDays.toISOString().split('T')[0])
       .order('next_due_date', { ascending: true });
@@ -1034,6 +1182,7 @@ async function getCashflow(req, res) {
       const { data: manualIncome } = await supabase
         .from('income_entries')
         .select('amount')
+        .is('deleted_at', null)
         .gte('date', m.start)
         .lte('date', m.end);
 
@@ -1041,6 +1190,7 @@ async function getCashflow(req, res) {
       const { data: expenses } = await supabase
         .from('expenses')
         .select('amount')
+        .is('deleted_at', null)
         .eq('is_business', true)
         .gte('date', m.start)
         .lte('date', m.end);
@@ -1049,6 +1199,7 @@ async function getCashflow(req, res) {
       const { data: wages } = await supabase
         .from('wage_payments')
         .select('amount')
+        .is('deleted_at', null)
         .gte('date', m.start)
         .lte('date', m.end);
 
@@ -1056,6 +1207,7 @@ async function getCashflow(req, res) {
       const { data: mileage } = await supabase
         .from('mileage_log')
         .select('calculated_amount')
+        .is('deleted_at', null)
         .gte('date', m.start)
         .lte('date', m.end);
 
@@ -1089,6 +1241,7 @@ async function getCategoryBreakdown(req, res) {
     let query = supabase
       .from('expenses')
       .select('amount, category_id, expense_categories(name, slug, colour, hmrc_category)')
+      .is('deleted_at', null)
       .eq('is_business', true);
 
     if (date_from) query = query.gte('date', date_from);
@@ -1154,6 +1307,7 @@ async function getTaxSummary(req, res) {
     const { data: expenses } = await supabase
       .from('expenses')
       .select('amount, vat_amount, net_amount, expense_categories(name, hmrc_category, is_tax_deductible)')
+      .is('deleted_at', null)
       .eq('is_business', true)
       .gte('date', taxYearStart)
       .lte('date', today);
@@ -1162,6 +1316,7 @@ async function getTaxSummary(req, res) {
     const { data: wages } = await supabase
       .from('wage_payments')
       .select('amount')
+      .is('deleted_at', null)
       .gte('date', taxYearStart)
       .lte('date', today);
 
@@ -1169,6 +1324,7 @@ async function getTaxSummary(req, res) {
     const { data: mileage } = await supabase
       .from('mileage_log')
       .select('miles, calculated_amount')
+      .is('deleted_at', null)
       .gte('date', taxYearStart)
       .lte('date', today);
 
@@ -1180,9 +1336,11 @@ async function getTaxSummary(req, res) {
       .gte('paid_at', taxYearStart)
       .lte('paid_at', today + 'T23:59:59');
 
+    // Manual income
     const { data: manualIncome } = await supabase
       .from('income_entries')
       .select('amount')
+      .is('deleted_at', null)
       .gte('date', taxYearStart)
       .lte('date', today);
 
@@ -1245,7 +1403,7 @@ async function exportFinance(req, res) {
     const { type, date_from, date_to } = req.query;
 
     if (type === 'wages') {
-      let query = supabase.from('wage_payments').select('*').order('date', { ascending: false });
+      let query = supabase.from('wage_payments').select('*').is('deleted_at', null).order('date', { ascending: false });
       if (date_from) query = query.gte('date', date_from);
       if (date_to) query = query.lte('date', date_to);
       const { data } = await query;
@@ -1265,7 +1423,7 @@ async function exportFinance(req, res) {
     }
 
     if (type === 'mileage') {
-      let query = supabase.from('mileage_log').select('*').order('date', { ascending: false });
+      let query = supabase.from('mileage_log').select('*').is('deleted_at', null).order('date', { ascending: false });
       if (date_from) query = query.gte('date', date_from);
       if (date_to) query = query.lte('date', date_to);
       const { data } = await query;
@@ -1289,6 +1447,7 @@ async function exportFinance(req, res) {
     let query = supabase
       .from('expenses')
       .select('*, expense_categories(name, hmrc_category)')
+      .is('deleted_at', null)
       .order('date', { ascending: false });
     if (date_from) query = query.gte('date', date_from);
     if (date_to) query = query.lte('date', date_to);
@@ -1513,18 +1672,711 @@ Return ONLY the JSON object, nothing else.`
       extractionError = 'Could not read receipt automatically. Please enter details manually.';
     }
 
-    console.log(`[Finance] Receipt scanned: ${filename}, extracted: ${extracted ? 'yes' : 'no'}`);
+    // Check for duplicate expenses based on extracted data
+    let possibleDuplicates = [];
+    if (extracted && extracted.items) {
+      for (const item of extracted.items) {
+        if (item.amount && extracted.date) {
+          const dupes = await checkDuplicateExpense(extracted.date, item.amount, extracted.supplier);
+          if (dupes.length > 0) {
+            possibleDuplicates.push(...dupes.map(d => ({ ...d, matched_item: item.description })));
+          }
+        }
+      }
+    }
+
+    console.log(`[Finance] Receipt scanned: ${filename}, extracted: ${extracted ? 'yes' : 'no'}, duplicates: ${possibleDuplicates.length}`);
 
     res.json({
       success: true,
       extracted,
       extraction_error: extractionError,
       receipt_path: filePath,
-      receipt_url: receiptUrl
+      receipt_url: receiptUrl,
+      possible_duplicates: possibleDuplicates.length > 0 ? possibleDuplicates : undefined
     });
 
   } catch (error) {
     console.error('[Finance] Scan receipt error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+// ========================
+// AUDIT LOG & RESTORE
+// ========================
+
+/**
+ * GET /admin/finance/audit-log
+ * List recent finance changes with filters
+ */
+async function listAuditLog(req, res) {
+  try {
+    const { table_name, action, date_from, date_to, limit, offset } = req.query;
+
+    let query = supabase
+      .from('finance_audit_log')
+      .select('*', { count: 'exact' })
+      .order('created_at', { ascending: false });
+
+    if (table_name) query = query.eq('table_name', table_name);
+    if (action) query = query.eq('action', action);
+    if (date_from) query = query.gte('created_at', date_from);
+    if (date_to) query = query.lte('created_at', date_to + 'T23:59:59');
+
+    const lim = Math.min(parseInt(limit) || 50, 200);
+    const off = parseInt(offset) || 0;
+    query = query.range(off, off + lim - 1);
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      console.error('[Finance] Audit log error:', error);
+      return res.status(500).json({ success: false, error: 'Failed to fetch audit log' });
+    }
+
+    res.json({ success: true, data, total: count, hasMore: off + lim < count });
+  } catch (error) {
+    console.error('[Finance] Audit log error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+/**
+ * POST /admin/finance/:table/:id/restore
+ * Restore a soft-deleted record
+ */
+async function restoreRecord(req, res) {
+  try {
+    const { table, id } = req.params;
+    const allowedTables = ['expenses', 'wage_payments', 'mileage_log', 'income_entries', 'recurring_expenses'];
+
+    if (!allowedTables.includes(table)) {
+      return res.status(400).json({ success: false, error: 'Invalid table name' });
+    }
+
+    const { data, error } = await supabase
+      .from(table)
+      .update({ deleted_at: null, deleted_by: null })
+      .eq('id', id)
+      .select();
+
+    if (error) {
+      console.error('[Finance] Restore error:', error);
+      return res.status(500).json({ success: false, error: 'Failed to restore record' });
+    }
+
+    if (!data || data.length === 0) {
+      return res.status(404).json({ success: false, error: 'Record not found' });
+    }
+
+    await logAudit(table, id, 'restore', null, data[0]);
+
+    res.json({ success: true, data: data[0] });
+  } catch (error) {
+    console.error('[Finance] Restore error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+// ========================
+// CAPITAL ASSETS
+// ========================
+
+/**
+ * GET /admin/finance/assets
+ * List capital assets
+ */
+async function listAssets(req, res) {
+  try {
+    const { data, error } = await supabase
+      .from('capital_assets')
+      .select('*')
+      .is('deleted_at', null)
+      .order('purchase_date', { ascending: false });
+
+    if (error) {
+      console.error('[Finance] List assets error:', error);
+      return res.status(500).json({ success: false, error: 'Failed to fetch assets' });
+    }
+
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error('[Finance] List assets error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+/**
+ * POST /admin/finance/assets
+ * Create a capital asset
+ */
+async function createAsset(req, res) {
+  try {
+    const { description, purchase_date, purchase_price, category, aia_claimed, expense_id, notes } = req.body;
+
+    if (!description || !purchase_date || purchase_price === undefined) {
+      return res.status(400).json({ success: false, error: 'Description, purchase date, and price are required' });
+    }
+
+    const { data, error } = await supabase
+      .from('capital_assets')
+      .insert({
+        description,
+        purchase_date,
+        purchase_price: parseFloat(purchase_price),
+        category: category || 'plant_machinery',
+        aia_claimed: aia_claimed !== false,
+        expense_id: expense_id || null,
+        notes: notes || null
+      })
+      .select();
+
+    if (error) {
+      console.error('[Finance] Create asset error:', error);
+      return res.status(500).json({ success: false, error: 'Failed to create asset' });
+    }
+
+    await logAudit('capital_assets', data[0].id, 'create', null, data[0]);
+
+    res.json({ success: true, data: data[0] });
+  } catch (error) {
+    console.error('[Finance] Create asset error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+/**
+ * PATCH /admin/finance/assets/:id
+ * Update a capital asset (e.g. mark as disposed)
+ */
+async function updateAsset(req, res) {
+  try {
+    const { id } = req.params;
+    const allowed = ['description', 'purchase_date', 'purchase_price', 'category', 'aia_claimed', 'disposal_date', 'disposal_value', 'notes'];
+    const updates = {};
+    for (const key of allowed) {
+      if (req.body[key] !== undefined) updates[key] = req.body[key];
+    }
+    if (updates.purchase_price !== undefined) updates.purchase_price = parseFloat(updates.purchase_price);
+    if (updates.disposal_value !== undefined) updates.disposal_value = parseFloat(updates.disposal_value);
+
+    const { data: oldRecord } = await supabase.from('capital_assets').select('*').eq('id', id).single();
+
+    const { data, error } = await supabase
+      .from('capital_assets')
+      .update(updates)
+      .eq('id', id)
+      .select();
+
+    if (error) {
+      console.error('[Finance] Update asset error:', error);
+      return res.status(500).json({ success: false, error: 'Failed to update asset' });
+    }
+
+    if (oldRecord) await logAudit('capital_assets', id, 'update', oldRecord, updates);
+
+    res.json({ success: true, data: data[0] });
+  } catch (error) {
+    console.error('[Finance] Update asset error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+/**
+ * DELETE /admin/finance/assets/:id
+ * Soft-delete a capital asset
+ */
+async function deleteAsset(req, res) {
+  try {
+    const { id } = req.params;
+    const { data: oldRecord } = await supabase.from('capital_assets').select('*').eq('id', id).single();
+
+    const { error } = await supabase
+      .from('capital_assets')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id);
+
+    if (error) {
+      console.error('[Finance] Delete asset error:', error);
+      return res.status(500).json({ success: false, error: 'Failed to delete asset' });
+    }
+
+    if (oldRecord) await logAudit('capital_assets', id, 'delete', oldRecord, null);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[Finance] Delete asset error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+// ========================
+// TAX SAVINGS TRACKER
+// ========================
+
+/**
+ * GET /admin/finance/tax-savings
+ * List tax savings set-aside entries
+ */
+async function listTaxSavings(req, res) {
+  try {
+    const { data, error } = await supabase
+      .from('tax_savings')
+      .select('*')
+      .is('deleted_at', null)
+      .order('date', { ascending: false });
+
+    if (error) {
+      console.error('[Finance] List tax savings error:', error);
+      return res.status(500).json({ success: false, error: 'Failed to fetch tax savings' });
+    }
+
+    const total = (data || []).reduce((s, r) => s + parseFloat(r.amount), 0);
+
+    res.json({ success: true, data, total_saved: Math.round(total * 100) / 100 });
+  } catch (error) {
+    console.error('[Finance] List tax savings error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+/**
+ * POST /admin/finance/tax-savings
+ * Record an amount set aside for tax
+ */
+async function createTaxSaving(req, res) {
+  try {
+    const { date, amount, notes } = req.body;
+
+    if (amount === undefined) {
+      return res.status(400).json({ success: false, error: 'Amount is required' });
+    }
+
+    const { data, error } = await supabase
+      .from('tax_savings')
+      .insert({
+        date: date || new Date().toISOString().split('T')[0],
+        amount: parseFloat(amount),
+        notes: notes || null
+      })
+      .select();
+
+    if (error) {
+      console.error('[Finance] Create tax saving error:', error);
+      return res.status(500).json({ success: false, error: 'Failed to create tax saving' });
+    }
+
+    res.json({ success: true, data: data[0] });
+  } catch (error) {
+    console.error('[Finance] Create tax saving error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+/**
+ * DELETE /admin/finance/tax-savings/:id
+ * Soft-delete a tax saving entry
+ */
+async function deleteTaxSaving(req, res) {
+  try {
+    const { id } = req.params;
+
+    const { error } = await supabase
+      .from('tax_savings')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id);
+
+    if (error) {
+      console.error('[Finance] Delete tax saving error:', error);
+      return res.status(500).json({ success: false, error: 'Failed to delete tax saving' });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('[Finance] Delete tax saving error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+// ========================
+// TAX FORECAST
+// ========================
+
+// 2025/26 UK sole trader tax rates
+const TAX_RATES = {
+  personal_allowance: 12570,
+  basic_rate: 0.20,
+  basic_rate_limit: 50270,
+  higher_rate: 0.40,
+  higher_rate_limit: 125140,
+  class2_weekly: 3.45,
+  class4_lower: 12570,
+  class4_upper: 50270,
+  class4_rate: 0.06,
+  class4_upper_rate: 0.02,
+  mileage_standard: 0.45,
+  mileage_over_10k: 0.25
+};
+
+/**
+ * Calculate income tax for a given taxable profit
+ */
+function calculateIncomeTax(profit) {
+  if (profit <= TAX_RATES.personal_allowance) return 0;
+
+  let tax = 0;
+  const taxable = profit - TAX_RATES.personal_allowance;
+
+  const basicBand = TAX_RATES.basic_rate_limit - TAX_RATES.personal_allowance;
+  if (taxable <= basicBand) {
+    tax = taxable * TAX_RATES.basic_rate;
+  } else {
+    tax = basicBand * TAX_RATES.basic_rate;
+    const higherTaxable = Math.min(taxable - basicBand, TAX_RATES.higher_rate_limit - TAX_RATES.basic_rate_limit);
+    tax += higherTaxable * TAX_RATES.higher_rate;
+  }
+
+  return Math.round(tax * 100) / 100;
+}
+
+/**
+ * Calculate Class 2 + Class 4 NI for a given profit
+ */
+function calculateNI(profit) {
+  let class2 = 0;
+  let class4 = 0;
+
+  if (profit > TAX_RATES.class4_lower) {
+    class2 = TAX_RATES.class2_weekly * 52;
+  }
+
+  if (profit > TAX_RATES.class4_lower) {
+    const band1 = Math.min(profit, TAX_RATES.class4_upper) - TAX_RATES.class4_lower;
+    class4 = band1 * TAX_RATES.class4_rate;
+    if (profit > TAX_RATES.class4_upper) {
+      class4 += (profit - TAX_RATES.class4_upper) * TAX_RATES.class4_upper_rate;
+    }
+  }
+
+  return {
+    class2: Math.round(class2 * 100) / 100,
+    class4: Math.round(class4 * 100) / 100,
+    total: Math.round((class2 + class4) * 100) / 100
+  };
+}
+
+/**
+ * GET /admin/finance/tax-forecast
+ * Project annual figures from current run rate and estimate tax liability
+ */
+async function getTaxForecast(req, res) {
+  try {
+    // Determine current tax year
+    const now = new Date();
+    let taxYearStart;
+    if (now.getMonth() > 3 || (now.getMonth() === 3 && now.getDate() >= 6)) {
+      taxYearStart = new Date(now.getFullYear(), 3, 6);
+    } else {
+      taxYearStart = new Date(now.getFullYear() - 1, 3, 6);
+    }
+
+    const taxYearStartStr = taxYearStart.toISOString().split('T')[0];
+    const today = now.toISOString().split('T')[0];
+
+    // Calculate months elapsed in tax year
+    const msElapsed = now - taxYearStart;
+    const monthsElapsed = Math.max(msElapsed / (1000 * 60 * 60 * 24 * 30.44), 1);
+
+    // Fetch YTD data
+    const { data: invoices } = await supabase
+      .from('invoices').select('total').eq('status', 'paid')
+      .gte('paid_at', taxYearStartStr).lte('paid_at', today + 'T23:59:59');
+
+    const { data: manualIncome } = await supabase
+      .from('income_entries').select('amount').is('deleted_at', null)
+      .gte('date', taxYearStartStr).lte('date', today);
+
+    const { data: expenses } = await supabase
+      .from('expenses').select('amount').is('deleted_at', null).eq('is_business', true)
+      .gte('date', taxYearStartStr).lte('date', today);
+
+    const { data: wages } = await supabase
+      .from('wage_payments').select('amount').is('deleted_at', null)
+      .gte('date', taxYearStartStr).lte('date', today);
+
+    const { data: mileage } = await supabase
+      .from('mileage_log').select('calculated_amount').is('deleted_at', null)
+      .gte('date', taxYearStartStr).lte('date', today);
+
+    // Capital allowances (AIA claimed this year)
+    const { data: assets } = await supabase
+      .from('capital_assets').select('purchase_price').is('deleted_at', null)
+      .eq('aia_claimed', true)
+      .gte('purchase_date', taxYearStartStr).lte('purchase_date', today);
+
+    // Tax savings
+    const { data: savings } = await supabase
+      .from('tax_savings').select('amount').is('deleted_at', null)
+      .gte('date', taxYearStartStr).lte('date', today);
+
+    const sum = (arr, f) => (arr || []).reduce((s, r) => s + parseFloat(r[f] || 0), 0);
+
+    const ytdIncome = sum(invoices, 'total') + sum(manualIncome, 'amount');
+    const ytdExpenses = sum(expenses, 'amount');
+    const ytdWages = sum(wages, 'amount');
+    const ytdMileage = sum(mileage, 'calculated_amount');
+    const ytdCapitalAllowance = sum(assets, 'purchase_price');
+    const ytdTotalDeductions = ytdExpenses + ytdWages + ytdMileage + ytdCapitalAllowance;
+    const ytdProfit = ytdIncome - ytdTotalDeductions;
+    const totalSaved = sum(savings, 'amount');
+
+    // Project to full year (12 months)
+    const projectionFactor = 12 / monthsElapsed;
+    const projectedIncome = Math.round(ytdIncome * projectionFactor * 100) / 100;
+    const projectedDeductions = Math.round(ytdTotalDeductions * projectionFactor * 100) / 100;
+    const projectedProfit = Math.round((projectedIncome - projectedDeductions) * 100) / 100;
+
+    // Calculate estimated tax
+    const incomeTax = calculateIncomeTax(projectedProfit);
+    const ni = calculateNI(projectedProfit);
+    const totalTaxDue = Math.round((incomeTax + ni.total) * 100) / 100;
+
+    // Monthly set-aside recommendation
+    const monthsRemaining = Math.max(12 - monthsElapsed, 0);
+    const remainingToDue = Math.max(totalTaxDue - totalSaved, 0);
+    const monthlySetAside = monthsRemaining > 0 ? Math.round(remainingToDue / monthsRemaining * 100) / 100 : remainingToDue;
+
+    res.json({
+      success: true,
+      data: {
+        tax_year: taxYearStartStr + ' to ' + new Date(taxYearStart.getFullYear() + 1, 3, 5).toISOString().split('T')[0],
+        months_elapsed: Math.round(monthsElapsed * 10) / 10,
+        ytd: {
+          income: Math.round(ytdIncome * 100) / 100,
+          expenses: Math.round(ytdExpenses * 100) / 100,
+          wages: Math.round(ytdWages * 100) / 100,
+          mileage_claim: Math.round(ytdMileage * 100) / 100,
+          capital_allowance: Math.round(ytdCapitalAllowance * 100) / 100,
+          profit: Math.round(ytdProfit * 100) / 100
+        },
+        projected_annual: {
+          income: projectedIncome,
+          deductions: projectedDeductions,
+          profit: projectedProfit
+        },
+        estimated_tax: {
+          income_tax: incomeTax,
+          ni_class2: ni.class2,
+          ni_class4: ni.class4,
+          total_due: totalTaxDue
+        },
+        savings: {
+          total_saved: Math.round(totalSaved * 100) / 100,
+          shortfall: Math.round(Math.max(totalTaxDue - totalSaved, 0) * 100) / 100,
+          surplus: Math.round(Math.max(totalSaved - totalTaxDue, 0) * 100) / 100,
+          monthly_set_aside: monthlySetAside
+        },
+        rates_used: '2025/26'
+      }
+    });
+  } catch (error) {
+    console.error('[Finance] Tax forecast error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+/**
+ * GET /admin/finance/tax-report
+ * Printable HTML P&L and tax report aligned to SA100
+ */
+async function getTaxReport(req, res) {
+  try {
+    // Determine tax year
+    const now = new Date();
+    const yearParam = req.query.year ? parseInt(req.query.year) : null;
+    let taxYearStart, taxYearEnd;
+
+    if (yearParam) {
+      taxYearStart = new Date(yearParam, 3, 6);
+      taxYearEnd = new Date(yearParam + 1, 3, 5);
+    } else {
+      if (now.getMonth() > 3 || (now.getMonth() === 3 && now.getDate() >= 6)) {
+        taxYearStart = new Date(now.getFullYear(), 3, 6);
+        taxYearEnd = new Date(now.getFullYear() + 1, 3, 5);
+      } else {
+        taxYearStart = new Date(now.getFullYear() - 1, 3, 6);
+        taxYearEnd = new Date(now.getFullYear(), 3, 5);
+      }
+    }
+
+    const startStr = taxYearStart.toISOString().split('T')[0];
+    const endStr = taxYearEnd > now ? now.toISOString().split('T')[0] : taxYearEnd.toISOString().split('T')[0];
+
+    // Fetch all data
+    const { data: invoices } = await supabase
+      .from('invoices').select('total').eq('status', 'paid')
+      .gte('paid_at', startStr).lte('paid_at', endStr + 'T23:59:59');
+
+    const { data: manualIncome } = await supabase
+      .from('income_entries').select('amount').is('deleted_at', null)
+      .gte('date', startStr).lte('date', endStr);
+
+    const { data: expenses } = await supabase
+      .from('expenses')
+      .select('amount, vat_amount, expense_categories(name, hmrc_category, is_tax_deductible)')
+      .is('deleted_at', null).eq('is_business', true)
+      .gte('date', startStr).lte('date', endStr);
+
+    const { data: wages } = await supabase
+      .from('wage_payments').select('amount').is('deleted_at', null)
+      .gte('date', startStr).lte('date', endStr);
+
+    const { data: mileage } = await supabase
+      .from('mileage_log').select('miles, calculated_amount').is('deleted_at', null)
+      .gte('date', startStr).lte('date', endStr);
+
+    const { data: assets } = await supabase
+      .from('capital_assets').select('description, purchase_price, aia_claimed')
+      .is('deleted_at', null)
+      .gte('purchase_date', startStr).lte('purchase_date', endStr);
+
+    const sum = (arr, f) => (arr || []).reduce((s, r) => s + parseFloat(r[f] || 0), 0);
+
+    const totalIncome = sum(invoices, 'total') + sum(manualIncome, 'amount');
+    const totalWages = sum(wages, 'amount');
+    const totalMiles = (mileage || []).reduce((s, r) => s + parseFloat(r.miles || 0), 0);
+    const totalMileageClaim = sum(mileage, 'calculated_amount');
+    const totalCapitalAllowance = (assets || []).filter(a => a.aia_claimed).reduce((s, a) => s + parseFloat(a.purchase_price), 0);
+
+    // Group expenses by HMRC category
+    const hmrcGroups = { cost_of_sales: 0, motor_expenses: 0, admin: 0 };
+    let totalDeductible = 0;
+    let totalVat = 0;
+
+    (expenses || []).forEach(exp => {
+      const cat = exp.expense_categories || {};
+      const hmrc = cat.hmrc_category || 'admin';
+      if (hmrc !== 'capital_allowance') {
+        if (!hmrcGroups[hmrc]) hmrcGroups[hmrc] = 0;
+        hmrcGroups[hmrc] += parseFloat(exp.amount);
+      }
+      if (cat.is_tax_deductible !== false && hmrc !== 'capital_allowance') {
+        totalDeductible += parseFloat(exp.amount);
+      }
+      totalVat += parseFloat(exp.vat_amount || 0);
+    });
+
+    const grossProfit = totalIncome - hmrcGroups.cost_of_sales;
+    const totalAllDeductions = totalDeductible + totalWages + totalMileageClaim + totalCapitalAllowance;
+    const netProfit = totalIncome - totalAllDeductions;
+
+    const incomeTax = calculateIncomeTax(netProfit);
+    const ni = calculateNI(netProfit);
+
+    const fmtDate = (d) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    const fmt = (n) => '£' + Math.round(n * 100 / 100).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const businessName = process.env.BUSINESS_NAME || 'Revive Exterior Cleaning';
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Tax Report – ${businessName}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: #1a1a1a; max-width: 800px; margin: 0 auto; padding: 40px 20px; font-size: 14px; }
+  h1 { font-size: 22px; margin-bottom: 4px; }
+  h2 { font-size: 16px; border-bottom: 2px solid #84cc16; padding-bottom: 6px; margin: 30px 0 14px; }
+  .subtitle { color: #666; margin-bottom: 24px; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+  th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #e5e5e5; }
+  th { font-weight: 600; background: #f8f8f8; }
+  td:last-child, th:last-child { text-align: right; }
+  .total-row td { font-weight: 700; border-top: 2px solid #333; border-bottom: 2px solid #333; }
+  .profit-row td { background: #f0fdf4; font-weight: 700; font-size: 15px; }
+  .tax-row td { background: #fef3c7; }
+  .section-note { color: #666; font-size: 12px; margin-bottom: 12px; }
+  .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e5e5; color: #999; font-size: 11px; }
+  @media print { body { padding: 20px; } .no-print { display: none; } }
+</style>
+</head>
+<body>
+<h1>${businessName}</h1>
+<p class="subtitle">Profit &amp; Loss Statement — Tax Year ${fmtDate(taxYearStart)} to ${fmtDate(taxYearEnd)}<br>
+Report generated: ${fmtDate(now)}</p>
+
+<h2>Trading Income</h2>
+<table>
+  <tr><td>Invoice income (paid)</td><td>${fmt(sum(invoices, 'total'))}</td></tr>
+  <tr><td>Other income (cash jobs etc.)</td><td>${fmt(sum(manualIncome, 'amount'))}</td></tr>
+  <tr class="total-row"><td>Total Turnover</td><td>${fmt(totalIncome)}</td></tr>
+</table>
+
+<h2>Cost of Sales</h2>
+<p class="section-note">SA100 SE Box 10 — Materials, cleaning solutions, equipment hire, PPE</p>
+<table>
+  <tr><td>Materials, supplies &amp; direct costs</td><td>${fmt(hmrcGroups.cost_of_sales || 0)}</td></tr>
+  <tr class="total-row"><td>Total Cost of Sales</td><td>${fmt(hmrcGroups.cost_of_sales || 0)}</td></tr>
+</table>
+
+<table>
+  <tr class="profit-row"><td>Gross Profit</td><td>${fmt(grossProfit)}</td></tr>
+</table>
+
+<h2>Administrative Expenses</h2>
+<p class="section-note">SA100 SE Box 17 — Insurance, marketing, software, phone, accountant, etc.</p>
+<table>
+  <tr><td>Admin &amp; office expenses</td><td>${fmt(hmrcGroups.admin || 0)}</td></tr>
+  <tr><td>Wages &amp; subcontractor costs</td><td>${fmt(totalWages)}</td></tr>
+  <tr class="total-row"><td>Total Admin Expenses</td><td>${fmt((hmrcGroups.admin || 0) + totalWages)}</td></tr>
+</table>
+
+<h2>Motor Expenses</h2>
+<p class="section-note">SA100 SE Box 20 — Vehicle costs, fuel, parking</p>
+<table>
+  <tr><td>Vehicle &amp; fuel costs</td><td>${fmt(hmrcGroups.motor_expenses || 0)}</td></tr>
+  <tr><td>Mileage allowance (${totalMiles.toFixed(1)} miles @ 45p)</td><td>${fmt(totalMileageClaim)}</td></tr>
+  <tr class="total-row"><td>Total Motor Expenses</td><td>${fmt((hmrcGroups.motor_expenses || 0) + totalMileageClaim)}</td></tr>
+</table>
+
+<h2>Capital Allowances</h2>
+<p class="section-note">SA100 SE Box 22 — Annual Investment Allowance (100% first year)</p>
+<table>
+  <tr><th>Asset</th><th>Cost</th></tr>
+  ${(assets || []).filter(a => a.aia_claimed).map(a => `<tr><td>${a.description}</td><td>${fmt(a.purchase_price)}</td></tr>`).join('\n  ') || '<tr><td colspan="2" style="color:#999">No capital purchases this year</td></tr>'}
+  <tr class="total-row"><td>Total Capital Allowances (AIA)</td><td>${fmt(totalCapitalAllowance)}</td></tr>
+</table>
+
+<h2>Net Profit &amp; Tax Estimate</h2>
+<table>
+  <tr class="profit-row"><td>Net Profit (Taxable)</td><td>${fmt(netProfit)}</td></tr>
+</table>
+<table>
+  <tr class="tax-row"><td>Estimated Income Tax (${netProfit > TAX_RATES.basic_rate_limit ? 'basic + higher rate' : 'basic rate'})</td><td>${fmt(incomeTax)}</td></tr>
+  <tr class="tax-row"><td>Class 2 NI (£${TAX_RATES.class2_weekly}/week × 52)</td><td>${fmt(ni.class2)}</td></tr>
+  <tr class="tax-row"><td>Class 4 NI (6% + 2%)</td><td>${fmt(ni.class4)}</td></tr>
+  <tr class="total-row"><td>Total Estimated Tax &amp; NI Due</td><td>${fmt(incomeTax + ni.total)}</td></tr>
+</table>
+
+<p class="section-note" style="margin-top:12px">VAT paid on purchases this year: ${fmt(totalVat)} (not reclaimable — not VAT registered)</p>
+
+<div class="footer">
+  <p>This report is for guidance only and does not constitute tax advice. Tax rates used: 2025/26. Consult your accountant for your official self-assessment return.</p>
+  <p>Generated by ${businessName} Admin System</p>
+</div>
+
+<div class="no-print" style="margin-top:24px; text-align:center">
+  <button onclick="window.print()" style="padding:10px 24px; background:#84cc16; border:none; border-radius:6px; font-weight:600; cursor:pointer; font-size:14px;">Print / Save as PDF</button>
+</div>
+</body>
+</html>`;
+
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
+  } catch (error) {
+    console.error('[Finance] Tax report error:', error);
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -1563,5 +2415,16 @@ module.exports = {
   getCashflow,
   getCategoryBreakdown,
   getTaxSummary,
-  exportFinance
+  exportFinance,
+  listAuditLog,
+  restoreRecord,
+  listAssets,
+  createAsset,
+  updateAsset,
+  deleteAsset,
+  listTaxSavings,
+  createTaxSaving,
+  deleteTaxSaving,
+  getTaxForecast,
+  getTaxReport
 };
