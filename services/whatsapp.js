@@ -21,6 +21,7 @@ const TEMPLATES = {
   QUOTE_CONFIRMATION: 'HXe1a33f5eaa1799f1c5c596f3e496769e',
   ESTIMATE_READY: 'HXf579b26142676cd0271ea20ed54c379d',
   ADMIN_ALERT: 'HX4ec1c09e9d04022e7758a80b865f8991',
+  FOLLOW_UP: null, // TODO: Add after Meta approves follow-up template
 };
 
 /**

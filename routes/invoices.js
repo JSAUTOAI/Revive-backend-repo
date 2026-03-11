@@ -294,7 +294,8 @@ async function sendInvoice(req, res) {
     const emailResult = await sendInvoiceEmail(invoice, viewUrl);
 
     if (!emailResult.success) {
-      return res.status(500).json({ success: false, error: 'Failed to send invoice email' });
+      console.error('[Invoices] Email send failed:', emailResult.error);
+      return res.status(500).json({ success: false, error: emailResult.error || 'Failed to send invoice email' });
     }
 
     // Update invoice status

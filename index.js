@@ -23,6 +23,9 @@ const { syncQuoteToSheets } = require('./services/googleSheets');
 // Import chatbot service
 const { chat } = require('./services/chatbot');
 
+// Import follow-up scheduler
+const followUpScheduler = require('./services/followUpScheduler');
+
 // Import admin notification functions
 const { sendAdminAlert } = require('./services/emailer');
 const { sendAdminAlertWhatsApp } = require('./services/whatsapp');
@@ -57,6 +60,7 @@ customerRoutes.setSupabaseClient(supabase);
 invoiceRoutes.setSupabaseClient(supabase);
 financeRoutes.setSupabaseClient(supabase);
 pricingConfig.setSupabaseClient(supabase);
+followUpScheduler.setSupabaseClient(supabase);
 
 // =======================
 // MIDDLEWARE
@@ -1243,6 +1247,25 @@ app.get('/admin/finance/category-breakdown', requireAdminAuth, financeRoutes.get
 app.get('/admin/finance/tax-summary', requireAdminAuth, financeRoutes.getTaxSummary);
 app.get('/admin/finance/export', requireAdminAuth, financeRoutes.exportFinance);
 
+// Audit trail & restore
+app.get('/admin/finance/audit-log', requireAdminAuth, financeRoutes.listAuditLog);
+app.post('/admin/finance/:table/:id/restore', requireAdminAuth, financeRoutes.restoreRecord);
+
+// Capital assets
+app.get('/admin/finance/assets', requireAdminAuth, financeRoutes.listAssets);
+app.post('/admin/finance/assets', requireAdminAuth, financeRoutes.createAsset);
+app.patch('/admin/finance/assets/:id', requireAdminAuth, financeRoutes.updateAsset);
+app.delete('/admin/finance/assets/:id', requireAdminAuth, financeRoutes.deleteAsset);
+
+// Tax savings tracker
+app.get('/admin/finance/tax-savings', requireAdminAuth, financeRoutes.listTaxSavings);
+app.post('/admin/finance/tax-savings', requireAdminAuth, financeRoutes.createTaxSaving);
+app.delete('/admin/finance/tax-savings/:id', requireAdminAuth, financeRoutes.deleteTaxSaving);
+
+// Tax forecast & report
+app.get('/admin/finance/tax-forecast', requireAdminAuth, financeRoutes.getTaxForecast);
+app.get('/admin/finance/tax-report', requireAdminAuth, financeRoutes.getTaxReport);
+
 // =======================
 // PRICING SETTINGS (Protected)
 // =======================
@@ -1291,6 +1314,7 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
   console.log(`Serving static files from ${path.join(__dirname, 'public')}`);
+  followUpScheduler.startScheduler();
 });
 
 // Optional export

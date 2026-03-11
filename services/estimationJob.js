@@ -92,6 +92,9 @@ async function processEstimation(supabase, quoteId, quote) {
       console.error(`[Estimation Job] Failed to send estimate email:`, err);
     }
 
+    // Set initial follow-up date: 3 days after estimate sent
+    timestampUpdates.next_follow_up_at = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+
     if (Object.keys(timestampUpdates).length > 0) {
       await supabase.from('quotes').update(timestampUpdates).eq('id', quoteId);
     }
