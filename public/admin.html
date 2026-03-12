@@ -147,6 +147,7 @@
         <option value="warm">Warm</option>
         <option value="cold">Cold</option>
         <option value="unqualified">Unqualified</option>
+        <option value="deleted">Deleted</option>
       </select>
       <select id="filter-service" onchange="applyFilters()" class="bg-neutral-900 border border-neutral-700 text-neutral-300 text-xs px-3 py-2 rounded-lg focus:border-lime-400 focus:outline-none">
         <option value="">All Services</option>
@@ -191,6 +192,7 @@
             <th class="px-4 py-3 text-[10px] font-semibold text-neutral-500 uppercase tracking-wider hidden md:table-cell">Score</th>
             <th class="px-4 py-3 text-[10px] font-semibold text-neutral-500 uppercase tracking-wider">Status</th>
             <th class="px-4 py-3 text-[10px] font-semibold text-neutral-500 uppercase tracking-wider hidden md:table-cell">Date</th>
+            <th class="px-2 py-3 md:hidden"></th>
           </tr>
         </thead>
         <tbody id="quotesTableBody"></tbody>
@@ -1427,6 +1429,12 @@
           <a id="qa-email" href="#" title="Email customer" class="p-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-neutral-400 hover:text-blue-400 transition-colors">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
           </a>
+          <button id="qa-delete" onclick="softDeleteQuote(state.currentQuote ? state.currentQuote.id : null)" title="Delete quote" class="p-1.5 rounded-lg bg-neutral-800 hover:bg-red-900/50 text-neutral-400 hover:text-red-400 transition-colors ml-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          </button>
+          <button id="qa-restore" onclick="restoreQuote(state.currentQuote ? state.currentQuote.id : null)" title="Restore quote" class="hidden p-1.5 rounded-lg bg-neutral-800 hover:bg-green-900/50 text-neutral-400 hover:text-green-400 transition-colors ml-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          </button>
         </div>
       </div>
       <button onclick="closeModal()" class="text-neutral-500 hover:text-white transition-colors">
@@ -2609,9 +2617,14 @@ async function loadQuotes() {
     var sortVal = document.getElementById('filter-sort').value.split(':');
 
     var isAttentionFilter = statusFilter === 'attention';
-    var params = '?limit=' + (isAttentionFilter ? '200' : state.pagination.limit) + '&offset=' + (isAttentionFilter ? '0' : state.pagination.offset);
+    var isDeletedFilter = statusFilter === 'deleted';
+    var params = '?limit=' + ((isAttentionFilter || isDeletedFilter) ? '200' : state.pagination.limit) + '&offset=' + ((isAttentionFilter || isDeletedFilter) ? '0' : state.pagination.offset);
     params += '&sort=' + sortVal[0] + '&order=' + sortVal[1];
-    if (statusFilter && !isAttentionFilter) params += '&status=' + statusFilter;
+    if (isDeletedFilter) {
+      params += '&show_deleted=true';
+    } else if (statusFilter && !isAttentionFilter) {
+      params += '&status=' + statusFilter;
+    }
     if (serviceFilter) params += '&service=' + serviceFilter;
 
     var res = await apiRequest('/admin/quotes' + params);
@@ -2677,6 +2690,11 @@ function renderTable(quotes) {
     var alert = getAlertType(q);
     var alertIcon = alert ? '<svg class="w-3.5 h-3.5 text-orange-400 inline ml-1" title="Needs attention" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>' : '';
 
+    var isDeleted = !!q.deleted_at;
+    var deleteBtn = isDeleted
+      ? '<button onclick="event.stopPropagation();restoreQuote(\'' + q.id + '\')" title="Restore" class="p-1 rounded hover:bg-green-900/50 text-neutral-600 hover:text-green-400 transition-colors"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>'
+      : '<button onclick="event.stopPropagation();softDeleteQuote(\'' + q.id + '\')" title="Delete" class="p-1 rounded hover:bg-red-900/50 text-neutral-600 hover:text-red-400 transition-colors"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>';
+
     tr.innerHTML =
       '<td class="px-4 py-3">' + qualBadge(q.qualification_status) + '</td>' +
       '<td class="px-4 py-3"><div class="text-sm text-white font-medium">' + esc(q.name) + alertIcon + '</div><div class="text-[11px] text-neutral-500">' + esc(q.email) + '</div></td>' +
@@ -2684,7 +2702,8 @@ function renderTable(quotes) {
       '<td class="px-4 py-3"><div class="text-sm font-semibold text-lime-400">' + estimate + '</div></td>' +
       '<td class="px-4 py-3 hidden md:table-cell">' + scoreBadge(q.lead_score) + '</td>' +
       '<td class="px-4 py-3">' + statusBadge(q.status) + '</td>' +
-      '<td class="px-4 py-3 hidden md:table-cell"><div class="text-xs text-neutral-500">' + formatDate(q.created_at) + '</div></td>';
+      '<td class="px-4 py-3 hidden md:table-cell"><div class="flex items-center justify-between gap-2"><span class="text-xs text-neutral-500">' + formatDate(q.created_at) + '</span>' + deleteBtn + '</div></td>' +
+      '<td class="px-2 py-3 md:hidden">' + deleteBtn + '</td>';
 
     tbody.appendChild(tr);
   });
@@ -2705,10 +2724,15 @@ function renderCards(quotes) {
     var cardAlert = getAlertType(q);
     var cardAlertIcon = cardAlert ? '<svg class="w-3.5 h-3.5 text-orange-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>' : '';
 
+    var cardIsDeleted = !!q.deleted_at;
+    var cardDeleteBtn = cardIsDeleted
+      ? '<button onclick="event.stopPropagation();restoreQuote(\'' + q.id + '\')" title="Restore" class="p-1 rounded hover:bg-green-900/50 text-neutral-600 hover:text-green-400 transition-colors"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg></button>'
+      : '<button onclick="event.stopPropagation();softDeleteQuote(\'' + q.id + '\')" title="Delete" class="p-1 rounded hover:bg-red-900/50 text-neutral-600 hover:text-red-400 transition-colors"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button>';
+
     div.innerHTML =
       '<div class="flex items-center justify-between mb-2">' +
         '<div class="flex items-center gap-2">' + qualBadge(q.qualification_status) + '<span class="text-sm text-white font-medium">' + esc(q.name) + '</span>' + cardAlertIcon + '</div>' +
-        statusBadge(q.status) +
+        '<div class="flex items-center gap-1">' + statusBadge(q.status) + cardDeleteBtn + '</div>' +
       '</div>' +
       '<div class="text-xs text-neutral-500 mb-2">' + esc(services) + '</div>' +
       '<div class="flex items-center justify-between">' +
@@ -2769,6 +2793,11 @@ async function openModal(id) {
     document.getElementById('qa-phone').href = phone ? 'tel:' + phone : '#';
     document.getElementById('qa-whatsapp').href = phone ? 'https://wa.me/' + cleanPhone.replace('+', '') + '?text=' + encodeURIComponent('Hi ' + (q.name || '') + ', it\'s Revive Exterior Cleaning. ') : '#';
     document.getElementById('qa-email').href = q.email ? 'mailto:' + q.email + '?subject=' + encodeURIComponent('Your Revive Cleaning Quote') : '#';
+
+    // Show delete or restore button depending on state
+    var isDeleted = !!q.deleted_at;
+    document.getElementById('qa-delete').classList.toggle('hidden', isDeleted);
+    document.getElementById('qa-restore').classList.toggle('hidden', !isDeleted);
 
     // Customer
     document.getElementById('modal-fullname').textContent = q.name || '-';
@@ -2861,6 +2890,40 @@ function closeModal() {
   state.currentQuote = null;
   quoteAvailabilityData = {};
   quoteSelectedDate = null;
+}
+
+async function softDeleteQuote(id) {
+  if (!id) return;
+  if (!confirm('Delete this quote? It can be restored later from the Deleted filter.')) return;
+  try {
+    var res = await apiRequest('/admin/quotes/' + id, { method: 'DELETE' });
+    if (res.success) {
+      closeModal();
+      loadQuotes();
+      showToast('Quote deleted', 'success');
+    } else {
+      showToast(res.error || 'Failed to delete quote', 'error');
+    }
+  } catch (e) {
+    showToast('Failed to delete quote', 'error');
+  }
+}
+
+async function restoreQuote(id) {
+  if (!id) return;
+  if (!confirm('Restore this quote?')) return;
+  try {
+    var res = await apiRequest('/admin/quotes/' + id + '/restore', { method: 'POST' });
+    if (res.success) {
+      closeModal();
+      loadQuotes();
+      showToast('Quote restored', 'success');
+    } else {
+      showToast(res.error || 'Failed to restore quote', 'error');
+    }
+  } catch (e) {
+    showToast('Failed to restore quote', 'error');
+  }
 }
 
 function renderStatusButtons(currentStatus) {

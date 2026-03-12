@@ -43,6 +43,14 @@ async function listQuotes(req, res) {
       .from('quotes')
       .select('*', { count: 'exact' });
 
+    // Soft-delete filtering
+    const showDeleted = req.query.show_deleted === 'true';
+    if (showDeleted) {
+      query = query.not('deleted_at', 'is', null);
+    } else {
+      query = query.is('deleted_at', null);
+    }
+
     // Apply filters
     if (status) {
       query = query.eq('qualification_status', status);
@@ -287,6 +295,7 @@ async function exportQuotes(req, res) {
     let query = supabase
       .from('quotes')
       .select('*')
+      .is('deleted_at', null)
       .order('created_at', { ascending: false });
 
     // Apply filters
@@ -954,6 +963,86 @@ async function getPricingHistory(req, res) {
   }
 }
 
+/**
+ * DELETE /admin/quotes/:id
+ * Soft-delete a quote (sets deleted_at timestamp)
+ */
+async function softDeleteQuote(req, res) {
+  try {
+    const { id } = req.params;
+
+    const { data, error } = await supabase
+      .from('quotes')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', id)
+      .is('deleted_at', null)
+      .select('id, name');
+
+    if (error) {
+      console.error('[Admin] Soft delete error:', error);
+      return res.status(500).json({ success: false, error: 'Failed to delete quote' });
+    }
+
+    if (!data || data.length === 0) {
+      return res.status(404).json({ success: false, error: 'Quote not found or already deleted' });
+    }
+
+    // Log activity
+    await supabase.from('quote_activity').insert({
+      quote_id: id,
+      action_type: 'status_change',
+      description: 'Quote deleted (soft delete)'
+    }).then(() => {}).catch(() => {});
+
+    console.log(`[Admin] Soft-deleted quote ${id} (${data[0].name})`);
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error('[Admin] Soft delete error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+/**
+ * POST /admin/quotes/:id/restore
+ * Restore a soft-deleted quote
+ */
+async function restoreQuote(req, res) {
+  try {
+    const { id } = req.params;
+
+    const { data, error } = await supabase
+      .from('quotes')
+      .update({ deleted_at: null })
+      .eq('id', id)
+      .not('deleted_at', 'is', null)
+      .select('id, name');
+
+    if (error) {
+      console.error('[Admin] Restore quote error:', error);
+      return res.status(500).json({ success: false, error: 'Failed to restore quote' });
+    }
+
+    if (!data || data.length === 0) {
+      return res.status(404).json({ success: false, error: 'Quote not found or not deleted' });
+    }
+
+    // Log activity
+    await supabase.from('quote_activity').insert({
+      quote_id: id,
+      action_type: 'status_change',
+      description: 'Quote restored from deleted'
+    }).then(() => {}).catch(() => {});
+
+    console.log(`[Admin] Restored quote ${id} (${data[0].name})`);
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error('[Admin] Restore quote error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
 module.exports = {
   setSupabaseClient,
   listQuotes,
@@ -971,5 +1060,7 @@ module.exports = {
   updatePricingSettings,
   resetPricingSettings,
   testEstimate,
-  getPricingHistory
+  getPricingHistory,
+  softDeleteQuote,
+  restoreQuote
 };

@@ -1148,6 +1148,8 @@ app.post('/admin/quotes/:id/activity', requireAdminAuth, adminRoutes.addQuoteAct
 app.post('/admin/quotes/:id/attachments', requireAdminAuth, adminRoutes.uploadAttachment);
 app.get('/admin/quotes/:id/attachments', requireAdminAuth, adminRoutes.listAttachments);
 app.delete('/admin/quotes/:id/attachments/:filename', requireAdminAuth, adminRoutes.deleteAttachment);
+app.delete('/admin/quotes/:id', requireAdminAuth, adminRoutes.softDeleteQuote);
+app.post('/admin/quotes/:id/restore', requireAdminAuth, adminRoutes.restoreQuote);
 
 // =======================
 // JOB SCHEDULING ROUTES (Protected)
