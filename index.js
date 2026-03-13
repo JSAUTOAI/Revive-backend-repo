@@ -7,6 +7,7 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
+const rateLimit = require('express-rate-limit');
 
 // Import estimation services
 const { queueEstimation } = require('./services/estimationJob');
@@ -87,6 +88,28 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // =======================
+// RATE LIMITING
+// =======================
+
+// Quote submission: 5 per hour per IP (prevents spam submissions)
+const quoteLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many quote submissions. Please try again later.' }
+});
+
+// Chat endpoint: 60 per 10 minutes per IP (complements existing in-memory limiter)
+const chatLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many requests. Please try again shortly.' }
+});
+
+// =======================
 // ROUTES
 // =======================
 
@@ -116,7 +139,7 @@ app.post('/api/data', (req, res) => {
 });
 
 // Quote request route (flexible + future-proof)
-app.post('/api/quote', async (req, res) => {
+app.post('/api/quote', quoteLimiter, async (req, res) => {
   try {
     const {
       name,
@@ -341,7 +364,7 @@ async function persistConversation(sessionId, messages, result, ip) {
   }
 }
 
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', chatLimiter, async (req, res) => {
   try {
     const ip = req.ip || req.socket?.remoteAddress || 'unknown';
     if (!checkChatRateLimit(ip)) {

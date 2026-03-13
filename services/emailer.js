@@ -12,6 +12,12 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 // Email sender - set FROM_EMAIL in Railway env vars once your domain is verified with Resend
 const FROM_EMAIL = process.env.FROM_EMAIL || 'onboarding@resend.dev';
 
+// HTML-escape user-provided strings before inserting into email templates
+function h(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 /**
  * Send confirmation email immediately after quote submission
  *
@@ -35,7 +41,7 @@ async function sendConfirmationEmail(quote) {
         </head>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background-color: #84cc16; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
-            <h1 style="margin: 0; font-size: 24px;">Thank You, ${quote.name}!</h1>
+            <h1 style="margin: 0; font-size: 24px;">Thank You, ${h(quote.name)}!</h1>
           </div>
 
           <div style="background-color: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px;">
@@ -52,9 +58,9 @@ async function sendConfirmationEmail(quote) {
 
             <div style="background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
               <h2 style="color: #333; margin-top: 0; font-size: 18px;">Your Quote Details</h2>
-              <p style="margin: 5px 0;"><strong>Services:</strong> ${quote.services.join(', ')}</p>
-              <p style="margin: 5px 0;"><strong>Address:</strong> ${quote.address_line1}, ${quote.postcode}</p>
-              <p style="margin: 5px 0;"><strong>Preferred Contact:</strong> ${quote.preferred_contact || 'Email'}</p>
+              <p style="margin: 5px 0;"><strong>Services:</strong> ${quote.services.map(s => h(s)).join(', ')}</p>
+              <p style="margin: 5px 0;"><strong>Address:</strong> ${h(quote.address_line1)}, ${h(quote.postcode)}</p>
+              <p style="margin: 5px 0;"><strong>Preferred Contact:</strong> ${h(quote.preferred_contact || 'Email')}</p>
             </div>
 
             <p style="font-size: 14px; color: #666; margin-top: 20px;">
@@ -116,7 +122,7 @@ async function sendEstimateEmail(quote) {
           </div>
 
           <div style="background-color: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px;">
-            <p style="font-size: 16px; margin-top: 0;">Hi ${quote.name},</p>
+            <p style="font-size: 16px; margin-top: 0;">Hi ${h(quote.name)},</p>
             <p style="font-size: 16px;">Based on your requirements, here's your estimated cost:</p>
 
             <div style="background-color: white; padding: 30px; border-radius: 8px; margin: 20px 0; text-align: center; border: 3px solid #84cc16;">
@@ -127,7 +133,7 @@ async function sendEstimateEmail(quote) {
             <div style="background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
               <h3 style="margin-top: 0; color: #333;">Services Included:</h3>
               <ul style="padding-left: 20px;">
-                ${quote.services.map(service => `<li style="margin-bottom: 8px; text-transform: capitalize;">${service}</li>`).join('')}
+                ${quote.services.map(service => `<li style="margin-bottom: 8px; text-transform: capitalize;">${h(service)}</li>`).join('')}
               </ul>
             </div>
 
@@ -144,7 +150,7 @@ async function sendEstimateEmail(quote) {
                 ✓ Yes, Accept This Quote
               </a>
               <p style="font-size: 13px; color: #888; margin-top: 15px; line-height: 1.5;">
-                By accepting, you confirm your interest in proceeding. We'll contact you ${quote.best_time ? `at your preferred time (${quote.best_time})` : 'shortly'} via ${quote.preferred_contact || 'email'} to discuss the job in detail and provide a final, accurate quotation.
+                By accepting, you confirm your interest in proceeding. We'll contact you ${quote.best_time ? `at your preferred time (${h(quote.best_time)})` : 'shortly'} via ${h(quote.preferred_contact || 'email')} to discuss the job in detail and provide a final, accurate quotation.
               </p>
             </div>
 
@@ -205,7 +211,7 @@ async function sendAdminAlert(quote, isAcceptance = false) {
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@revive.com'; // TODO: Set in .env
 
     const subject = isAcceptance
-      ? `🎉 Customer Accepted Quote - ${quote.name} (£${quote.estimated_value_max})`
+      ? `🎉 Customer Accepted Quote - ${h(quote.name)} (£${quote.estimated_value_max})`
       : `🔥 Hot Lead Alert - £${quote.estimated_value_max} potential`;
 
     const { data, error } = await resend.emails.send({
@@ -224,7 +230,7 @@ async function sendAdminAlert(quote, isAcceptance = false) {
             <h2 style="margin: 0; font-size: 24px;">🎉 Customer Accepted Quote!</h2>
           </div>
           <p style="font-size: 16px; color: #065f46; font-weight: bold;">
-            ${quote.name} just accepted the estimated quote. Contact them ASAP!
+            ${h(quote.name)} just accepted the estimated quote. Contact them ASAP!
           </p>
           ` : `
           <h2 style="color: #84cc16;">🔥 New High-Value Lead</h2>
@@ -233,25 +239,25 @@ async function sendAdminAlert(quote, isAcceptance = false) {
           <div style="background-color: #f9f9f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
             <p><strong>Lead Score:</strong> ${quote.lead_score}/100</p>
             <p><strong>Estimated Value:</strong> £${quote.estimated_value_min} - £${quote.estimated_value_max}</p>
-            <p><strong>Qualification:</strong> ${quote.qualification_status}</p>
+            <p><strong>Qualification:</strong> ${h(quote.qualification_status)}</p>
             ${isAcceptance ? `<p><strong>Accepted At:</strong> ${new Date(quote.customer_accepted_at).toLocaleString('en-GB')}</p>` : ''}
           </div>
 
           <h3>Customer Details</h3>
           <ul>
-            <li><strong>Name:</strong> ${quote.name}</li>
-            <li><strong>Email:</strong> ${quote.email}</li>
-            <li><strong>Phone:</strong> ${quote.phone}</li>
-            <li><strong>Address:</strong> ${quote.address_line1}, ${quote.postcode}</li>
-            <li><strong>Services:</strong> ${quote.services.join(', ')}</li>
-            <li><strong>Preferred Contact:</strong> ${quote.preferred_contact || 'Email'}</li>
-            ${quote.best_time ? `<li><strong>Best Time to Contact:</strong> ${quote.best_time}</li>` : ''}
+            <li><strong>Name:</strong> ${h(quote.name)}</li>
+            <li><strong>Email:</strong> ${h(quote.email)}</li>
+            <li><strong>Phone:</strong> ${h(quote.phone)}</li>
+            <li><strong>Address:</strong> ${h(quote.address_line1)}, ${h(quote.postcode)}</li>
+            <li><strong>Services:</strong> ${quote.services.map(s => h(s)).join(', ')}</li>
+            <li><strong>Preferred Contact:</strong> ${h(quote.preferred_contact || 'Email')}</li>
+            ${quote.best_time ? `<li><strong>Best Time to Contact:</strong> ${h(quote.best_time)}</li>` : ''}
           </ul>
 
           ${isAcceptance ? `
           <div style="background-color: #d1fae5; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981; margin: 20px 0;">
             <p style="margin: 0; font-weight: bold; color: #065f46;">
-              ⚡ Action Required: Contact ${quote.name} to schedule and finalize the quote!
+              ⚡ Action Required: Contact ${h(quote.name)} to schedule and finalize the quote!
             </p>
           </div>
           ` : ''}
@@ -291,7 +297,7 @@ async function sendFollowUpEmail(customer, subject, body) {
     console.log(`[Email] Sending follow-up to ${customer.email}`);
 
     // Convert plain text body to HTML paragraphs
-    const htmlBody = body.split('\n').filter(l => l.trim()).map(l => `<p style="margin: 0 0 12px 0;">${l}</p>`).join('');
+    const htmlBody = body.split('\n').filter(l => l.trim()).map(l => `<p style="margin: 0 0 12px 0;">${h(l)}</p>`).join('');
 
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
@@ -367,7 +373,7 @@ async function sendRescheduleEmail(job, formattedDate, timeSlot) {
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: job.customer_email,
-      subject: `Your ${job.service || 'cleaning'} appointment has been rescheduled - Revive`,
+      subject: `Your ${h(job.service || 'cleaning')} appointment has been rescheduled - Revive`,
       html: `
         <!DOCTYPE html>
         <html>
@@ -381,16 +387,16 @@ async function sendRescheduleEmail(job, formattedDate, timeSlot) {
           </div>
 
           <div style="background-color: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px;">
-            <p style="font-size: 16px; margin: 0 0 15px 0;">Hi ${job.customer_name || 'there'},</p>
+            <p style="font-size: 16px; margin: 0 0 15px 0;">Hi ${h(job.customer_name || 'there')},</p>
 
             <p style="font-size: 15px; margin: 0 0 15px 0;">
-              We wanted to let you know that your <strong>${job.service || 'cleaning'}</strong> appointment has been rescheduled.
+              We wanted to let you know that your <strong>${h(job.service || 'cleaning')}</strong> appointment has been rescheduled.
             </p>
 
             <div style="background-color: #fff; border: 2px solid #84cc16; border-radius: 8px; padding: 20px; margin: 20px 0;">
               <p style="font-size: 14px; color: #666; margin: 0 0 8px 0;">NEW DATE & TIME</p>
-              <p style="font-size: 20px; font-weight: bold; color: #333; margin: 0 0 5px 0;">${formattedDate}</p>
-              <p style="font-size: 16px; color: #84cc16; font-weight: bold; margin: 0;">${timeSlot || 'Time TBC'}</p>
+              <p style="font-size: 20px; font-weight: bold; color: #333; margin: 0 0 5px 0;">${h(formattedDate)}</p>
+              <p style="font-size: 16px; color: #84cc16; font-weight: bold; margin: 0;">${h(timeSlot || 'Time TBC')}</p>
             </div>
 
             <p style="font-size: 15px; margin: 0 0 15px 0;">
@@ -458,7 +464,7 @@ async function sendInvoiceEmail(invoice, viewUrl) {
 
     const lineItemsHtml = lineItems.map(item =>
       `<tr>
-        <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: left;">${item.description || ''}</td>
+        <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: left;">${h(item.description)}</td>
         <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">${item.quantity || 1}</td>
         <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">&pound;${Number(item.unit_price || 0).toFixed(2)}</td>
         <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">&pound;${Number(item.total || 0).toFixed(2)}</td>
@@ -515,7 +521,7 @@ async function sendInvoiceEmail(invoice, viewUrl) {
           </div>
 
           <div style="background-color: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px;">
-            <p style="font-size: 16px; margin-top: 0;">Hi ${invoice.customer_name},</p>
+            <p style="font-size: 16px; margin-top: 0;">Hi ${h(invoice.customer_name)},</p>
             <p style="font-size: 15px;">Please find your invoice below for services provided.</p>
 
             <!-- Invoice Details -->
@@ -552,7 +558,7 @@ async function sendInvoiceEmail(invoice, viewUrl) {
 
             ${invoice.notes ? `
             <div style="background: #fffbeb; padding: 12px; border-left: 4px solid #f59e0b; border-radius: 4px; margin: 16px 0;">
-              <p style="margin: 0; font-size: 13px; color: #92400e;"><strong>Notes:</strong> ${invoice.notes}</p>
+              <p style="margin: 0; font-size: 13px; color: #92400e;"><strong>Notes:</strong> ${h(invoice.notes)}</p>
             </div>
             ` : ''}
 
