@@ -1387,8 +1387,8 @@
 </div>
 
 <!-- ============ CHAT DETAIL MODAL ============ -->
-<div id="chatModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-8 overflow-y-auto" onclick="if(event.target===this)closeChatModal()">
-  <div class="bg-neutral-900 border border-neutral-800 rounded-2xl max-w-lg w-full fade-in my-4">
+<div id="chatModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-start justify-center p-2 sm:p-4 pt-4 sm:pt-8 overflow-y-auto" onclick="if(event.target===this)closeChatModal()">
+  <div class="bg-neutral-900 border border-neutral-800 rounded-2xl max-w-lg w-full fade-in my-2 sm:my-4 max-h-[95vh] overflow-y-auto">
     <div class="flex items-center justify-between px-6 py-4 border-b border-neutral-800">
       <div>
         <h2 class="text-white font-semibold text-sm" id="chatModal-title">Conversation</h2>
@@ -1410,8 +1410,8 @@
 </div>
 
 <!-- ============ QUOTE DETAIL MODAL ============ -->
-<div id="quoteModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-8 overflow-y-auto" onclick="if(event.target===this)closeModal()">
-  <div class="bg-neutral-900 border border-neutral-800 rounded-2xl max-w-3xl w-full fade-in my-4">
+<div id="quoteModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-start justify-center p-2 sm:p-4 pt-4 sm:pt-8 overflow-y-auto" onclick="if(event.target===this)closeModal()">
+  <div class="bg-neutral-900 border border-neutral-800 rounded-2xl max-w-3xl w-full fade-in my-2 sm:my-4 max-h-[95vh] overflow-y-auto">
 
     <!-- Modal Header with Quick Actions -->
     <div class="sticky top-0 bg-neutral-900 border-b border-neutral-800 px-6 py-4 rounded-t-2xl flex items-center justify-between z-10">
@@ -1666,8 +1666,8 @@
 </div>
 
 <!-- ============ ADD JOB MODAL ============ -->
-<div id="jobModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-start justify-center p-4 pt-8 overflow-y-auto" onclick="if(event.target===this)closeJobModal()">
-  <div class="bg-neutral-900 border border-neutral-800 rounded-2xl max-w-lg w-full fade-in my-4">
+<div id="jobModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-start justify-center p-2 sm:p-4 pt-4 sm:pt-8 overflow-y-auto" onclick="if(event.target===this)closeJobModal()">
+  <div class="bg-neutral-900 border border-neutral-800 rounded-2xl max-w-lg w-full fade-in my-2 sm:my-4 max-h-[95vh] overflow-y-auto">
     <div class="border-b border-neutral-800 px-6 py-4 rounded-t-2xl flex items-center justify-between">
       <h2 class="text-white font-semibold text-sm" id="jobModalTitle">Add Job</h2>
       <button onclick="closeJobModal()" class="text-neutral-500 hover:text-white transition-colors">
@@ -2377,7 +2377,7 @@
 
 <!-- ============ TOAST ============ -->
 <!-- ============ INVOICE PREVIEW/EDIT MODAL ============ -->
-<div id="invoiceModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[55] flex items-start justify-center p-4 pt-8 overflow-y-auto" onclick="if(event.target===this)closeInvoiceModal()">
+<div id="invoiceModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[55] flex items-start justify-center p-2 sm:p-4 pt-4 sm:pt-8 overflow-y-auto" onclick="if(event.target===this)closeInvoiceModal()">
   <div class="bg-neutral-900 border border-neutral-800 rounded-2xl max-w-2xl w-full fade-in my-4">
     <div class="sticky top-0 bg-neutral-900 border-b border-neutral-800 px-6 py-4 rounded-t-2xl flex items-center justify-between z-10">
       <div>
@@ -2525,21 +2525,34 @@ function showDashboard() {
 async function apiRequest(endpoint, opts) {
   opts = opts || {};
   var token = opts.token || state.token;
-  var res = await fetch(API_BASE + endpoint, {
-    method: opts.method || 'GET',
-    headers: {
-      'Authorization': 'Bearer ' + token,
-      'Content-Type': 'application/json'
-    },
-    body: opts.body ? JSON.stringify(opts.body) : undefined
-  });
+  var res;
+  try {
+    res = await fetch(API_BASE + endpoint, {
+      method: opts.method || 'GET',
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Content-Type': 'application/json'
+      },
+      body: opts.body ? JSON.stringify(opts.body) : undefined
+    });
+  } catch (e) {
+    throw new Error('Network error — check your internet connection');
+  }
 
   if (res.status === 401) {
     logout();
-    throw new Error('Unauthorized');
+    throw new Error('Session expired — please log in again');
   }
 
-  if (!res.ok) throw new Error('Request failed');
+  if (res.status === 429) {
+    throw new Error('Too many requests — please wait a moment');
+  }
+
+  if (!res.ok) {
+    var errorBody;
+    try { errorBody = await res.json(); } catch (e) { /* ignore */ }
+    throw new Error(errorBody?.error || 'Server error (' + res.status + ')');
+  }
   return res.json();
 }
 
@@ -3589,6 +3602,25 @@ function getCardBorder(status) {
 // ============================
 var currentTab = 'quotes';
 
+// Tab loading spinner helper
+function showTabLoading(tab) {
+  var container = document.getElementById('content-' + tab);
+  if (!container) return;
+  var existing = container.querySelector('.tab-loading-spinner');
+  if (existing) return; // already showing
+  var spinner = document.createElement('div');
+  spinner.className = 'tab-loading-spinner text-center py-12';
+  spinner.innerHTML = '<div class="inline-flex items-center gap-2 text-neutral-500 text-sm"><svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg> Loading...</div>';
+  container.prepend(spinner);
+}
+
+function hideTabLoading(tab) {
+  var container = document.getElementById('content-' + tab);
+  if (!container) return;
+  var spinner = container.querySelector('.tab-loading-spinner');
+  if (spinner) spinner.remove();
+}
+
 function switchTab(tab) {
   currentTab = tab;
   // Hide all tab content
@@ -3604,6 +3636,9 @@ function switchTab(tab) {
   // Show/hide CSV button (only on quotes tab)
   var csvBtn = document.getElementById('csvBtn');
   if (csvBtn) csvBtn.style.display = tab === 'quotes' ? '' : 'none';
+
+  // Show loading spinner for non-quotes tabs (quotes has its own)
+  if (tab !== 'quotes') showTabLoading(tab);
 
   // Load tab data
   if (tab === 'schedule') { loadTeamForDropdowns(); loadSchedule(); loadRecurring(); }
@@ -3722,6 +3757,7 @@ async function loadSchedule() {
       console.error('Failed to load week jobs:', e);
     }
   }
+  hideTabLoading('schedule');
 }
 
 // ============================
@@ -4621,6 +4657,7 @@ async function loadTeam() {
     var res = await apiRequest('/admin/team');
     if (!res.success) return;
 
+    hideTabLoading('team');
     schedState.team = res.data;
     var list = document.getElementById('teamList');
     var empty = document.getElementById('teamEmpty');
@@ -5002,6 +5039,7 @@ async function loadCustomers() {
     var res = await apiRequest('/admin/customers' + params);
     if (!res.success) return;
 
+    hideTabLoading('customers');
     custState.customers = res.data;
     custState.total = res.total;
 
@@ -5427,6 +5465,8 @@ async function sendBulkFollowUp() {
   var body = document.getElementById('bulk-body').value.trim();
   if (!subject || !body) { showToast('Please fill in subject and message', 'error'); return; }
 
+  if (!confirm('Send this email to ' + custState.bulkCustomerIds.length + ' customer(s)? This cannot be undone.')) return;
+
   document.getElementById('bulk-send-btn').textContent = 'Sending...';
   document.getElementById('bulk-send-btn').disabled = true;
 
@@ -5531,6 +5571,7 @@ async function loadInvoices() {
     var res = await apiRequest(url);
     if (!res.success) return;
 
+    hideTabLoading('invoices');
     invState.invoices = res.data || [];
     renderInvoiceStats();
     renderInvoiceList();
@@ -5919,6 +5960,7 @@ async function loadChats() {
     var res = await apiRequest(url);
     if (!res.success) return;
 
+    hideTabLoading('chats');
     chatState.conversations = res.data || [];
     renderChatStats();
     renderChatList();
@@ -6079,6 +6121,7 @@ async function loadSettings() {
   try {
     var res = await apiRequest('/admin/settings/pricing');
     if (res.success) {
+      hideTabLoading('settings');
       settingsState.config = res.data;
       settingsState.defaults = res.defaults;
       settingsState.source = res.source;
@@ -6087,6 +6130,7 @@ async function loadSettings() {
       loadPricingHistory();
     }
   } catch (e) {
+    hideTabLoading('settings');
     showToast('Failed to load settings', 'error');
   }
 }
@@ -6742,6 +6786,8 @@ async function executeCsvImport() {
     return obj;
   });
 
+  if (!confirm('Import ' + customers.length + ' customer(s)? This will create new customer records.')) return;
+
   var btn = document.getElementById('csv-import-btn');
   btn.disabled = true;
   btn.textContent = 'Importing...';
@@ -6831,6 +6877,7 @@ function finSwitchTab(tab) {
 // FINANCE LOAD ALL (on tab switch)
 // ============================
 async function finLoadAll() {
+  hideTabLoading('finance');
   await finLoadCategories();
   finLoadSummary();
   finLoadCashflow();
@@ -8370,6 +8417,22 @@ async function finRestoreRecord(table, id) {
     }
   } catch (e) { showToast('Failed to restore', 'error'); }
 }
+
+// ============================
+// GLOBAL KEYBOARD SHORTCUTS
+// ============================
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    // Close whichever modal is open (check in order of specificity)
+    if (!document.getElementById('quoteModal').classList.contains('hidden')) { closeModal(); return; }
+    if (!document.getElementById('jobModal').classList.contains('hidden')) { closeJobModal(); return; }
+    if (typeof closeTeamModal === 'function' && document.getElementById('teamModal') && !document.getElementById('teamModal').classList.contains('hidden')) { closeTeamModal(); return; }
+    if (typeof closeInvoiceModal === 'function' && document.getElementById('invoiceModal') && !document.getElementById('invoiceModal').classList.contains('hidden')) { closeInvoiceModal(); return; }
+    if (typeof closeChatModal === 'function' && document.getElementById('chatModal') && !document.getElementById('chatModal').classList.contains('hidden')) { closeChatModal(); return; }
+    if (typeof closeAddCustomerModal === 'function' && document.getElementById('addCustomerModal') && !document.getElementById('addCustomerModal').classList.contains('hidden')) { closeAddCustomerModal(); return; }
+    if (typeof closeImportCsvModal === 'function' && document.getElementById('importCsvModal') && !document.getElementById('importCsvModal').classList.contains('hidden')) { closeImportCsvModal(); return; }
+  }
+});
 
 // ============================
 // INIT

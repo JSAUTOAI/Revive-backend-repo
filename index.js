@@ -10,7 +10,7 @@ const { createClient } = require('@supabase/supabase-js');
 const rateLimit = require('express-rate-limit');
 
 // Import estimation services
-const { queueEstimation } = require('./services/estimationJob');
+const { queueEstimation, retryMissedEstimations } = require('./services/estimationJob');
 
 // Import email service
 const { sendConfirmationEmail } = require('./services/emailer');
@@ -41,6 +41,7 @@ const jobRoutes = require('./routes/jobs');
 const customerRoutes = require('./routes/customers');
 const invoiceRoutes = require('./routes/invoices');
 const financeRoutes = require('./routes/finance');
+const webhookRoutes = require('./routes/webhooks');
 
 // Create Express app
 const app = express();
@@ -62,6 +63,7 @@ invoiceRoutes.setSupabaseClient(supabase);
 financeRoutes.setSupabaseClient(supabase);
 pricingConfig.setSupabaseClient(supabase);
 followUpScheduler.setSupabaseClient(supabase);
+webhookRoutes.setSupabaseClient(supabase);
 
 // =======================
 // MIDDLEWARE
@@ -1333,6 +1335,12 @@ app.use((err, req, res, next) => {
 });
 
 // =======================
+// WEBHOOK ROUTES (public, signature-validated)
+// =======================
+app.post('/webhooks/resend', webhookRoutes.handleResendWebhook);
+app.post('/webhooks/twilio', webhookRoutes.handleTwilioWebhook);
+
+// =======================
 // START SERVER
 // =======================
 
@@ -1340,6 +1348,9 @@ app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
   console.log(`Serving static files from ${path.join(__dirname, 'public')}`);
   followUpScheduler.startScheduler();
+
+  // Retry any estimations that were missed due to server restarts
+  retryMissedEstimations(supabase);
 });
 
 // Optional export

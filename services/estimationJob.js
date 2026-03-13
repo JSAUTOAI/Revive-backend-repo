@@ -147,7 +147,52 @@ function queueEstimation(supabase, quoteId, quote) {
   console.log(`[Estimation Job] Queued for quote ${quoteId}`);
 }
 
+/**
+ * Retry any quotes that were submitted but never estimated
+ * (e.g. if server restarted mid-estimation)
+ * Runs once on server startup.
+ * @param {Object} supabaseClient - Supabase client
+ */
+async function retryMissedEstimations(supabaseClient) {
+  try {
+    // Find quotes created in the last 7 days that have no estimate
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    const { data: missedQuotes, error } = await supabaseClient
+      .from('quotes')
+      .select('*')
+      .is('estimated_at', null)
+      .is('deleted_at', null)
+      .gte('created_at', sevenDaysAgo)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('[Estimation Retry] Failed to query missed quotes:', error);
+      return;
+    }
+
+    if (!missedQuotes || missedQuotes.length === 0) {
+      console.log('[Estimation Retry] No missed estimations found');
+      return;
+    }
+
+    console.log(`[Estimation Retry] Found ${missedQuotes.length} quote(s) without estimates — processing...`);
+
+    for (const quote of missedQuotes) {
+      console.log(`[Estimation Retry] Processing quote ${quote.id} (submitted ${quote.created_at})`);
+      await processEstimation(supabaseClient, quote.id, quote);
+      // Small delay between retries to avoid hammering external services
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+
+    console.log('[Estimation Retry] All missed estimations processed');
+  } catch (error) {
+    console.error('[Estimation Retry] Error:', error.message);
+  }
+}
+
 module.exports = {
   processEstimation,
-  queueEstimation
+  queueEstimation,
+  retryMissedEstimations
 };
