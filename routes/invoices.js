@@ -286,7 +286,10 @@ async function sendInvoice(req, res) {
     }
 
     // Build view URL
-    const baseUrl = process.env.BASE_URL || `https://revive-backend-repo-production.up.railway.app`;
+    const baseUrl = process.env.BASE_URL;
+    if (!baseUrl) {
+      return res.status(500).json({ success: false, error: 'BASE_URL not configured' });
+    }
     const viewUrl = `${baseUrl}/invoice/${invoice.view_token}`;
 
     // Send email

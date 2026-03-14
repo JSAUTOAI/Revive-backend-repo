@@ -1,0 +1,1143 @@
+# Business Management Platform — Complete Build Guide
+
+We are building a production-grade automated lead, job, finance, and customer management system.
+This is an Express + Supabase backend deployed on Railway with an Aura-hosted or custom frontend.
+
+This file contains everything needed to recreate the full system from scratch.
+Build it phase by phase in the order listed. Do NOT skip phases.
+
+---
+
+## Tech Stack
+
+- **Runtime**: Node.js with Express 5
+- **Database**: Supabase (PostgreSQL + Storage)
+- **Hosting**: Railway (auto-deploys on push to main)
+- **Email**: Resend API
+- **WhatsApp**: Twilio
+- **AI Chat**: Anthropic Claude API (Haiku for chat, Sonnet for receipt OCR)
+- **Spreadsheets**: Google Sheets API
+- **CSV Export**: json2csv
+- **Frontend**: Aura-hosted or custom HTML (separate from this repo)
+
+### Dependencies (package.json)
+
+```
+@anthropic-ai/sdk ^0.77.0
+@supabase/supabase-js ^2.95.3
+dotenv ^17.2.4
+express ^5.2.1
+googleapis ^171.4.0
+json2csv ^6.0.0-alpha.2
+resend ^6.9.2
+twilio ^5.12.1
+```
+
+---
+
+## Project Structure
+
+```
+/config
+  pricing.js              — Default pricing rules (file fallback, overridable via DB)
+
+/middleware
+  auth.js                 — Bearer token auth middleware (ADMIN_TOKEN env var)
+
+/routes
+  admin.js                — Quote CRUD, pricing settings, attachments, CSV export
+  jobs.js                 — Job scheduling, recurring jobs, team members
+  customers.js            — Customer profiles, bulk ops, follow-ups, analytics, CSV import
+  invoices.js             — Invoice CRUD, email sending, public view
+  finance.js              — Expenses, wages, mileage, recurring costs, income, reports, receipt scanning, capital assets, tax savings, audit log
+  webhooks.js             — Resend email + Twilio WhatsApp webhook handlers with signature verification
+
+/services
+  emailer.js              — All email sending via Resend (6 email types)
+  whatsapp.js             — All WhatsApp messaging via Twilio (4 message types)
+  chatbot.js              — AI chat assistant via Claude API with tool-based lead capture
+  estimator.js            — Rule-based price estimation engine
+  scorer.js               — Lead qualification and scoring algorithm
+  estimationJob.js        — Async orchestration: estimate + score + notify
+  pricingConfig.js        — Pricing config loader with DB override + file fallback + cache
+  googleSheets.js         — Quote sync to Google Sheets
+  followUpScheduler.js    — Automated 2-step follow-up sequence via node-cron (hourly)
+
+/migrations
+  002_add_estimation_and_tracking.sql
+  004_add_customer_acceptance.sql
+  005_create_customers_table.sql
+  006_create_finance_tables.sql
+  007_finance_audit_trail.sql
+  008_add_follow_up_step.sql
+  009_add_deleted_at.sql
+
+/public
+  admin.html              — Single-page admin dashboard (8 tabs, dark theme, Tailwind CSS)
+  chat-widget.js          — Embeddable chat widget for customer websites
+  index.html              — Placeholder landing page
+  my-schedule.html        — Team member schedule view
+  logo.png                — Business logo
+
+index.js                  — Main Express server, all route registration, quote submission,
+                             chat endpoint, acceptance pages
+```
+
+---
+
+## Environment Variables (27 total)
+
+### Core
+```
+PORT=3000
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-key
+ADMIN_TOKEN=random-64-char-hex-string
+BASE_URL=https://your-app.up.railway.app
+```
+
+### Email (Resend)
+```
+RESEND_API_KEY=re_your_key
+RESEND_WEBHOOK_SECRET=whsec_your_secret
+FROM_EMAIL=onboarding@resend.dev
+ADMIN_EMAIL=admin@yourbusiness.com
+```
+
+### WhatsApp (Twilio)
+```
+TWILIO_ACCOUNT_SID=ACxxxxxxxx
+TWILIO_AUTH_TOKEN=your-token
+TWILIO_WHATSAPP_NUMBER=+44xxxxxxxxxx
+ADMIN_PHONE=+44xxxxxxxxxx
+```
+
+### AI (Anthropic)
+```
+ANTHROPIC_API_KEY=sk-ant-your-key
+```
+
+### Google Sheets
+```
+GOOGLE_SPREADSHEET_ID=your-sheet-id
+GOOGLE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
+GOOGLE_CREDENTIALS_PATH=./credentials/google-service-account.json
+```
+
+### Business Identity
+```
+BUSINESS_NAME=Your Business Name
+BUSINESS_ADDRESS=123 High Street
+BUSINESS_PHONE=07700000000
+BUSINESS_EMAIL=hello@yourbusiness.co.uk
+BUSINESS_BANK_NAME=Your Bank
+BUSINESS_ACCOUNT_NAME=MR YOUR NAME
+BUSINESS_SORT_CODE=00-00-00
+BUSINESS_ACCOUNT_NUMBER=00000000
+BUSINESS_LOGO_URL=/logo.png
+```
+
+---
+
+## Database Schema
+
+All tables use UUID primary keys with gen_random_uuid(). All timestamps are TIMESTAMPTZ.
+Run migrations in Supabase SQL Editor in numerical order.
+
+### Table: quotes (created manually in Supabase, then extended by migrations)
+
+Core columns:
+- id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+- name TEXT NOT NULL
+- email TEXT NOT NULL
+- phone TEXT NOT NULL
+- address_line1 TEXT NOT NULL
+- postcode TEXT NOT NULL
+- preferred_contact TEXT
+- best_time TEXT
+- reminders_ok BOOLEAN
+- form_version TEXT
+- services TEXT[] (array of service slugs, with GIN index)
+- answers JSONB (flexible form data)
+- status TEXT DEFAULT 'new' (new|contacted|quoted|booked|completed|cancelled)
+- source TEXT (form|chat)
+- created_at TIMESTAMPTZ DEFAULT now()
+
+Added by migration 002 — Estimation & Lead Scoring:
+- estimated_value_min NUMERIC(10,2)
+- estimated_value_max NUMERIC(10,2)
+- lead_score INTEGER (0-100)
+- qualification_status TEXT (hot|warm|cold|unqualified)
+- conversion_likelihood NUMERIC(3,2) (0.00-1.00)
+- estimation_engine_version TEXT
+- estimated_at TIMESTAMPTZ
+
+Added by migration 002 — Communication Tracking:
+- confirmation_email_sent_at TIMESTAMPTZ
+- estimate_email_sent_at TIMESTAMPTZ
+- last_contact_at TIMESTAMPTZ
+- next_follow_up_at TIMESTAMPTZ
+- whatsapp_sent_at TIMESTAMPTZ
+
+Added by migration 002 — Admin Workflow:
+- assigned_to TEXT
+- admin_notes TEXT
+- internal_priority TEXT (high|medium|low)
+
+Added by migration 002 — Conversion Tracking:
+- quoted_at TIMESTAMPTZ
+- booked_at TIMESTAMPTZ
+- completed_at TIMESTAMPTZ
+- final_value NUMERIC(10,2)
+
+Added by migration 004 — Customer Acceptance:
+- customer_accepted_estimate BOOLEAN DEFAULT false
+- customer_accepted_at TIMESTAMPTZ
+- customer_response TEXT (accepted|declined|has_questions)
+
+Added by migration 005:
+- customer_id UUID REFERENCES customers(id)
+
+Indexes on quotes:
+- idx_quotes_qualification_status ON (qualification_status)
+- idx_quotes_lead_score ON (lead_score DESC NULLS LAST)
+- idx_quotes_conversion_likelihood ON (conversion_likelihood DESC NULLS LAST)
+- idx_quotes_next_follow_up ON (next_follow_up_at) WHERE next_follow_up_at IS NOT NULL
+- idx_quotes_internal_priority ON (internal_priority) WHERE internal_priority IS NOT NULL
+- idx_quotes_quoted_at ON (quoted_at) WHERE quoted_at IS NOT NULL
+- idx_quotes_booked_at ON (booked_at) WHERE booked_at IS NOT NULL
+- idx_quotes_estimated_value_max ON (estimated_value_max DESC NULLS LAST)
+- idx_quotes_customer_accepted ON (customer_accepted_estimate, customer_accepted_at DESC) WHERE customer_accepted_estimate = true
+- idx_quotes_customer ON (customer_id)
+- GIN index on services array
+
+### Table: customers (migration 005)
+
+- id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+- name TEXT NOT NULL
+- email TEXT
+- phone TEXT
+- address TEXT
+- postcode TEXT
+- tags TEXT[] DEFAULT '{}'
+- admin_notes TEXT
+- total_spent NUMERIC(10,2) DEFAULT 0
+- total_jobs INTEGER DEFAULT 0
+- last_job_date DATE
+- first_contact_date TIMESTAMPTZ DEFAULT now()
+- last_followup_sent_at TIMESTAMPTZ
+- created_at TIMESTAMPTZ DEFAULT now()
+- updated_at TIMESTAMPTZ DEFAULT now()
+
+Indexes: email, phone, postcode, last_job_date
+Trigger: auto-update updated_at on modification
+
+### Table: jobs (created manually)
+
+- id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+- quote_id UUID
+- customer_id UUID REFERENCES customers(id)
+- customer_name TEXT
+- customer_phone TEXT
+- customer_email TEXT
+- address TEXT
+- postcode TEXT
+- service TEXT
+- assigned_to TEXT
+- scheduled_date DATE
+- time_slot TEXT (morning|afternoon|evening)
+- estimated_duration INTEGER
+- job_value NUMERIC(10,2)
+- status TEXT (pending|in_progress|completed|cancelled)
+- payment_status TEXT
+- payment_method TEXT
+- amount_paid NUMERIC(10,2)
+- notes TEXT
+- recurring_job_id UUID
+- created_at TIMESTAMPTZ DEFAULT now()
+
+### Table: recurring_jobs (created manually)
+
+- id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+- customer_id UUID REFERENCES customers(id)
+- service TEXT
+- frequency TEXT
+- next_scheduled_date DATE
+- notes TEXT
+
+### Table: team_members (created manually)
+
+- id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+- name TEXT
+- phone TEXT
+- email TEXT
+- notes TEXT
+- uuid UUID DEFAULT gen_random_uuid() (public schedule access token)
+
+### Table: invoices (created manually)
+
+- id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+- invoice_number TEXT (INV-0001 format, auto-incremented)
+- job_id UUID
+- customer_id UUID
+- customer_name TEXT
+- customer_email TEXT
+- customer_phone TEXT
+- address TEXT
+- postcode TEXT
+- service TEXT
+- line_items JSONB (array of {description, quantity, unit_price, total})
+- subtotal NUMERIC(10,2)
+- vat_rate NUMERIC(3,2)
+- vat_amount NUMERIC(10,2)
+- total NUMERIC(10,2)
+- payment_terms TEXT
+- due_date DATE
+- paid_at TIMESTAMPTZ
+- status TEXT DEFAULT 'draft' (draft|sent|paid)
+- notes TEXT
+- view_token UUID DEFAULT gen_random_uuid() (for public URL access)
+- created_at TIMESTAMPTZ DEFAULT now()
+- updated_at TIMESTAMPTZ DEFAULT now()
+
+### Table: quote_activity (created manually)
+
+- id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+- quote_id UUID
+- action_type TEXT (status_change|price_update|priority_change|assignment|note|attachment)
+- description TEXT
+- created_at TIMESTAMPTZ DEFAULT now()
+
+### Table: chat_conversations (created manually)
+
+- id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+- session_id UUID
+- ip_address TEXT
+- messages JSONB (array of {role, content, timestamp})
+- message_count INTEGER
+- lead_captured BOOLEAN DEFAULT false
+- quote_id UUID
+- customer_name TEXT
+- customer_email TEXT
+- customer_phone TEXT
+- customer_postcode TEXT
+- first_message_at TIMESTAMPTZ
+- last_message_at TIMESTAMPTZ
+- updated_at TIMESTAMPTZ DEFAULT now()
+
+### Table: settings (created manually)
+
+- id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+- key TEXT UNIQUE
+- value JSONB
+- updated_at TIMESTAMPTZ DEFAULT now()
+
+Known keys stored:
+- 'pricing_config' — contains SERVICE_PRICING, MODIFIERS, MULTI_SERVICE_DISCOUNT, LEAD_SCORING, QUALIFICATION_THRESHOLDS, CONVERSION_FACTORS
+
+### Table: pricing_history (created manually)
+
+- id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+- changed_section TEXT
+- old_value JSONB
+- new_value JSONB
+- description TEXT
+- created_at TIMESTAMPTZ DEFAULT now()
+
+### Table: expense_categories (migration 006)
+
+- id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+- name TEXT NOT NULL
+- slug TEXT NOT NULL UNIQUE
+- colour TEXT DEFAULT '#737373'
+- is_tax_deductible BOOLEAN DEFAULT true
+- hmrc_category TEXT
+- sort_order INTEGER DEFAULT 0
+- is_active BOOLEAN DEFAULT true
+- created_at TIMESTAMPTZ DEFAULT now()
+
+Pre-seed 20 categories: materials, cleaning-solutions, fuel, vehicle-costs, equipment-purchase, equipment-hire, tools, insurance, marketing, subscriptions, uniforms-ppe, phone-internet, training, parking-tolls, bank-charges, accountant, office, licensing, personal, other
+
+### Table: expenses (migration 006)
+
+- id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+- date DATE NOT NULL DEFAULT CURRENT_DATE
+- description TEXT NOT NULL
+- amount NUMERIC(10,2) NOT NULL
+- vat_amount NUMERIC(10,2) DEFAULT 0
+- net_amount NUMERIC(10,2) — auto-computed by trigger
+- category_id UUID REFERENCES expense_categories(id)
+- payment_method TEXT DEFAULT 'bank_transfer'
+- is_business BOOLEAN DEFAULT true
+- job_id UUID
+- supplier TEXT
+- reference TEXT
+- receipt_path TEXT
+- receipt_url TEXT
+- recurring_expense_id UUID
+- notes TEXT
+- created_at TIMESTAMPTZ DEFAULT now()
+- updated_at TIMESTAMPTZ DEFAULT now()
+
+Indexes: date DESC, category_id, is_business, payment_method
+Trigger: auto-compute net_amount = amount - vat_amount on INSERT or UPDATE
+
+### Table: wage_payments (migration 006)
+
+- id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+- team_member_id UUID
+- team_member_name TEXT NOT NULL
+- date DATE NOT NULL DEFAULT CURRENT_DATE
+- amount NUMERIC(10,2) NOT NULL
+- payment_type TEXT DEFAULT 'weekly_wage'
+- payment_method TEXT DEFAULT 'bank_transfer'
+- job_id UUID
+- period_start DATE
+- period_end DATE
+- notes TEXT
+- created_at TIMESTAMPTZ DEFAULT now()
+- updated_at TIMESTAMPTZ DEFAULT now()
+
+Indexes: team_member_id, date DESC
+
+### Table: mileage_log (migration 006)
+
+- id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+- date DATE NOT NULL DEFAULT CURRENT_DATE
+- from_location TEXT NOT NULL
+- to_location TEXT NOT NULL
+- miles NUMERIC(6,1) NOT NULL
+- purpose TEXT
+- job_id UUID
+- rate_per_mile NUMERIC(4,2) DEFAULT 0.45
+- is_return BOOLEAN DEFAULT false
+- calculated_amount NUMERIC(10,2) — auto-computed by trigger
+- notes TEXT
+- created_at TIMESTAMPTZ DEFAULT now()
+
+Index: date DESC
+Trigger: auto-compute calculated_amount = miles * rate_per_mile * (2 if is_return, else 1)
+
+### Table: recurring_expenses (migration 006)
+
+- id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+- description TEXT NOT NULL
+- amount NUMERIC(10,2) NOT NULL
+- vat_amount NUMERIC(10,2) DEFAULT 0
+- category_id UUID REFERENCES expense_categories(id)
+- payment_method TEXT DEFAULT 'bank_transfer'
+- is_business BOOLEAN DEFAULT true
+- supplier TEXT
+- frequency TEXT NOT NULL
+- day_of_month INTEGER
+- next_due_date DATE NOT NULL
+- start_date DATE NOT NULL DEFAULT CURRENT_DATE
+- end_date DATE
+- is_active BOOLEAN DEFAULT true
+- last_generated_date DATE
+- notes TEXT
+- created_at TIMESTAMPTZ DEFAULT now()
+- updated_at TIMESTAMPTZ DEFAULT now()
+
+### Table: income_entries (migration 006)
+
+- id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+- date DATE NOT NULL DEFAULT CURRENT_DATE
+- description TEXT NOT NULL
+- amount NUMERIC(10,2) NOT NULL
+- source TEXT DEFAULT 'cash_job'
+- invoice_id UUID
+- job_id UUID
+- payment_method TEXT DEFAULT 'cash'
+- notes TEXT
+- created_at TIMESTAMPTZ DEFAULT now()
+
+Index: date DESC
+
+### Table: finance_audit_log (migration 007)
+
+- id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+- table_name TEXT NOT NULL
+- record_id UUID NOT NULL
+- action TEXT NOT NULL CHECK (action IN ('create', 'update', 'delete', 'restore'))
+- changed_fields JSONB
+- old_values JSONB
+- new_values JSONB
+- created_at TIMESTAMPTZ DEFAULT now()
+
+Indexes: table_name, record_id, created_at DESC, action
+
+### Table: capital_assets (migration 007)
+
+- id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+- description TEXT NOT NULL
+- purchase_date DATE NOT NULL
+- purchase_price NUMERIC(10,2) NOT NULL
+- category TEXT DEFAULT 'plant_machinery' CHECK (category IN ('plant_machinery', 'vehicle', 'office_equipment', 'tools'))
+- aia_claimed BOOLEAN DEFAULT true
+- disposal_date DATE
+- disposal_value NUMERIC(10,2)
+- expense_id UUID REFERENCES expenses(id)
+- notes TEXT
+- created_at TIMESTAMPTZ DEFAULT now()
+- deleted_at TIMESTAMPTZ
+
+Indexes: purchase_date DESC, deleted_at partial
+
+### Table: tax_savings (migration 007)
+
+- id UUID PRIMARY KEY DEFAULT gen_random_uuid()
+- date DATE NOT NULL DEFAULT CURRENT_DATE
+- amount NUMERIC(10,2) NOT NULL
+- notes TEXT
+- created_at TIMESTAMPTZ DEFAULT now()
+- deleted_at TIMESTAMPTZ
+
+Index: date DESC
+
+### Additional columns added by later migrations
+
+Added by migration 007 — Soft-delete on finance tables:
+- expenses: deleted_at TIMESTAMPTZ, deleted_by TEXT
+- wage_payments: deleted_at TIMESTAMPTZ, deleted_by TEXT
+- mileage_log: deleted_at TIMESTAMPTZ, deleted_by TEXT
+- income_entries: deleted_at TIMESTAMPTZ, deleted_by TEXT
+- recurring_expenses: deleted_at TIMESTAMPTZ, deleted_by TEXT
+Partial indexes on deleted_at WHERE deleted_at IS NULL for each table.
+
+Added by migration 008 — Follow-up tracking:
+- quotes: follow_up_step INTEGER DEFAULT 0 (0=none, 1=step 1 sent, 2=step 2 sent)
+Index: idx_quotes_follow_up_step
+
+Added by migration 009 — Quote soft-delete:
+- quotes: deleted_at TIMESTAMPTZ
+Partial index: idx_quotes_deleted_at WHERE deleted_at IS NULL
+
+### Supabase Storage Buckets
+
+1. **quote-attachments** — Public bucket, 10MB max, for quote file attachments. Path: {quoteId}/{timestamp}-{filename}
+2. **expense-receipts** — Public bucket, 10MB max, for receipt images. Path: {timestamp}-{filename}
+
+---
+
+## API Routes (75+ endpoints)
+
+### Public Routes (no auth)
+
+```
+GET    /health                                  — Health check (returns { status, timestamp })
+POST   /api/quote                              — Submit quote form
+POST   /api/chat                               — Send chat message (rate limited)
+GET    /api/chat/history?sessionId=             — Restore chat history
+GET    /accept-estimate/:quoteId                — Public acceptance page (HTML)
+POST   /confirm-acceptance/:quoteId             — Process acceptance
+GET    /invoice/:token                          — Public invoice view (HTML)
+GET    /api/my-schedule/:memberId               — Team member schedule (no auth)
+PATCH  /api/my-schedule/:memberId/jobs/:jobId   — Team member updates job
+```
+
+Webhooks (signature-verified, no bearer auth):
+```
+POST   /webhooks/resend                        — Email events (delivered, opened, clicked, bounced)
+POST   /webhooks/twilio                        — WhatsApp status (sent, delivered, read, failed)
+```
+
+### Admin Routes (all require Authorization: Bearer {ADMIN_TOKEN})
+
+Quote Management:
+```
+GET    /admin/quotes                            — List with filters (status, service, sort, pagination)
+GET    /admin/quotes/:id                        — Single quote detail
+PATCH  /admin/quotes/:id                        — Update quote (auto-logs activity)
+PATCH  /admin/quotes/:id/status                 — Update status
+PATCH  /admin/quotes/:id/notes                  — Update admin notes
+GET    /admin/quotes/:id/activity               — Activity log
+POST   /admin/quotes/:id/activity               — Add manual activity entry
+POST   /admin/quotes/:id/attachments            — Upload file (base64, max 10MB)
+GET    /admin/quotes/:id/attachments            — List attachments
+DELETE /admin/quotes/:id/attachments/:filename   — Delete attachment
+GET    /admin/export                            — CSV export of all quotes
+```
+
+Chat Management:
+```
+GET    /admin/chats                             — List all chat conversations
+```
+
+Job Scheduling:
+```
+GET    /admin/jobs                              — List with filters (date, assigned_to, status)
+POST   /admin/jobs                              — Create job (auto-resolves customer_id)
+PATCH  /admin/jobs/:id                          — Update job
+DELETE /admin/jobs/:id                          — Delete job
+GET    /admin/jobs/availability                 — Job count per day for 6 weeks
+GET    /admin/jobs/week/:date                   — All jobs Mon-Sun of given week
+POST   /admin/jobs/:id/notify-reschedule        — Send reschedule notification
+```
+
+Recurring Jobs:
+```
+GET    /admin/recurring                         — List recurring patterns
+POST   /admin/recurring                         — Create recurring pattern
+PATCH  /admin/recurring/:id                     — Update
+POST   /admin/recurring/:id/generate            — Generate jobs for next 4 weeks
+```
+
+Team Members:
+```
+GET    /admin/team                              — List team members
+POST   /admin/team                              — Create team member
+PATCH  /admin/team/:id                          — Update team member
+```
+
+Customer Management:
+```
+GET    /admin/customers                         — List with search/tag/sort
+GET    /admin/customers/search?q=               — Typeahead (max 10)
+GET    /admin/customers/stats                   — Totals, active, revenue, avg spend
+GET    /admin/customers/analytics               — Conversion funnel metrics
+GET    /admin/customers/bulk-preview            — Preview bulk follow-up targets
+GET    /admin/customers/:id                     — Full profile with history
+POST   /admin/customers                         — Create (duplicate checking)
+PATCH  /admin/customers/:id                     — Update
+POST   /admin/customers/:id/followup            — Send follow-up email
+POST   /admin/customers/bulk-followup           — Bulk follow-up ({name} template var)
+POST   /admin/customers/import                  — CSV import (max 1000, dedup)
+```
+
+Invoicing:
+```
+GET    /admin/invoices                          — List with status/customer filters
+POST   /admin/jobs/:id/invoice                  — Create invoice from completed job
+GET    /admin/invoices/:id                      — Get invoice detail
+GET    /admin/jobs/:id/invoice                  — Check if job has invoice
+PATCH  /admin/invoices/:id                      — Update (line items, VAT, status)
+POST   /admin/invoices/:id/send                 — Send invoice via email
+```
+
+Finance — Expense Categories:
+```
+GET    /admin/finance/categories                — List active (?all=true for inactive)
+POST   /admin/finance/categories                — Create category
+PATCH  /admin/finance/categories/:id            — Update category
+```
+
+Finance — Expenses:
+```
+GET    /admin/finance/expenses                  — List with filters
+POST   /admin/finance/expenses                  — Create expense
+PATCH  /admin/finance/expenses/:id              — Update
+DELETE /admin/finance/expenses/:id              — Delete
+POST   /admin/finance/expenses/scan-receipt     — Upload receipt, AI extracts data
+```
+
+Finance — Wages:
+```
+GET    /admin/finance/wages                     — List with filters
+POST   /admin/finance/wages                     — Create wage payment
+PATCH  /admin/finance/wages/:id                 — Update
+DELETE /admin/finance/wages/:id                 — Delete
+```
+
+Finance — Mileage:
+```
+GET    /admin/finance/mileage                   — List mileage entries
+POST   /admin/finance/mileage                   — Create (auto-calc amount)
+PATCH  /admin/finance/mileage/:id               — Update
+DELETE /admin/finance/mileage/:id               — Delete
+```
+
+Finance — Recurring Expenses:
+```
+GET    /admin/finance/recurring                 — List recurring expenses
+POST   /admin/finance/recurring                 — Create
+PATCH  /admin/finance/recurring/:id             — Update
+DELETE /admin/finance/recurring/:id             — Delete
+POST   /admin/finance/recurring/:id/generate    — Generate for next X months
+```
+
+Finance — Income:
+```
+GET    /admin/finance/income                    — List income entries
+POST   /admin/finance/income                    — Create
+DELETE /admin/finance/income/:id                — Delete
+```
+
+Finance — Capital Assets:
+```
+GET    /admin/finance/assets                    — List capital assets
+POST   /admin/finance/assets                    — Create asset
+PATCH  /admin/finance/assets/:id                — Update asset
+DELETE /admin/finance/assets/:id                — Soft delete asset
+```
+
+Finance — Tax Savings:
+```
+GET    /admin/finance/tax-savings               — List tax savings entries
+POST   /admin/finance/tax-savings               — Create tax saving
+DELETE /admin/finance/tax-savings/:id            — Delete tax saving
+```
+
+Finance — Reports:
+```
+GET    /admin/finance/summary                   — Profit & loss
+GET    /admin/finance/cashflow                  — Month-by-month cash position
+GET    /admin/finance/category-breakdown        — Expenses by category
+GET    /admin/finance/tax-summary               — Tax deductible vs personal, VAT, HMRC
+GET    /admin/finance/tax-forecast              — Tax forecast with AIA, allowances, savings
+GET    /admin/finance/tax-report                — Full tax year report (April 6 start)
+GET    /admin/finance/audit-log                 — Finance change history (filterable by table, action, date)
+GET    /admin/finance/export                    — Full CSV export
+```
+
+Pricing Settings:
+```
+GET    /admin/settings/pricing                  — Active config + file defaults
+PUT    /admin/settings/pricing                  — Update pricing config
+POST   /admin/settings/pricing/reset            — Reset to file defaults
+POST   /admin/settings/pricing/test-estimate    — Preview estimate with mock data
+GET    /admin/settings/pricing/history           — Change audit log
+```
+
+---
+
+## Services — How They Work
+
+### services/emailer.js — Email via Resend
+
+6 email types, all HTML formatted with brand colour accent:
+1. **sendConfirmationEmail(quote)** — Immediate after quote submit. "Thank you, we're calculating your estimate."
+2. **sendEstimateEmail(quote)** — After estimation completes. Shows price range + accept button linking to /accept-estimate/:id
+3. **sendAdminAlert(quote, isAcceptance)** — For hot leads (score >= 80) or accepted quotes. Sent to ADMIN_EMAIL.
+4. **sendInvoiceEmail(invoice, viewUrl)** — Invoice with payment details + view link
+5. **sendFollowUpEmail(customer, subject, body)** — Custom follow-up messages. Supports {name} template variable.
+6. **sendRescheduleEmail(job, formattedDate, timeDisplay)** — Job reschedule notification
+
+All emails read business details from BUSINESS_* env vars. Brand colour used in email headers.
+
+### services/whatsapp.js — WhatsApp via Twilio
+
+Uses Twilio Content Templates (v3 format with variable substitution):
+1. **sendConfirmationWhatsApp(quote)** — Template with name, services, location
+2. **sendEstimateWhatsApp(quote)** — Template with name, price range, accept URL
+3. **sendAdminAlertWhatsApp(quote, isAcceptance)** — Hot lead or acceptance notification to ADMIN_PHONE
+4. **sendRescheduleWhatsApp(job, formattedDate, timeDisplay)** — Reschedule notice
+
+Helpers: formatPhoneNumber() converts to whatsapp: format. capitalizeService() maps slugs to display names.
+
+### services/chatbot.js — AI Chat via Claude API
+
+Model: claude-haiku-4-5-20251001 (fast + cheap for chat)
+
+System prompt includes:
+- Business name, location, service area
+- Full service list with descriptions and pricing ranges (loaded live from pricingConfig)
+- FAQs about services, methods, safety
+- Seasonal tips and cross-selling rules
+- Behaviour rules (friendly, concise, British English)
+
+Two tools defined for Claude to call:
+1. **capture_lead** — Minimum: name + contact method + services. Triggers quote creation in DB.
+2. **prepare_quote_form** — Preferred method. Gathers info then pre-fills the quote form for customer to submit themselves.
+
+Core function: chat(messages, onLeadCapture) returns { response, leadCaptured, formData }
+
+### services/estimator.js — Price Estimation
+
+calculateEstimate(quote):
+1. Loads pricing config from DB (or file fallback via pricingConfig.js)
+2. For each service in quote, looks up base price by size (small/medium/large)
+3. determineSize() derives size from form answers (property type, rough size)
+4. Applies modifiers: firstTimeCleaning (1.2x), heavilySoiled (1.15x), difficultAccess (1.25x), heightWork (1.3x), urgent (1.15x)
+5. Applies multi-service discount (3+ services = 10% off)
+6. Rounds to nearest 5
+7. Returns { min, max, version, confidence }
+
+Also exports calculateTestEstimate(mockQuote, config) for admin preview in Settings tab.
+
+### services/scorer.js — Lead Scoring
+
+calculateLeadScore(quote, estimate):
+- Base: 50 points
+- High value job (>400): +20, Very high (>700): +30
+- 2 services: +15, 3+ services: +25
+- Reminders opt-in: +10, Phone preferred: +10, Email preferred: +5
+- Commercial property: +15, Urgent language in notes: +10
+- Cap at 100
+
+Qualification: hot (>=75, 80% conversion), warm (>=50, 50%), cold (>=30, 25%), unqualified (<30, 10%)
+shouldAlertAdmin(score) returns true for score >= 85
+
+### services/estimationJob.js — Async Orchestration
+
+queueEstimation(supabase, quoteId, quote) — Non-blocking setTimeout(1000ms)
+
+processEstimation() flow:
+1. Calculate estimate (estimator.js)
+2. Calculate lead score (scorer.js)
+3. Update quotes table with all estimation results
+4. Update Google Sheets row (non-blocking)
+5. Send estimate via WhatsApp (record whatsapp_sent_at)
+6. Send estimate via email (record estimate_email_sent_at)
+7. If hot lead: send admin alert via email + WhatsApp
+
+### services/pricingConfig.js — Config Management
+
+getPricingConfig() — 5-min in-memory cache. Tries DB settings table first (key='pricing_config'), merges with file defaults to ensure all keys exist, falls back to file if DB unavailable.
+savePricingConfig(config) — Upserts to settings table
+resetPricingConfig() — Reverts DB to file defaults
+logPricingChange(section, old, new, reason) — Audit trail to pricing_history table
+getPricingHistory(limit) — Returns change log
+getFileDefaults() — Returns raw config/pricing.js values
+
+### services/googleSheets.js — Spreadsheet Sync
+
+initializeSheets() — Auth via service account (GOOGLE_SERVICE_ACCOUNT_JSON env var or GOOGLE_CREDENTIALS_PATH file)
+syncQuoteToSheets(quote) — Appends quote as row to configured Sheet. Non-blocking, errors logged not thrown.
+updateQuoteInSheets(quoteId, updates) — Updates existing row (called after estimation, acceptance)
+
+### services/followUpScheduler.js — Automated Follow-Ups
+
+Automated 2-step follow-up sequence for leads who haven't responded to estimates.
+
+- Step 1 (Day 3): Friendly check-in email — "Still interested? Your quote is waiting"
+- Step 2 (Day 7): Final follow-up email — "Last chance" style, then stops contacting
+
+Runs hourly via node-cron (`0 * * * *`). Queries quotes where:
+- status = 'new' (not manually handled)
+- estimated_at is set (estimation completed)
+- customer_accepted_estimate is false/null
+- qualification_status != 'unqualified'
+- follow_up_step < 2 (hasn't completed the sequence)
+
+Updates follow_up_step and last_contact_at after each send.
+Initialised in index.js: setSupabaseClient() on startup, startScheduler() on server listen.
+
+### routes/webhooks.js — Email & WhatsApp Event Tracking
+
+Signature-verified webhook handlers:
+
+**POST /webhooks/resend** — Resend email events
+- Verifies HMAC-SHA256 signature (svix format) using RESEND_WEBHOOK_SECRET
+- Handles: delivered, opened, clicked, bounced, complained
+- Logs events to quote_activity table
+- Updates last_contact_at on delivery
+
+**POST /webhooks/twilio** — Twilio WhatsApp status
+- Verifies Twilio signature (HMAC-SHA1) using TWILIO_AUTH_TOKEN
+- Handles: queued, sent, delivered, read, failed, undelivered
+- Logs events to quote_activity table
+
+Both use timing-safe comparison for signature verification.
+
+---
+
+## Default Pricing Configuration (config/pricing.js)
+
+This file provides fallback pricing rules. These are overridable via the admin Settings tab (stored in DB).
+
+```
+SERVICE_PRICING:
+  roof:      small [150, 250], medium [250, 450], large [450, 750]
+  driveway:  small [100, 180], medium [180, 300], large [300, 500]
+  gutter:    small [80, 120],  medium [120, 180], large [180, 280]
+  softwash:  small [200, 350], medium [350, 600], large [600, 1000]
+  render:    small [250, 400], medium [400, 700], large [700, 1200]
+  window:    small [60, 100],  medium [100, 160], large [160, 250]
+  solar:     small [100, 150], medium [150, 250], large [250, 400]
+  other:     small [100, 200], medium [200, 400], large [400, 700]
+
+MODIFIERS:
+  firstTimeCleaning: 1.2  (add 20%)
+  heavilySoiled: 1.15     (add 15%)
+  difficultAccess: 1.25   (add 25%)
+  heightWork: 1.3         (add 30%)
+  multipleServices: 0.9   (10% discount)
+  urgent: 1.15            (add 15%)
+
+MULTI_SERVICE_DISCOUNT:
+  threshold: 3 (applies when 3+ services selected)
+  discount: 0.9 (10% off total)
+
+LEAD_SCORING:
+  baseScore: 50
+  highValueThreshold: 400,    highValueBonus: 20
+  veryHighValueThreshold: 700, veryHighValueBonus: 30
+  multipleServicesBonus: 15,  manyServicesBonus: 25
+  remindersOptIn: 10, phonePreferred: 10, emailPreferred: 5
+  commercialProperty: 15, urgentLanguage: 10
+
+QUALIFICATION_THRESHOLDS:
+  hot: 75, warm: 50, cold: 30
+
+CONVERSION_FACTORS:
+  hotLead: 0.8, warmLead: 0.5, coldLead: 0.25, unqualified: 0.1
+```
+
+These services, prices, and scoring rules should be adapted per business type.
+
+---
+
+## Admin Dashboard (public/admin.html)
+
+Single-page app. No framework, no build step. Vanilla JavaScript.
+Dark theme (black/neutral-900 background). Tailwind CSS via CDN. Poppins font.
+Brand colour: lime-green (#a3e635 / Tailwind lime-400).
+
+Login: Bearer token input stored in localStorage. Validated against /admin/quotes endpoint.
+
+### 8 Tabs:
+
+1. **QUOTES** — List with filters (status dropdown, service filter, date range). Click row to expand detail panel. Update status (new/contacted/quoted/booked/completed/cancelled), priority, notes. Activity log timeline. File attachments (upload/view/delete via Supabase Storage). Customer acceptance tracking. WhatsApp/email links.
+
+2. **SCHEDULE** — Calendar job view by week. Create/edit jobs with customer, service, date, time slot, team member. Drag-style reschedule with email+WhatsApp notification. Availability heatmap (jobs per day for 6 weeks). Generate jobs from recurring patterns.
+
+3. **TEAM** — Team member list (name, phone, email). Add/edit/deactivate. Each member gets a UUID for public schedule access (/api/my-schedule/:uuid).
+
+4. **CUSTOMERS** — Customer profiles with tags (array). Search by name/email/phone. Bulk follow-up campaigns with audience filters (accepted_no_job, quoted_no_response, never_quoted, inactive 3/6/12 months). CSV import (max 1000, duplicate detection by email/phone). Conversion analytics. Per-customer quote + job history. Stats cards (total customers, active, revenue, avg spend).
+
+5. **INVOICES** — Create from completed jobs (auto-populates line items). Edit line items, set VAT rate (0%, 5%, 20%). Send via email with payment details. Public view URL (/invoice/:token). Mark as paid with date. INV-0001 auto-numbering.
+
+6. **FINANCE** — 10 sub-tabs:
+   - **Overview**: Summary cards with quick action buttons.
+   - **Expenses**: Full CRUD with category dropdown, date, supplier, amount, VAT, payment method (cash/card/bank_transfer), business/personal flag. Receipt paperclip icon linking to stored image. Soft-delete with audit trail.
+   - **Receipt Scanner**: Upload receipt photo(s), Claude Sonnet AI extracts date/amount/VAT/supplier. Per-item category splitting for mixed receipts (e.g. fuel + snacks on one receipt become separate expenses). Bulk upload: multi-file select, sequential processing with progress bar, inline-editable review queue, "Save All" creates all expenses.
+   - **Wages**: Team member payments with payment type, method, period dates. Soft-delete with audit trail.
+   - **Mileage**: From/to/miles with auto-calculation at HMRC rate (0.45/mile). Return trip doubling. Soft-delete with audit trail.
+   - **Recurring**: Subscription/regular expenses with frequency, auto-generation.
+   - **Income**: Manual income entries (cash jobs, other sources).
+   - **Reports**: Summary (P&L with income - expenses - wages - mileage), Cashflow (month-by-month), Category Breakdown (pie chart data), Tax Summary (deductible vs personal, VAT totals, HMRC categories), CSV Export.
+   - **Assets**: Capital asset tracking (plant/machinery, vehicles, office equipment, tools). AIA (Annual Investment Allowance) claims. Disposal tracking.
+   - **Tax Planning**: Tax forecast with income/expenses/allowances. Tax set-aside tracker for saving towards tax bills.
+   - **Audit Log**: Full change history for all finance tables. Filter by table, action type, date range. Shows before/after values for every change.
+
+7. **CHATS** — View all AI chat conversations. See message history. Filter by lead captured. Link to created quote if lead was captured.
+
+8. **SETTINGS** — Pricing configuration editor: service prices by size, modifiers, lead scoring weights, qualification thresholds, conversion factors. Test estimate with mock data. Pricing change history log. Reset to file defaults button.
+
+---
+
+## Chat Widget (public/chat-widget.js)
+
+Embeddable via single script tag:
+```html
+<script src="https://your-backend-url/chat-widget.js"></script>
+```
+
+Self-contained IIFE. No dependencies. Auto-detects API base URL from its own script src attribute.
+Floating chat bubble (60x60px, brand colour, bottom-right corner). Opens 380x520px chat window above bubble.
+Dark theme matching admin dashboard.
+Session persistence via localStorage (UUID per visitor, survives page reloads).
+Rate limited server-side: 30 messages per 10 minutes per IP.
+Lead capture feedback: success message displayed when chatbot captures a lead.
+Form pre-fill: when chatbot tool returns formData, widget redirects to quote form with pre-filled fields.
+
+---
+
+## Quote Submission Flow (the core pipeline)
+
+1. Customer submits form (Aura frontend or chat widget)
+2. POST /api/quote validates required fields (name, email, phone, address, postcode)
+3. Extracts services array from form data
+4. Inserts to quotes table with status='new'
+5. findOrCreateCustomer() auto-links/creates customer profile
+6. syncQuoteToSheets() sends to Google Sheets (non-blocking)
+7. queueEstimation() triggers async estimation (setTimeout 1s)
+8. sendConfirmationEmail() sends immediate confirmation
+9. sendConfirmationWhatsApp() sends WhatsApp confirmation
+10. Returns success JSON to frontend
+11. (Async) Estimation job runs: calculates estimate + lead score
+12. (Async) Updates quotes table with results
+13. (Async) Sends estimate email with accept button
+14. (Async) Sends estimate WhatsApp with accept link
+15. (Async) If hot lead: alerts admin via email + WhatsApp
+16. (Async) Sets next_follow_up_at to 3 days from now
+17. (Scheduled) Follow-up scheduler checks hourly, sends step 1 email at day 3, step 2 at day 7
+
+---
+
+## Key Patterns and Conventions
+
+1. All route files export setSupabaseClient(client) — called from index.js on startup
+2. Admin auth: middleware/auth.js checks Authorization: Bearer {ADMIN_TOKEN} header
+3. Business details: BUSINESS_* env vars with empty string fallbacks
+4. JSON body parsing: 15MB limit (for base64 receipt/attachment uploads)
+5. CORS: Allow all origins (*), methods GET/POST/PATCH/DELETE/OPTIONS
+6. Static files served from /public directory
+7. Pricing config: DB settings table takes priority, config/pricing.js is fallback, 5-min cache
+8. Estimation runs async (setTimeout 1s after quote insert) — customer gets instant response
+9. Google Sheets sync is fire-and-forget (errors logged, not thrown)
+10. All monetary values use NUMERIC(10,2) in database
+11. UK-specific: British English, GBP currency, HMRC tax categories, April 6 tax year start, 0.45/mile rate
+12. Receipt scanning uses Claude Sonnet (claude-sonnet-4-5-20250929) for vision OCR accuracy
+13. Chatbot uses Claude Haiku (claude-haiku-4-5-20251001) for speed and cost
+14. Receipt scanner returns items array for per-category splitting (mixed receipts)
+15. Bulk receipt upload: sequential processing (avoids API rate limits), review queue before save
+16. Quote acceptance: /accept-estimate/:id renders public HTML page, POST /confirm-acceptance/:id processes it
+17. Invoice public view: /invoice/:token renders printable HTML with business details + print button
+18. Team schedule: /api/my-schedule/:memberId is public (no auth, uses member UUID)
+19. Customer auto-linking: on quote submit, findOrCreateCustomer matches by email then phone
+20. Activity logging: quote changes auto-logged to quote_activity table with action_type and description
+21. Base64 file upload pattern: client reads file → converts to base64 → sends in JSON body → server decodes with Buffer.from(data, 'base64') → uploads to Supabase Storage
+22. Finance soft-delete: all finance deletes set deleted_at instead of removing rows (HMRC compliance). All list queries filter by deleted_at IS NULL
+23. Finance audit trail: logAudit() records every create/update/delete with before/after JSONB values in finance_audit_log table
+24. Follow-up scheduler: node-cron runs hourly, sends 2-step email sequence on day 3 and day 7 for unresponded leads
+25. Webhook signature verification: Resend uses HMAC-SHA256 (svix), Twilio uses HMAC-SHA1, both with timing-safe comparison
+26. Quote soft-delete: quotes use deleted_at column, excluded from default list queries and CSV exports, restorable via admin
+27. Rate limiting: /api/quote limited to 5/hour per IP, /api/chat limited to 30/10min per IP (express-rate-limit)
+
+---
+
+## Implementation Order
+
+Build in this exact order. Each phase depends on the previous ones.
+
+### Phase 1 — Foundation
+- Express server with dotenv, CORS, JSON parsing (15MB limit), static file serving from /public
+- Supabase client initialisation from env vars
+- POST /api/quote endpoint: validate required fields, insert to quotes table, return success
+- Deploy to Railway with auto-deploy on push to main
+
+### Phase 2 — Database Schema
+- Create quotes table manually in Supabase (core columns)
+- Run migration 002 (adds estimation, tracking, workflow, conversion columns + indexes)
+- Create jobs, recurring_jobs, team_members tables manually
+- Create invoices table manually
+- Create quote_activity, chat_conversations tables manually
+- Create settings table (key/value store) and pricing_history table
+
+### Phase 3 — Estimation Engine + Lead Scoring
+- Build config/pricing.js with default pricing rules for your business type
+- Build services/pricingConfig.js (DB override + file fallback + 5-min in-memory cache)
+- Build services/estimator.js (calculateEstimate with size detection from form answers + modifiers)
+- Build services/scorer.js (calculateLeadScore with qualification status + conversion likelihood)
+- Build services/estimationJob.js (async orchestration: estimate → score → update DB)
+- Wire into POST /api/quote: after insert, call queueEstimation()
+
+### Phase 4 — Admin Dashboard
+- Build middleware/auth.js (bearer token validation from ADMIN_TOKEN env var)
+- Build routes/admin.js (quote list with filters, detail, status update, notes, activity log, attachments, CSV export)
+- Build pricing settings endpoints (GET/PUT/POST reset/POST test/GET history)
+- Build public/admin.html — start with login screen + Quotes tab + Settings tab
+- Dark theme, Tailwind CSS via CDN, Poppins font, brand colour
+
+### Phase 5 — Email Automation
+- Build services/emailer.js with Resend client
+- sendConfirmationEmail (immediate on quote submit)
+- sendEstimateEmail (triggered by estimationJob after scoring, includes accept button)
+- sendAdminAlert (for hot leads, score >= 80)
+- Wire into POST /api/quote (confirmation) and estimationJob (estimate + alert)
+- Record timestamps: confirmation_email_sent_at, estimate_email_sent_at
+
+### Phase 6 — WhatsApp Integration
+- Build services/whatsapp.js with Twilio client
+- Create Twilio content templates (v3 format) for confirmation, estimate, admin alert
+- sendConfirmationWhatsApp, sendEstimateWhatsApp, sendAdminAlertWhatsApp
+- Wire into POST /api/quote and estimationJob
+- Record whatsapp_sent_at timestamp
+
+### Phase 7 — Google Sheets Sync
+- Build services/googleSheets.js with Google service account auth
+- syncQuoteToSheets (append row on submit, non-blocking)
+- updateQuoteInSheets (update row after estimation, acceptance)
+- Wire into POST /api/quote and estimationJob
+
+### Phase 8 — AI Chat Widget
+- Build services/chatbot.js with Claude Haiku API
+- Define capture_lead and prepare_quote_form tools in the tools array
+- Build system prompt with business context, service descriptions, pricing, FAQs, behaviour rules
+- Build public/chat-widget.js (embeddable IIFE, self-contained, dark theme, session persistence)
+- Add POST /api/chat endpoint with rate limiting (30 msgs per 10 min per IP)
+- Add GET /api/chat/history endpoint for session restoration
+- Add chat_conversations persistence (upsert on each message)
+- Add Chats tab to admin dashboard
+- Wire lead capture: when capture_lead tool fires, create quote in DB
+
+### Phase 9 — Customer Management
+- Run migration 005 (customers table + foreign keys + backfill)
+- Build routes/customers.js (CRUD, search, stats, analytics, follow-ups, bulk ops, CSV import)
+- Add findOrCreateCustomer() and wire into POST /api/quote
+- Add sendFollowUpEmail to emailer.js
+- Add Customers tab to admin dashboard
+
+### Phase 10 — Job Scheduling
+- Build routes/jobs.js (jobs CRUD, recurring jobs, team members, availability, week view)
+- Add sendRescheduleEmail and sendRescheduleWhatsApp to services
+- Add Schedule tab + Team tab to admin dashboard
+- Add public team schedule endpoint: GET /api/my-schedule/:memberId
+
+### Phase 11 — Invoicing
+- Build routes/invoices.js (CRUD, auto-numbering INV-0001, create from job, send email, public view)
+- Add sendInvoiceEmail to emailer.js
+- Add Invoices tab to admin dashboard
+- Add public invoice view: GET /invoice/:token (printable HTML, no auth)
+- VAT support: 0%, 5%, 20% configurable per invoice
+
+### Phase 12 — Quote Acceptance
+- Run migration 004 (acceptance columns on quotes)
+- Build GET /accept-estimate/:quoteId (public HTML acceptance page)
+- Build POST /confirm-acceptance/:quoteId (process acceptance, update DB, notify admin)
+- Add accept button links to estimate emails and WhatsApp messages
+
+### Phase 13 — Finance & Expense Tracking
+- Run migration 006 (expense_categories, expenses, wage_payments, mileage_log, recurring_expenses, income_entries tables + triggers + pre-seeded categories)
+- Create Supabase Storage bucket: expense-receipts (public, 10MB max)
+- Build routes/finance.js — all 28 functions:
+  - Categories: list, create, update
+  - Expenses: list, create, update, delete, scan-receipt (Claude Sonnet vision OCR)
+  - Wages: list, create, update, delete
+  - Mileage: list, create, update, delete
+  - Recurring: list, create, update, delete, generate
+  - Income: list, create, delete
+  - Reports: summary (P&L), cashflow, category-breakdown, tax-summary, export
+- Receipt scanner: upload image → base64 → Claude Sonnet extracts date/amount/VAT/supplier → returns items array for category splitting
+- Bulk receipt upload: multi-file input, sequential processing, progress bar, review queue, inline editing, "Save All"
+- Add Finance tab to admin dashboard (7 sub-tabs: Overview, Expenses, Receipt Scanner, Wages, Mileage, Recurring, Income, Reports)
+
+### Phase 14 — Finance Audit Trail & HMRC Compliance
+- Run migration 007 (soft-delete columns on all finance tables, finance_audit_log, capital_assets, tax_savings tables)
+- Add logAudit() helper to finance.js — logs all creates, updates, deletes with before/after values
+- Add capital assets CRUD endpoints (AIA claims, disposal tracking)
+- Add tax savings CRUD endpoints
+- Add audit log list endpoint with filters (table, action, date range)
+- Add tax forecast and tax report endpoints
+- Add Assets, Tax Planning, and Audit Log sub-tabs to Finance section in admin dashboard
+- Update all finance delete operations to soft-delete (set deleted_at) instead of hard delete
+- Filter all finance list queries by deleted_at IS NULL
+
+### Phase 15 — Automated Follow-Ups
+- Run migration 008 (follow_up_step column on quotes)
+- Build services/followUpScheduler.js with node-cron (runs hourly)
+- 2-step email sequence: Day 3 check-in, Day 7 final follow-up
+- Query unresponded estimated quotes, skip accepted/unqualified
+- Update follow_up_step and last_contact_at after each send
+- Wire into index.js: setSupabaseClient on startup, startScheduler on listen
+
+### Phase 16 — Webhook Validation & Security Hardening
+- Run migration 009 (deleted_at on quotes for soft-delete)
+- Build routes/webhooks.js with HMAC signature verification for Resend and Twilio
+- Log email/WhatsApp delivery events to quote_activity table
+- Add rate limiting on /api/quote (5/hour per IP) and /api/chat (30/10min per IP)
+- Add input sanitisation (XSS prevention in email templates)
+- Add soft-delete for quotes (X button per row, restore capability)
+- Add estimation retry for quotes that missed async processing
+- Add /health endpoint for monitoring
+
+---
+
+## Important Constraints
+
+- Frontend is separate (Aura-hosted or custom). This repo is backend only.
+- Do NOT over-engineer. Keep it modular.
+- Do NOT add unnecessary dependencies.
+- Keep backend Express-based (Node.js).
+- Use Supabase as the database layer.
+- British English throughout.
+- All prices in GBP (£).
+- Use environment variables for all external service config and business identity.
+- Static files served from /public.
+- Admin dashboard is a single HTML file (public/admin.html) — no React, no build step.
+- Chat widget is a single JS file (public/chat-widget.js) — self-contained, no dependencies.
+- All admin routes protected by Bearer token auth.
+- Never expose Supabase service role key to frontend.
+- Never log API keys or customer PII in production.

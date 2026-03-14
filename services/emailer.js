@@ -208,7 +208,11 @@ async function sendAdminAlert(quote, isAcceptance = false) {
     const alertType = isAcceptance ? 'Customer Accepted Quote' : 'High-Value Lead';
     console.log(`[Email] Sending admin alert for ${alertType.toLowerCase()}`);
 
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@revive.com'; // TODO: Set in .env
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (!adminEmail) {
+      console.error('[Email] ADMIN_EMAIL not set, skipping admin alert');
+      return { success: false, error: 'ADMIN_EMAIL not configured' };
+    }
 
     const subject = isAcceptance
       ? `🎉 Customer Accepted Quote - ${h(quote.name)} (£${quote.estimated_value_max})`
