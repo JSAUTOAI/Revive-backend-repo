@@ -69,9 +69,14 @@ webhookRoutes.setSupabaseClient(supabase);
 // MIDDLEWARE
 // =======================
 
-// CORS - Allow Aura form to submit and admin API access
+// CORS - Allow Aura frontend, Railway admin, and chat widget embeds
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '*').split(',').map(o => o.trim());
+
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin;
+  if (ALLOWED_ORIGINS.includes('*') || ALLOWED_ORIGINS.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+  }
   res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') {

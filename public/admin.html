@@ -90,6 +90,7 @@
       <button onclick="switchTab('invoices')" id="tab-invoices" class="tab-btn px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300">Invoices</button>
       <button onclick="switchTab('finance')" id="tab-finance" class="tab-btn px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300">Finance</button>
       <button onclick="switchTab('chats')" id="tab-chats" class="tab-btn px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300">Chats</button>
+      <button onclick="switchTab('reports')" id="tab-reports" class="tab-btn px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300">Reports</button>
       <button onclick="switchTab('settings')" id="tab-settings" class="tab-btn px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors text-neutral-500 hover:text-neutral-300">Settings</button>
     </div>
   </header>
@@ -1218,6 +1219,93 @@
     <!-- Chat List -->
     <div id="chatList" class="space-y-2"></div>
     <div id="chatEmpty" class="hidden text-center text-neutral-600 text-sm py-12">No chat conversations yet.</div>
+  </div>
+
+  <!-- ===== REPORTS TAB ===== -->
+  <div id="content-reports" class="tab-content hidden max-w-7xl mx-auto px-4 sm:px-6 py-6">
+
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h2 class="text-white text-lg font-semibold">Business Reports</h2>
+        <p class="text-neutral-500 text-xs mt-1">Conversion pipeline, revenue trends, and business performance at a glance.</p>
+      </div>
+      <button onclick="loadReports()" class="bg-neutral-900 border border-neutral-700 hover:border-lime-400 text-neutral-400 hover:text-lime-400 px-3 py-2 rounded-lg text-xs font-medium transition-colors">Refresh</button>
+    </div>
+
+    <!-- Conversion Pipeline -->
+    <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-5 mb-4">
+      <h3 class="text-white text-sm font-semibold mb-4">Conversion Pipeline</h3>
+      <div id="rpt-pipeline" class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+        <!-- Filled by JS -->
+      </div>
+      <div id="rpt-funnel-bar" class="mt-4 flex h-6 rounded-lg overflow-hidden">
+        <!-- Funnel bar filled by JS -->
+      </div>
+    </div>
+
+    <!-- Key Metrics Row -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+        <p class="text-neutral-500 text-[10px] uppercase tracking-wider mb-1">Quote → Accept Rate</p>
+        <p id="rpt-accept-rate" class="text-white text-xl font-bold">—</p>
+      </div>
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+        <p class="text-neutral-500 text-[10px] uppercase tracking-wider mb-1">Avg Estimate Time</p>
+        <p id="rpt-est-time" class="text-white text-xl font-bold">—</p>
+      </div>
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+        <p class="text-neutral-500 text-[10px] uppercase tracking-wider mb-1">Pipeline Value</p>
+        <p id="rpt-pipeline-value" class="text-white text-xl font-bold">—</p>
+      </div>
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+        <p class="text-neutral-500 text-[10px] uppercase tracking-wider mb-1">Follow-Up Success</p>
+        <p id="rpt-followup-rate" class="text-white text-xl font-bold">—</p>
+      </div>
+    </div>
+
+    <!-- Revenue & Cashflow -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+      <!-- Monthly Revenue Chart -->
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-5">
+        <h3 class="text-white text-sm font-semibold mb-4">Monthly Revenue & Profit (Last 12 Months)</h3>
+        <div id="rpt-cashflow-chart" class="space-y-2">
+          <!-- Filled by JS -->
+        </div>
+      </div>
+
+      <!-- Service Breakdown -->
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-5">
+        <h3 class="text-white text-sm font-semibold mb-4">Revenue by Service</h3>
+        <div id="rpt-service-revenue" class="space-y-3">
+          <!-- Filled by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Items -->
+    <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-5 mb-4">
+      <h3 class="text-white text-sm font-semibold mb-4">Needs Attention</h3>
+      <div id="rpt-attention" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <!-- Filled by JS -->
+      </div>
+    </div>
+
+    <!-- Customer Behaviour -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-5">
+        <h3 class="text-white text-sm font-semibold mb-3">Contact Preference</h3>
+        <div id="rpt-contact-pref" class="space-y-2"></div>
+      </div>
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-5">
+        <h3 class="text-white text-sm font-semibold mb-3">Peak Submission Hours</h3>
+        <div id="rpt-peak-hours" class="flex items-end gap-[2px] h-24"></div>
+      </div>
+      <div class="bg-neutral-900 border border-neutral-800 rounded-xl p-5">
+        <h3 class="text-white text-sm font-semibold mb-3">Top Postcodes</h3>
+        <div id="rpt-postcodes" class="space-y-2"></div>
+      </div>
+    </div>
+
   </div>
 
   <!-- ===== SETTINGS TAB ===== -->
@@ -3647,6 +3735,7 @@ function switchTab(tab) {
   if (tab === 'invoices') loadInvoices();
   if (tab === 'finance') finLoadAll();
   if (tab === 'chats') loadChats();
+  if (tab === 'reports') loadReports();
   if (tab === 'settings') loadSettings();
 }
 
@@ -6116,6 +6205,171 @@ var SCORING_LABELS = {
   commercialProperty: 'Commercial Property',
   urgentLanguage: 'Urgent Language'
 };
+
+// ============================
+// REPORTS
+// ============================
+
+async function loadReports() {
+  hideTabLoading('reports');
+  try {
+    var [analytics, cashflow, custStats] = await Promise.all([
+      apiRequest('/admin/customers/analytics'),
+      apiRequest('/admin/finance/cashflow'),
+      apiRequest('/admin/customers/stats')
+    ]);
+
+    // --- Conversion Pipeline ---
+    var funnel = analytics.funnel || {};
+    var pipeStages = [
+      { label: 'Quotes', value: funnel.total_quotes || 0, colour: 'bg-neutral-600' },
+      { label: 'Estimated', value: funnel.estimated || 0, colour: 'bg-blue-500' },
+      { label: 'Sent', value: funnel.sent_to_customer || 0, colour: 'bg-sky-400' },
+      { label: 'Accepted', value: funnel.accepted || 0, colour: 'bg-lime-400' },
+      { label: 'Booked', value: funnel.booked || 0, colour: 'bg-emerald-400' },
+      { label: 'Completed', value: funnel.completed || 0, colour: 'bg-green-500' },
+      { label: 'Paid', value: funnel.paid || 0, colour: 'bg-yellow-400' }
+    ];
+    var pipeEl = document.getElementById('rpt-pipeline');
+    pipeEl.innerHTML = pipeStages.map(function(s) {
+      return '<div class="bg-neutral-800 rounded-lg p-3 text-center">' +
+        '<p class="text-neutral-500 text-[10px] uppercase tracking-wider mb-1">' + s.label + '</p>' +
+        '<p class="text-white text-lg font-bold">' + s.value + '</p>' +
+        '</div>';
+    }).join('');
+
+    // Funnel bar
+    var total = pipeStages[0].value || 1;
+    var funnelBar = document.getElementById('rpt-funnel-bar');
+    funnelBar.innerHTML = pipeStages.map(function(s) {
+      var pct = Math.max((s.value / total) * 100, 2);
+      return '<div class="' + s.colour + ' transition-all" style="width:' + pct + '%" title="' + s.label + ': ' + s.value + '"></div>';
+    }).join('');
+
+    // --- Key Metrics ---
+    var rates = analytics.conversion_rates || {};
+    document.getElementById('rpt-accept-rate').textContent = (rates.quote_to_acceptance_rate || 0).toFixed(1) + '%';
+    var estHrs = rates.avg_time_to_acceptance_hours || 0;
+    document.getElementById('rpt-est-time').textContent = estHrs < 24 ? estHrs.toFixed(0) + 'h' : (estHrs / 24).toFixed(1) + 'd';
+
+    var pipeline = analytics.pipeline || {};
+    document.getElementById('rpt-pipeline-value').textContent = '£' + Number(pipeline.total_pipeline_value || 0).toLocaleString();
+    document.getElementById('rpt-followup-rate').textContent = (rates.follow_up_effectiveness || 0).toFixed(1) + '%';
+
+    // --- Cashflow Chart ---
+    var cfEl = document.getElementById('rpt-cashflow-chart');
+    if (cashflow && cashflow.length) {
+      var maxInc = Math.max.apply(null, cashflow.map(function(m) { return m.income || 0; })) || 1;
+      cfEl.innerHTML = cashflow.map(function(m) {
+        var incW = Math.max(((m.income || 0) / maxInc) * 100, 1);
+        var profW = Math.max(((m.profit || 0) / maxInc) * 100, 1);
+        return '<div class="flex items-center gap-2">' +
+          '<span class="text-neutral-500 text-[10px] w-12 text-right shrink-0">' + m.label + '</span>' +
+          '<div class="flex-1">' +
+            '<div class="flex gap-1 items-center mb-[2px]">' +
+              '<div class="bg-lime-400/30 h-3 rounded" style="width:' + incW + '%"></div>' +
+              '<span class="text-neutral-500 text-[9px]">£' + Number(m.income || 0).toLocaleString() + '</span>' +
+            '</div>' +
+            '<div class="flex gap-1 items-center">' +
+              '<div class="' + (m.profit >= 0 ? 'bg-emerald-400' : 'bg-red-400') + ' h-2 rounded" style="width:' + Math.abs(profW) + '%"></div>' +
+              '<span class="text-neutral-500 text-[9px]">£' + Number(m.profit || 0).toLocaleString() + '</span>' +
+            '</div>' +
+          '</div>' +
+          '</div>';
+      }).join('');
+    } else {
+      cfEl.innerHTML = '<p class="text-neutral-600 text-sm">No cashflow data yet.</p>';
+    }
+
+    // --- Service Revenue ---
+    var svcEl = document.getElementById('rpt-service-revenue');
+    var svcData = analytics.service_insights || [];
+    if (svcData.length) {
+      var maxSvcRev = Math.max.apply(null, svcData.map(function(s) { return s.revenue || s.count || 0; })) || 1;
+      svcEl.innerHTML = svcData.map(function(s) {
+        var val = s.revenue || 0;
+        var w = Math.max((val / maxSvcRev) * 100, 2);
+        var svcName = s.service ? s.service.charAt(0).toUpperCase() + s.service.slice(1) : 'Other';
+        return '<div>' +
+          '<div class="flex justify-between text-xs mb-1">' +
+            '<span class="text-neutral-300">' + svcName + '</span>' +
+            '<span class="text-neutral-500">' + (s.count || 0) + ' quotes · £' + Number(val).toLocaleString() + ' rev</span>' +
+          '</div>' +
+          '<div class="bg-neutral-800 rounded-full h-2"><div class="bg-lime-400 h-2 rounded-full transition-all" style="width:' + w + '%"></div></div>' +
+          '</div>';
+      }).join('');
+    } else {
+      svcEl.innerHTML = '<p class="text-neutral-600 text-sm">No service data yet.</p>';
+    }
+
+    // --- Needs Attention ---
+    var attEl = document.getElementById('rpt-attention');
+    var attItems = [
+      { label: 'Awaiting Action', value: pipeline.awaiting_action || 0, desc: 'New quotes not yet contacted', colour: 'text-yellow-400' },
+      { label: 'Hot Leads Uncontacted', value: pipeline.hot_leads_uncontacted || 0, desc: 'High-score leads waiting', colour: 'text-red-400' },
+      { label: 'Accepted, Not Booked', value: pipeline.accepted_not_booked || 0, desc: 'Customer said yes, no job yet', colour: 'text-orange-400' }
+    ];
+    attEl.innerHTML = attItems.map(function(a) {
+      return '<div class="bg-neutral-800 rounded-lg p-4">' +
+        '<p class="' + a.colour + ' text-2xl font-bold">' + a.value + '</p>' +
+        '<p class="text-white text-xs font-medium mt-1">' + a.label + '</p>' +
+        '<p class="text-neutral-500 text-[10px] mt-1">' + a.desc + '</p>' +
+        '</div>';
+    }).join('');
+
+    // --- Customer Behaviour ---
+    var behaviour = analytics.customer_behaviour || {};
+
+    // Contact preference
+    var cpEl = document.getElementById('rpt-contact-pref');
+    var contactData = behaviour.contact_preferences || [];
+    if (contactData.length) {
+      var cpTotal = contactData.reduce(function(s, c) { return s + (c.count || 0); }, 0) || 1;
+      cpEl.innerHTML = contactData.map(function(c) {
+        var pct = ((c.count || 0) / cpTotal * 100).toFixed(0);
+        return '<div class="flex items-center gap-2">' +
+          '<span class="text-neutral-400 text-xs w-16">' + (c.preferred_contact || 'None') + '</span>' +
+          '<div class="flex-1 bg-neutral-800 rounded-full h-2"><div class="bg-lime-400 h-2 rounded-full" style="width:' + pct + '%"></div></div>' +
+          '<span class="text-neutral-500 text-[10px] w-8 text-right">' + pct + '%</span>' +
+          '</div>';
+      }).join('');
+    } else { cpEl.innerHTML = '<p class="text-neutral-600 text-xs">No data</p>'; }
+
+    // Peak hours
+    var phEl = document.getElementById('rpt-peak-hours');
+    var hourData = behaviour.peak_hours || [];
+    if (hourData.length) {
+      var maxH = Math.max.apply(null, hourData.map(function(h) { return h.count || 0; })) || 1;
+      var bars = '';
+      for (var h = 6; h <= 22; h++) {
+        var found = hourData.find(function(x) { return x.hour === h; });
+        var cnt = found ? found.count : 0;
+        var ht = Math.max((cnt / maxH) * 100, 3);
+        bars += '<div class="flex-1 flex flex-col items-center justify-end" title="' + h + ':00 — ' + cnt + ' quotes">' +
+          '<div class="bg-lime-400/60 w-full rounded-t" style="height:' + ht + '%"></div>' +
+          (h % 3 === 0 ? '<span class="text-neutral-600 text-[8px] mt-1">' + h + '</span>' : '') +
+          '</div>';
+      }
+      phEl.innerHTML = bars;
+    } else { phEl.innerHTML = '<p class="text-neutral-600 text-xs">No data</p>'; }
+
+    // Top postcodes
+    var pcEl = document.getElementById('rpt-postcodes');
+    var pcData = behaviour.top_postcodes || [];
+    if (pcData.length) {
+      pcEl.innerHTML = pcData.slice(0, 8).map(function(p, i) {
+        return '<div class="flex justify-between text-xs">' +
+          '<span class="text-neutral-300">' + (i + 1) + '. ' + (p.area || p.postcode || '—') + '</span>' +
+          '<span class="text-neutral-500">' + (p.count || 0) + ' quotes</span>' +
+          '</div>';
+      }).join('');
+    } else { pcEl.innerHTML = '<p class="text-neutral-600 text-xs">No data</p>'; }
+
+  } catch (err) {
+    console.error('[Reports] Load error:', err);
+    showToast('Failed to load reports', 'error');
+  }
+}
 
 async function loadSettings() {
   try {

@@ -11,6 +11,7 @@
 
 const cron = require('node-cron');
 const { sendFollowUpEmail } = require('./emailer');
+const log = require('./logger').child('FollowUp');
 
 let supabase;
 
@@ -95,7 +96,7 @@ async function getQuotesDueForFollowUp() {
     .limit(50);
 
   if (error) {
-    console.error('[FollowUp] Query error:', error);
+    log.error('Query error', { error: error.message });
     return [];
   }
 
@@ -121,11 +122,11 @@ async function processOneFollowUp(quote) {
   const estimatedAt = new Date(quote.estimated_at);
   const daysSinceEstimate = (Date.now() - estimatedAt.getTime()) / (1000 * 60 * 60 * 24);
   if (daysSinceEstimate < template.delayDays) {
-    console.log(`[FollowUp] Quote ${quote.id} not yet due (${daysSinceEstimate.toFixed(1)} days, need ${template.delayDays})`);
+    log.debug('Not yet due', { quoteId: quote.id, days: daysSinceEstimate.toFixed(1), required: template.delayDays });
     return;
   }
 
-  console.log(`[FollowUp] Sending step ${nextStep} to ${quote.name} (${quote.email})`);
+  log.info(`Sending step ${nextStep}`, { name: quote.name, email: quote.email, quoteId: quote.id });
 
   // Send email
   const emailResult = await sendFollowUpEmail(
@@ -135,20 +136,19 @@ async function processOneFollowUp(quote) {
   );
 
   if (!emailResult.success) {
-    console.error(`[FollowUp] Email failed for quote ${quote.id}: ${emailResult.error}`);
+    log.error('Email failed', { quoteId: quote.id, error: emailResult.error });
     return; // Don't advance step — will retry next hour
   }
 
-  // WhatsApp follow-up — disabled until Content Template is approved by Meta
-  // When ready, add FOLLOW_UP template SID in whatsapp.js and uncomment below
-  // if (quote.preferred_contact === 'whatsapp' && quote.phone) {
-  //   try {
-  //     const { sendFollowUpWhatsApp } = require('./whatsapp');
-  //     await sendFollowUpWhatsApp(quote);
-  //   } catch (err) {
-  //     console.error(`[FollowUp] WhatsApp failed for quote ${quote.id}: ${err.message}`);
-  //   }
-  // }
+  // WhatsApp follow-up
+  if (quote.phone) {
+    try {
+      const { sendFollowUpWhatsApp } = require('./whatsapp');
+      await sendFollowUpWhatsApp(quote, nextStep);
+    } catch (err) {
+      log.warn('WhatsApp follow-up failed', { quoteId: quote.id, error: err.message });
+    }
+  }
 
   // Update database
   const now = new Date().toISOString();
@@ -176,9 +176,9 @@ async function processOneFollowUp(quote) {
     .eq('id', quote.id);
 
   if (error) {
-    console.error(`[FollowUp] DB update failed for quote ${quote.id}:`, error);
+    log.error('DB update failed', { quoteId: quote.id, error: error.message });
   } else {
-    console.log(`[FollowUp] Step ${nextStep} complete for ${quote.name} (${quote.id})`);
+    log.info(`Step ${nextStep} complete`, { name: quote.name, quoteId: quote.id });
   }
 }
 
@@ -186,26 +186,26 @@ async function processOneFollowUp(quote) {
  * Main follow-up run — called by cron every hour
  */
 async function processFollowUps() {
-  console.log(`[FollowUp] Running follow-up check at ${new Date().toISOString()}`);
+  log.info('Running follow-up check');
 
   const quotes = await getQuotesDueForFollowUp();
 
   if (quotes.length === 0) {
-    console.log('[FollowUp] No quotes due for follow-up');
+    log.info('No quotes due for follow-up');
     return;
   }
 
-  console.log(`[FollowUp] Found ${quotes.length} quote(s) due for follow-up`);
+  log.info(`Found ${quotes.length} quote(s) due for follow-up`);
 
   for (const quote of quotes) {
     try {
       await processOneFollowUp(quote);
     } catch (err) {
-      console.error(`[FollowUp] Error processing quote ${quote.id}:`, err.message);
+      log.error('Error processing quote', { quoteId: quote.id, error: err.message });
     }
   }
 
-  console.log('[FollowUp] Follow-up run complete');
+  log.info('Follow-up run complete');
 }
 
 // ─── Scheduler ──────────────────────────────────────────────────────
@@ -214,11 +214,11 @@ function startScheduler() {
   // Run every hour at minute 0
   cron.schedule('0 * * * *', () => {
     processFollowUps().catch(err => {
-      console.error('[FollowUp] Unhandled error in follow-up run:', err);
+      log.error('Unhandled error in follow-up run', { error: err.message });
     });
   });
 
-  console.log('[FollowUp] Scheduler started — running every hour');
+  log.info('Scheduler started — running every hour');
 }
 
 module.exports = {

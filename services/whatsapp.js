@@ -6,6 +6,7 @@
  */
 
 const twilio = require('twilio');
+const log = require('./logger').child('WhatsApp');
 
 // Initialize Twilio client
 const client = twilio(
@@ -21,7 +22,7 @@ const TEMPLATES = {
   QUOTE_CONFIRMATION: 'HXe1a33f5eaa1799f1c5c596f3e496769e',
   ESTIMATE_READY: 'HXf579b26142676cd0271ea20ed54c379d',
   ADMIN_ALERT: 'HX4ec1c09e9d04022e7758a80b865f8991',
-  FOLLOW_UP: null, // TODO: Add after Meta approves follow-up template
+  FOLLOW_UP: process.env.TWILIO_FOLLOW_UP_TEMPLATE || null,
 };
 
 /**
@@ -37,7 +38,7 @@ const TEMPLATES = {
  */
 async function sendConfirmationWhatsApp(quote) {
   try {
-    console.log(`[WhatsApp] Sending confirmation to ${quote.phone}`);
+    log.info('Sending confirmation', { phone: quote.phone });
 
     const toWhatsApp = formatPhoneNumber(quote.phone);
     const servicesBullets = (quote.services || []).map(s => capitalizeService(s)).join(', ');
@@ -48,7 +49,7 @@ async function sendConfirmationWhatsApp(quote) {
       '2': String(servicesBullets || '• Cleaning service'),
       '3': String(location || 'Location TBC')
     };
-    console.log(`[WhatsApp] Confirmation variables:`, JSON.stringify(vars));
+    log.debug('Confirmation variables', vars);
 
     const message = await client.messages.create({
       from: FROM_WHATSAPP,
@@ -57,12 +58,11 @@ async function sendConfirmationWhatsApp(quote) {
       contentVariables: JSON.stringify(vars)
     });
 
-    console.log(`[WhatsApp] Confirmation sent successfully: ${message.sid}`);
+    log.info('Confirmation sent', { messageSid: message.sid });
     return { success: true, messageSid: message.sid };
 
   } catch (error) {
-    console.error('[WhatsApp] Failed to send confirmation:', error.message);
-    console.error('[WhatsApp] Error details:', JSON.stringify({ code: error.code, status: error.status, moreInfo: error.moreInfo }));
+    log.error('Confirmation failed', { error: error.message, code: error.code, status: error.status });
     return { success: false, error: error.message };
   }
 }
@@ -83,7 +83,7 @@ async function sendConfirmationWhatsApp(quote) {
  */
 async function sendEstimateWhatsApp(quote) {
   try {
-    console.log(`[WhatsApp] Sending estimate to ${quote.phone}`);
+    log.info('Sending estimate', { phone: quote.phone });
 
     const toWhatsApp = formatPhoneNumber(quote.phone);
     const priceRange = `£${quote.estimated_value_min || 0} - £${quote.estimated_value_max || 0}`;
@@ -93,15 +93,16 @@ async function sendEstimateWhatsApp(quote) {
       ? `at your preferred time (${quote.best_time})`
       : 'shortly';
 
+    const baseUrl = process.env.BASE_URL || '';
     const vars = {
       '1': String(quote.name || 'Customer'),
       '2': String(priceRange || 'Price TBC'),
       '3': String(servicesBullets || '• Cleaning service'),
       '4': String(location || 'Location TBC'),
       '5': String(contactTiming),
-      '6': String(`https://revive-backend-repo-production.up.railway.app/accept-estimate/${quote.id}`)
+      '6': String(`${baseUrl}/accept-estimate/${quote.id}`)
     };
-    console.log(`[WhatsApp] Estimate variables:`, JSON.stringify(vars));
+    log.debug('Estimate variables', vars);
 
     const message = await client.messages.create({
       from: FROM_WHATSAPP,
@@ -110,12 +111,11 @@ async function sendEstimateWhatsApp(quote) {
       contentVariables: JSON.stringify(vars)
     });
 
-    console.log(`[WhatsApp] Estimate sent successfully: ${message.sid}`);
+    log.info('Estimate sent', { messageSid: message.sid });
     return { success: true, messageSid: message.sid };
 
   } catch (error) {
-    console.error('[WhatsApp] Failed to send estimate:', error.message);
-    console.error('[WhatsApp] Error details:', JSON.stringify({ code: error.code, status: error.status, moreInfo: error.moreInfo }));
+    log.error('Estimate failed', { error: error.message, code: error.code, status: error.status });
     return { success: false, error: error.message };
   }
 }
@@ -140,13 +140,13 @@ async function sendAdminAlertWhatsApp(quote, isAcceptance = false) {
     // Skip threshold check if this is an acceptance notification
     if (!isAcceptance) {
       if (quote.lead_score < 80 && quote.estimated_value_max < 500) {
-        console.log('[WhatsApp] Skipping admin alert - lead score too low');
+        log.info('Skipping admin alert — lead score too low', { score: quote.lead_score });
         return { success: true, skipped: true };
       }
     }
 
     const alertType = isAcceptance ? 'CUSTOMER ACCEPTED QUOTE!' : 'HOT LEAD ALERT';
-    console.log(`[WhatsApp] Sending admin alert for ${alertType}`);
+    log.info(`Sending admin alert: ${alertType}`);
 
     const adminPhone = process.env.ADMIN_PHONE || quote.phone;
     const toWhatsApp = formatPhoneNumber(adminPhone);
@@ -175,7 +175,7 @@ async function sendAdminAlertWhatsApp(quote, isAcceptance = false) {
       '5': String(servicesBullets || '• Cleaning service'),
       '6': String(contactInfo)
     };
-    console.log(`[WhatsApp] Admin alert variables:`, JSON.stringify(vars));
+    log.debug('Admin alert variables', vars);
 
     const message = await client.messages.create({
       from: FROM_WHATSAPP,
@@ -184,11 +184,111 @@ async function sendAdminAlertWhatsApp(quote, isAcceptance = false) {
       contentVariables: JSON.stringify(vars)
     });
 
-    console.log(`[WhatsApp] Admin alert sent successfully: ${message.sid}`);
+    log.info('Admin alert sent', { messageSid: message.sid });
     return { success: true, messageSid: message.sid };
 
   } catch (error) {
-    console.error('[WhatsApp] Failed to send admin alert:', error.message);
+    log.error('Admin alert failed', { error: error.message });
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Send follow-up message via WhatsApp
+ *
+ * Uses Content Template if approved (TWILIO_FOLLOW_UP_TEMPLATE env var),
+ * otherwise falls back to freeform message (only works within 24h service window).
+ *
+ * @param {Object} quote - Quote data with estimation fields
+ * @param {number} step - Follow-up step (1 or 2)
+ * @returns {Promise<Object>} - Result object
+ */
+async function sendFollowUpWhatsApp(quote, step = 1) {
+  try {
+    if (!quote.phone) {
+      return { success: false, error: 'No phone number' };
+    }
+
+    const toWhatsApp = formatPhoneNumber(quote.phone);
+    const priceRange = `£${Number(quote.estimated_value_min || 0).toFixed(0)} – £${Number(quote.estimated_value_max || 0).toFixed(0)}`;
+    const services = (quote.services || []).map(s => capitalizeService(s)).join(', ') || 'cleaning';
+
+    if (TEMPLATES.FOLLOW_UP) {
+      // Use approved Content Template
+      const vars = {
+        '1': String(quote.name || 'there'),
+        '2': String(services),
+        '3': String(priceRange)
+      };
+
+      const message = await client.messages.create({
+        from: FROM_WHATSAPP,
+        to: toWhatsApp,
+        contentSid: TEMPLATES.FOLLOW_UP,
+        contentVariables: JSON.stringify(vars)
+      });
+
+      log.info(`Follow-up step ${step} sent via template`, { quoteId: quote.id, messageSid: message.sid });
+      return { success: true, messageSid: message.sid };
+    }
+
+    // Fallback: freeform message (only works within 24h customer service window)
+    const body = step === 1
+      ? `Hi ${quote.name || 'there'}, just checking in! We sent your ${services} estimate of ${priceRange} a few days ago. If you have any questions or would like to book, just reply to this message. No pressure at all!`
+      : `Hi ${quote.name || 'there'}, one last check-in about your ${services} quote (${priceRange}). We'd love to help if you're still interested — just drop us a message whenever you're ready. All the best!`;
+
+    const message = await client.messages.create({
+      from: FROM_WHATSAPP,
+      to: toWhatsApp,
+      body: body
+    });
+
+    log.info(`Follow-up step ${step} sent via freeform`, { quoteId: quote.id, messageSid: message.sid });
+    return { success: true, messageSid: message.sid };
+
+  } catch (error) {
+    // Don't throw — email is the primary follow-up channel
+    log.warn(`Follow-up step ${step} failed`, { quoteId: quote.id, error: error.message });
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Send reschedule notification via WhatsApp (freeform message)
+ *
+ * Note: This uses a freeform message which only works within the 24-hour
+ * customer service window. For business-initiated messages outside this
+ * window, a Content Template would need to be approved by Meta.
+ * If freeform fails, the email notification serves as fallback.
+ *
+ * @param {Object} job - Job data with customer info
+ * @param {string} formattedDate - Human-readable date
+ * @param {string} timeSlot - Time slot
+ * @returns {Promise<Object>} - Twilio API response
+ */
+async function sendRescheduleWhatsApp(job, formattedDate, timeSlot) {
+  try {
+    if (!job.customer_phone) {
+      log.info('No customer phone for reschedule notification');
+      return { success: false, error: 'No customer phone' };
+    }
+
+    log.info('Sending reschedule notification', { phone: job.customer_phone });
+
+    const toWhatsApp = formatPhoneNumber(job.customer_phone);
+    const body = `Hi ${job.customer_name || 'there'}, this is Revive Exterior Cleaning. Your ${job.service || 'cleaning'} appointment has been rescheduled to *${formattedDate}* at *${timeSlot || 'TBC'}*. If this doesn't work for you, please let us know and we'll find an alternative. Thanks!`;
+
+    const message = await client.messages.create({
+      from: FROM_WHATSAPP,
+      to: toWhatsApp,
+      body: body
+    });
+
+    log.info('Reschedule notification sent', { messageSid: message.sid });
+    return { success: true, messageSid: message.sid };
+
+  } catch (error) {
+    log.error('Reschedule notification failed', { error: error.message });
     return { success: false, error: error.message };
   }
 }
@@ -229,50 +329,10 @@ function capitalizeService(service) {
   return serviceNames[service] || service.charAt(0).toUpperCase() + service.slice(1);
 }
 
-/**
- * Send reschedule notification via WhatsApp (freeform message)
- *
- * Note: This uses a freeform message which only works within the 24-hour
- * customer service window. For business-initiated messages outside this
- * window, a Content Template would need to be approved by Meta.
- * If freeform fails, the email notification serves as fallback.
- *
- * @param {Object} job - Job data with customer info
- * @param {string} formattedDate - Human-readable date
- * @param {string} timeSlot - Time slot
- * @returns {Promise<Object>} - Twilio API response
- */
-async function sendRescheduleWhatsApp(job, formattedDate, timeSlot) {
-  try {
-    if (!job.customer_phone) {
-      console.log('[WhatsApp] No customer phone for reschedule notification');
-      return { success: false, error: 'No customer phone' };
-    }
-
-    console.log(`[WhatsApp] Sending reschedule notification to ${job.customer_phone}`);
-
-    const toWhatsApp = formatPhoneNumber(job.customer_phone);
-    const body = `Hi ${job.customer_name || 'there'}, this is Revive Exterior Cleaning. Your ${job.service || 'cleaning'} appointment has been rescheduled to *${formattedDate}* at *${timeSlot || 'TBC'}*. If this doesn't work for you, please let us know and we'll find an alternative. Thanks!`;
-
-    const message = await client.messages.create({
-      from: FROM_WHATSAPP,
-      to: toWhatsApp,
-      body: body
-    });
-
-    console.log(`[WhatsApp] Reschedule notification sent: ${message.sid}`);
-    return { success: true, messageSid: message.sid };
-
-  } catch (error) {
-    console.error('[WhatsApp] Failed to send reschedule notification:', error.message);
-    // Don't throw - email serves as fallback
-    return { success: false, error: error.message };
-  }
-}
-
 module.exports = {
   sendConfirmationWhatsApp,
   sendEstimateWhatsApp,
   sendAdminAlertWhatsApp,
+  sendFollowUpWhatsApp,
   sendRescheduleWhatsApp
 };

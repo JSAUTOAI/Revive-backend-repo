@@ -31,6 +31,7 @@ googleapis ^171.4.0
 json2csv ^6.0.0-alpha.2
 resend ^6.9.2
 twilio ^5.12.1
+winston ^3.17.0
 ```
 
 ---
@@ -56,7 +57,8 @@ twilio ^5.12.1
   emailer.js              — All email sending via Resend (6 email types)
   whatsapp.js             — All WhatsApp messaging via Twilio (4 message types)
   chatbot.js              — AI chat assistant via Claude API with tool-based lead capture
-  estimator.js            — Rule-based price estimation engine
+  estimator.js            — Rule-based price estimation engine + AI enhancement layer
+  logger.js               — Winston structured logging with child loggers
   scorer.js               — Lead qualification and scoring algorithm
   estimationJob.js        — Async orchestration: estimate + score + notify
   pricingConfig.js        — Pricing config loader with DB override + file fallback + cache
@@ -85,7 +87,7 @@ index.js                  — Main Express server, all route registration, quote
 
 ---
 
-## Environment Variables (27 total)
+## Environment Variables (29 total)
 
 ### Core
 ```
@@ -94,6 +96,8 @@ SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your-key
 ADMIN_TOKEN=random-64-char-hex-string
 BASE_URL=https://your-app.up.railway.app
+ALLOWED_ORIGINS=https://your-aura-site.com,https://your-app.up.railway.app
+LOG_LEVEL=info
 ```
 
 ### Email (Resend)
@@ -109,6 +113,7 @@ ADMIN_EMAIL=admin@yourbusiness.com
 TWILIO_ACCOUNT_SID=ACxxxxxxxx
 TWILIO_AUTH_TOKEN=your-token
 TWILIO_WHATSAPP_NUMBER=+44xxxxxxxxxx
+TWILIO_FOLLOW_UP_TEMPLATE=HXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ADMIN_PHONE=+44xxxxxxxxxx
 ```
 
@@ -520,7 +525,7 @@ Partial index: idx_quotes_deleted_at WHERE deleted_at IS NULL
 
 ---
 
-## API Routes (75+ endpoints)
+## API Routes (80+ endpoints)
 
 ### Public Routes (no auth)
 
@@ -755,6 +760,14 @@ calculateEstimate(quote):
 
 Also exports calculateTestEstimate(mockQuote, config) for admin preview in Settings tab.
 
+enhanceEstimateWithAI(quote, estimate):
+1. Only runs if specificDetails or accessNotes contain 15+ characters of text
+2. Sends free-text fields to Claude Haiku for complexity analysis
+3. Returns: priceAdjustment (-15% to +25%), confidence level, complexity flags, summary note
+4. Adjusts rule-based estimate range, rounds to nearest £5
+5. Fails gracefully — if AI call errors, returns original rule-based estimate unchanged
+6. Flags stored in estimation_engine_version as 'v1.2+ai'
+
 ### services/scorer.js — Lead Scoring
 
 calculateLeadScore(quote, estimate):
@@ -886,7 +899,7 @@ Brand colour: lime-green (#a3e635 / Tailwind lime-400).
 
 Login: Bearer token input stored in localStorage. Validated against /admin/quotes endpoint.
 
-### 8 Tabs:
+### 9 Tabs:
 
 1. **QUOTES** — List with filters (status dropdown, service filter, date range). Click row to expand detail panel. Update status (new/contacted/quoted/booked/completed/cancelled), priority, notes. Activity log timeline. File attachments (upload/view/delete via Supabase Storage). Customer acceptance tracking. WhatsApp/email links.
 
@@ -913,7 +926,9 @@ Login: Bearer token input stored in localStorage. Validated against /admin/quote
 
 7. **CHATS** — View all AI chat conversations. See message history. Filter by lead captured. Link to created quote if lead was captured.
 
-8. **SETTINGS** — Pricing configuration editor: service prices by size, modifiers, lead scoring weights, qualification thresholds, conversion factors. Test estimate with mock data. Pricing change history log. Reset to file defaults button.
+8. **REPORTS** — Business intelligence dashboard: conversion pipeline with funnel visualisation, key metrics (acceptance rate, estimate time, pipeline value, follow-up effectiveness), monthly revenue & profit chart (12 months), revenue by service breakdown, needs-attention alerts (awaiting action, hot leads uncontacted, accepted not booked), customer behaviour (contact preferences, peak submission hours, top postcodes). Pulls data from /admin/customers/analytics, /admin/finance/cashflow, and /admin/customers/stats.
+
+9. **SETTINGS** — Pricing configuration editor: service prices by size, modifiers, lead scoring weights, qualification thresholds, conversion factors. Test estimate with mock data. Pricing change history log. Reset to file defaults button.
 
 ---
 
@@ -985,6 +1000,11 @@ Form pre-fill: when chatbot tool returns formData, widget redirects to quote for
 25. Webhook signature verification: Resend uses HMAC-SHA256 (svix), Twilio uses HMAC-SHA1, both with timing-safe comparison
 26. Quote soft-delete: quotes use deleted_at column, excluded from default list queries and CSV exports, restorable via admin
 27. Rate limiting: /api/quote limited to 5/hour per IP, /api/chat limited to 30/10min per IP (express-rate-limit)
+28. Structured logging via Winston (services/logger.js). Child loggers with prefixes: log = require('./logger').child('Email')
+29. CORS configurable via ALLOWED_ORIGINS env var (comma-separated domains, defaults to '*')
+30. AI estimation enhancement: Claude Haiku analyses free-text fields, adjusts price range by -15% to +25%, adds complexity flags
+31. WhatsApp follow-up: uses Content Template if TWILIO_FOLLOW_UP_TEMPLATE is set, falls back to freeform message
+32. Admin dashboard has 9 tabs (Reports tab added with pipeline, revenue charts, service breakdown, attention alerts)
 
 ---
 

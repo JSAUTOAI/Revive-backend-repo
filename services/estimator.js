@@ -8,8 +8,9 @@
  */
 
 const { getPricingConfig } = require('./pricingConfig');
+const log = require('./logger').child('Estimator');
 
-const ESTIMATION_VERSION = 'v1.1';
+const ESTIMATION_VERSION = 'v1.2';
 
 /**
  * Calculate price estimate for a quote
@@ -249,8 +250,115 @@ function calculateModifiers(quote, MODIFIERS) {
   return { multiplier, reasons };
 }
 
+/**
+ * AI Enhancement Layer
+ *
+ * Analyses free-text fields (specificDetails, accessNotes) using Claude
+ * to detect complexity factors that keyword matching misses.
+ *
+ * Returns adjustment factors and flags — does NOT replace the rule-based estimate,
+ * only refines the confidence and may adjust the range.
+ *
+ * @param {Object} quote - Quote with answers
+ * @param {Object} estimate - Rule-based estimate { min, max, confidence }
+ * @returns {Promise<Object>} - { adjustedMin, adjustedMax, confidence, aiFlags, aiNotes }
+ */
+async function enhanceEstimateWithAI(quote, estimate) {
+  const answers = quote.answers || {};
+  const specificDetails = answers.specificDetails || '';
+  const accessNotes = answers.accessNotes || '';
+
+  // Only run AI if there's meaningful free text to analyse
+  if (specificDetails.length < 15 && accessNotes.length < 15) {
+    return {
+      adjustedMin: estimate.min,
+      adjustedMax: estimate.max,
+      confidence: estimate.confidence,
+      aiFlags: [],
+      aiNotes: null,
+      aiUsed: false
+    };
+  }
+
+  try {
+    const Anthropic = require('@anthropic-ai/sdk');
+    const client = new Anthropic();
+
+    const services = (quote.services || []).join(', ');
+    const propertyType = answers.propertyType || 'unknown';
+    const roughSize = answers.roughSize || 'unknown';
+
+    const response = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 300,
+      messages: [{
+        role: 'user',
+        content: `You are a pricing analyst for an exterior cleaning company. Analyse this quote request and return a JSON object.
+
+Services requested: ${services}
+Property type: ${propertyType}
+Size: ${roughSize}
+Customer notes: "${specificDetails}"
+Access notes: "${accessNotes}"
+Rule-based estimate: £${estimate.min} – £${estimate.max}
+
+Return ONLY valid JSON with these fields:
+{
+  "priceAdjustment": number between -0.15 and 0.25 (negative = reduce, positive = increase, 0 = no change),
+  "confidence": "low" or "medium" or "high",
+  "flags": ["array of short complexity flags detected, e.g. 'steep roof pitch', 'conservation area', 'large moss buildup'"],
+  "note": "one sentence summary of key factors affecting price"
+}
+
+Be conservative. Only adjust price if the text clearly indicates factors not captured by standard size/service pricing.`
+      }]
+    });
+
+    const text = response.content[0]?.text || '';
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      log.warn('AI returned non-JSON response', { quoteId: quote.id });
+      return { adjustedMin: estimate.min, adjustedMax: estimate.max, confidence: estimate.confidence, aiFlags: [], aiNotes: null, aiUsed: false };
+    }
+
+    const ai = JSON.parse(jsonMatch[0]);
+    const adj = Math.max(-0.15, Math.min(0.25, ai.priceAdjustment || 0));
+
+    const adjustedMin = Math.round((estimate.min * (1 + adj)) / 5) * 5;
+    const adjustedMax = Math.round((estimate.max * (1 + adj)) / 5) * 5;
+
+    log.info('AI enhancement applied', {
+      quoteId: quote.id,
+      adjustment: (adj * 100).toFixed(0) + '%',
+      flags: ai.flags || [],
+      confidence: ai.confidence
+    });
+
+    return {
+      adjustedMin,
+      adjustedMax,
+      confidence: ai.confidence || estimate.confidence,
+      aiFlags: ai.flags || [],
+      aiNotes: ai.note || null,
+      aiUsed: true
+    };
+
+  } catch (err) {
+    log.error('AI enhancement failed, using rule-based estimate', { quoteId: quote.id, error: err.message });
+    return {
+      adjustedMin: estimate.min,
+      adjustedMax: estimate.max,
+      confidence: estimate.confidence,
+      aiFlags: [],
+      aiNotes: null,
+      aiUsed: false
+    };
+  }
+}
+
 module.exports = {
   calculateEstimate,
   calculateTestEstimate,
+  enhanceEstimateWithAI,
   ESTIMATION_VERSION
 };
