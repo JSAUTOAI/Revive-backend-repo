@@ -5,6 +5,8 @@
  * Token must be passed in Authorization header: "Bearer <token>"
  */
 
+const log = require('../services/logger').child('Auth');
+
 function requireAdminAuth(req, res, next) {
   // Get token from Authorization header or query parameter (for new-tab endpoints like tax-report)
   const authHeader = req.headers.authorization;
@@ -24,7 +26,7 @@ function requireAdminAuth(req, res, next) {
   const validToken = process.env.ADMIN_TOKEN;
 
   if (!validToken) {
-    console.error('[Auth] ADMIN_TOKEN not set in environment variables');
+    log.error('ADMIN_TOKEN not set in environment variables');
     return res.status(500).json({
       success: false,
       error: 'Server configuration error'
@@ -32,7 +34,7 @@ function requireAdminAuth(req, res, next) {
   }
 
   if (token !== validToken) {
-    console.warn('[Auth] Invalid token attempt');
+    log.warn('Invalid token attempt');
     return res.status(401).json({
       success: false,
       error: 'Unauthorized - Invalid token'
@@ -40,7 +42,7 @@ function requireAdminAuth(req, res, next) {
   }
 
   // Token is valid, proceed to route
-  console.log('[Auth] Admin access granted');
+  log.info('Admin access granted');
   next();
 }
 

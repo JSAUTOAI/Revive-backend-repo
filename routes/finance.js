@@ -7,6 +7,7 @@
  */
 
 const Anthropic = require('@anthropic-ai/sdk');
+const log = require('../services/logger').child('Finance');
 
 let supabase;
 
@@ -43,7 +44,7 @@ async function logAudit(tableName, recordId, action, oldValues, newValues) {
       new_values: newValues
     });
   } catch (err) {
-    console.error('[Finance] Audit log error:', err.message);
+    log.error('Audit log error', { error: err.message });
   }
 }
 
@@ -97,13 +98,13 @@ async function listCategories(req, res) {
     const { data, error } = await query;
 
     if (error) {
-      console.error('[Finance] Categories list error:', error);
+      log.error('Categories list error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to fetch categories' });
     }
 
     res.json({ success: true, data });
   } catch (error) {
-    console.error('[Finance] Categories list error:', error);
+    log.error('Categories list error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -144,13 +145,13 @@ async function createCategory(req, res) {
       .select();
 
     if (error) {
-      console.error('[Finance] Create category error:', error);
+      log.error('Create category error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to create category' });
     }
 
     res.json({ success: true, data: data[0] });
   } catch (error) {
-    console.error('[Finance] Create category error:', error);
+    log.error('Create category error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -179,13 +180,13 @@ async function updateCategory(req, res) {
       .select();
 
     if (error) {
-      console.error('[Finance] Update category error:', error);
+      log.error('Update category error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to update category' });
     }
 
     res.json({ success: true, data: data[0] });
   } catch (error) {
-    console.error('[Finance] Update category error:', error);
+    log.error('Update category error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -222,7 +223,7 @@ async function listExpenses(req, res) {
     const { data, error, count } = await query;
 
     if (error) {
-      console.error('[Finance] List expenses error:', error);
+      log.error('List expenses error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to fetch expenses' });
     }
 
@@ -233,7 +234,7 @@ async function listExpenses(req, res) {
       hasMore: off + lim < count
     });
   } catch (error) {
-    console.error('[Finance] List expenses error:', error);
+    log.error('List expenses error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -295,7 +296,7 @@ async function createExpense(req, res) {
       .select('*, expense_categories(name, slug, colour)');
 
     if (error) {
-      console.error('[Finance] Create expense error:', error);
+      log.error('Create expense error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to create expense' });
     }
 
@@ -303,7 +304,7 @@ async function createExpense(req, res) {
 
     res.json({ success: true, data: data[0] });
   } catch (error) {
-    console.error('[Finance] Create expense error:', error);
+    log.error('Create expense error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -338,7 +339,7 @@ async function updateExpense(req, res) {
       .select('*, expense_categories(name, slug, colour)');
 
     if (error) {
-      console.error('[Finance] Update expense error:', error);
+      log.error('Update expense error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to update expense' });
     }
 
@@ -346,7 +347,7 @@ async function updateExpense(req, res) {
 
     res.json({ success: true, data: data[0] });
   } catch (error) {
-    console.error('[Finance] Update expense error:', error);
+    log.error('Update expense error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -368,7 +369,7 @@ async function deleteExpense(req, res) {
       .eq('id', id);
 
     if (error) {
-      console.error('[Finance] Delete expense error:', error);
+      log.error('Delete expense error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to delete expense' });
     }
 
@@ -376,7 +377,7 @@ async function deleteExpense(req, res) {
 
     res.json({ success: true });
   } catch (error) {
-    console.error('[Finance] Delete expense error:', error);
+    log.error('Delete expense error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -411,13 +412,13 @@ async function listWages(req, res) {
     const { data, error, count } = await query;
 
     if (error) {
-      console.error('[Finance] List wages error:', error);
+      log.error('List wages error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to fetch wages' });
     }
 
     res.json({ success: true, data, total: count, hasMore: off + lim < count });
   } catch (error) {
-    console.error('[Finance] List wages error:', error);
+    log.error('List wages error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -454,7 +455,7 @@ async function createWage(req, res) {
       .select();
 
     if (error) {
-      console.error('[Finance] Create wage error:', error);
+      log.error('Create wage error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to create wage payment' });
     }
 
@@ -462,7 +463,7 @@ async function createWage(req, res) {
 
     res.json({ success: true, data: data[0] });
   } catch (error) {
-    console.error('[Finance] Create wage error:', error);
+    log.error('Create wage error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -493,7 +494,7 @@ async function updateWage(req, res) {
       .select();
 
     if (error) {
-      console.error('[Finance] Update wage error:', error);
+      log.error('Update wage error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to update wage payment' });
     }
 
@@ -501,7 +502,7 @@ async function updateWage(req, res) {
 
     res.json({ success: true, data: data[0] });
   } catch (error) {
-    console.error('[Finance] Update wage error:', error);
+    log.error('Update wage error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -521,7 +522,7 @@ async function deleteWage(req, res) {
       .eq('id', id);
 
     if (error) {
-      console.error('[Finance] Delete wage error:', error);
+      log.error('Delete wage error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to delete wage payment' });
     }
 
@@ -529,7 +530,7 @@ async function deleteWage(req, res) {
 
     res.json({ success: true });
   } catch (error) {
-    console.error('[Finance] Delete wage error:', error);
+    log.error('Delete wage error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -563,13 +564,13 @@ async function listMileage(req, res) {
     const { data, error, count } = await query;
 
     if (error) {
-      console.error('[Finance] List mileage error:', error);
+      log.error('List mileage error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to fetch mileage' });
     }
 
     res.json({ success: true, data, total: count, hasMore: off + lim < count });
   } catch (error) {
-    console.error('[Finance] List mileage error:', error);
+    log.error('List mileage error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -602,7 +603,7 @@ async function createMileage(req, res) {
       .select();
 
     if (error) {
-      console.error('[Finance] Create mileage error:', error);
+      log.error('Create mileage error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to create mileage entry' });
     }
 
@@ -610,7 +611,7 @@ async function createMileage(req, res) {
 
     res.json({ success: true, data: data[0] });
   } catch (error) {
-    console.error('[Finance] Create mileage error:', error);
+    log.error('Create mileage error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -639,7 +640,7 @@ async function updateMileage(req, res) {
       .select();
 
     if (error) {
-      console.error('[Finance] Update mileage error:', error);
+      log.error('Update mileage error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to update mileage entry' });
     }
 
@@ -647,7 +648,7 @@ async function updateMileage(req, res) {
 
     res.json({ success: true, data: data[0] });
   } catch (error) {
-    console.error('[Finance] Update mileage error:', error);
+    log.error('Update mileage error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -667,7 +668,7 @@ async function deleteMileage(req, res) {
       .eq('id', id);
 
     if (error) {
-      console.error('[Finance] Delete mileage error:', error);
+      log.error('Delete mileage error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to delete mileage entry' });
     }
 
@@ -675,7 +676,7 @@ async function deleteMileage(req, res) {
 
     res.json({ success: true });
   } catch (error) {
-    console.error('[Finance] Delete mileage error:', error);
+    log.error('Delete mileage error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -697,13 +698,13 @@ async function listRecurring(req, res) {
       .order('next_due_date', { ascending: true });
 
     if (error) {
-      console.error('[Finance] List recurring error:', error);
+      log.error('List recurring error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to fetch recurring expenses' });
     }
 
     res.json({ success: true, data });
   } catch (error) {
-    console.error('[Finance] List recurring error:', error);
+    log.error('List recurring error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -744,13 +745,13 @@ async function createRecurring(req, res) {
       .select('*, expense_categories(name, slug, colour)');
 
     if (error) {
-      console.error('[Finance] Create recurring error:', error);
+      log.error('Create recurring error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to create recurring expense' });
     }
 
     res.json({ success: true, data: data[0] });
   } catch (error) {
-    console.error('[Finance] Create recurring error:', error);
+    log.error('Create recurring error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -782,13 +783,13 @@ async function updateRecurring(req, res) {
       .select('*, expense_categories(name, slug, colour)');
 
     if (error) {
-      console.error('[Finance] Update recurring error:', error);
+      log.error('Update recurring error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to update recurring expense' });
     }
 
     res.json({ success: true, data: data[0] });
   } catch (error) {
-    console.error('[Finance] Update recurring error:', error);
+    log.error('Update recurring error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -807,7 +808,7 @@ async function deleteRecurring(req, res) {
       .eq('id', id);
 
     if (error) {
-      console.error('[Finance] Delete recurring error:', error);
+      log.error('Delete recurring error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to delete recurring expense' });
     }
 
@@ -815,7 +816,7 @@ async function deleteRecurring(req, res) {
 
     res.json({ success: true });
   } catch (error) {
-    console.error('[Finance] Delete recurring error:', error);
+    log.error('Delete recurring error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -905,7 +906,7 @@ async function generateFromRecurring(req, res) {
 
     res.json({ success: true, generated: generated.length, data: generated });
   } catch (error) {
-    console.error('[Finance] Generate from recurring error:', error);
+    log.error('Generate from recurring error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -934,13 +935,13 @@ async function listIncome(req, res) {
     const { data, error } = await query;
 
     if (error) {
-      console.error('[Finance] List income error:', error);
+      log.error('List income error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to fetch income entries' });
     }
 
     res.json({ success: true, data });
   } catch (error) {
-    console.error('[Finance] List income error:', error);
+    log.error('List income error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -970,7 +971,7 @@ async function createIncome(req, res) {
       .select();
 
     if (error) {
-      console.error('[Finance] Create income error:', error);
+      log.error('Create income error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to create income entry' });
     }
 
@@ -978,7 +979,7 @@ async function createIncome(req, res) {
 
     res.json({ success: true, data: data[0] });
   } catch (error) {
-    console.error('[Finance] Create income error:', error);
+    log.error('Create income error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -998,7 +999,7 @@ async function deleteIncome(req, res) {
       .eq('id', id);
 
     if (error) {
-      console.error('[Finance] Delete income error:', error);
+      log.error('Delete income error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to delete income entry' });
     }
 
@@ -1006,7 +1007,7 @@ async function deleteIncome(req, res) {
 
     res.json({ success: true });
   } catch (error) {
-    console.error('[Finance] Delete income error:', error);
+    log.error('Delete income error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -1144,7 +1145,7 @@ async function getSummary(req, res) {
       }
     });
   } catch (error) {
-    console.error('[Finance] Summary error:', error);
+    log.error('Summary error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -1225,7 +1226,7 @@ async function getCashflow(req, res) {
 
     res.json({ success: true, data: results });
   } catch (error) {
-    console.error('[Finance] Cashflow error:', error);
+    log.error('Cashflow error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -1250,7 +1251,7 @@ async function getCategoryBreakdown(req, res) {
     const { data, error } = await query;
 
     if (error) {
-      console.error('[Finance] Category breakdown error:', error);
+      log.error('Category breakdown error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to fetch breakdown' });
     }
 
@@ -1281,7 +1282,7 @@ async function getCategoryBreakdown(req, res) {
 
     res.json({ success: true, data: breakdown, total: Math.round(total * 100) / 100 });
   } catch (error) {
-    console.error('[Finance] Category breakdown error:', error);
+    log.error('Category breakdown error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -1389,7 +1390,7 @@ async function getTaxSummary(req, res) {
       }
     });
   } catch (error) {
-    console.error('[Finance] Tax summary error:', error);
+    log.error('Tax summary error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -1470,7 +1471,7 @@ async function exportFinance(req, res) {
 
     return sendCSV(res, rows, 'expenses-export.csv');
   } catch (error) {
-    console.error('[Finance] Export error:', error);
+    log.error('Export error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -1540,7 +1541,7 @@ async function scanReceipt(req, res) {
       });
 
     if (uploadError) {
-      console.error('[Finance] Receipt upload error:', uploadError);
+      log.error('Receipt upload error', { error: uploadError.message });
       return res.status(500).json({ success: false, error: 'Failed to upload receipt: ' + uploadError.message });
     }
 
@@ -1668,7 +1669,7 @@ Return ONLY the JSON object, nothing else.`
         extracted.vat_amount = extracted.items.reduce((sum, i) => sum + i.vat_amount, 0);
       }
     } catch (ocrError) {
-      console.error('[Finance] Receipt OCR error:', ocrError.message);
+      log.error('Receipt OCR error', { error: ocrError.message });
       extractionError = 'Could not read receipt automatically. Please enter details manually.';
     }
 
@@ -1685,7 +1686,7 @@ Return ONLY the JSON object, nothing else.`
       }
     }
 
-    console.log(`[Finance] Receipt scanned: ${filename}, extracted: ${extracted ? 'yes' : 'no'}, duplicates: ${possibleDuplicates.length}`);
+    log.info('Receipt scanned', { filename, extracted: !!extracted, duplicates: possibleDuplicates.length });
 
     res.json({
       success: true,
@@ -1697,7 +1698,7 @@ Return ONLY the JSON object, nothing else.`
     });
 
   } catch (error) {
-    console.error('[Finance] Scan receipt error:', error);
+    log.error('Scan receipt error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -1731,13 +1732,13 @@ async function listAuditLog(req, res) {
     const { data, error, count } = await query;
 
     if (error) {
-      console.error('[Finance] Audit log error:', error);
+      log.error('Audit log query error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to fetch audit log' });
     }
 
     res.json({ success: true, data, total: count, hasMore: off + lim < count });
   } catch (error) {
-    console.error('[Finance] Audit log error:', error);
+    log.error('Audit log error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -1762,7 +1763,7 @@ async function restoreRecord(req, res) {
       .select();
 
     if (error) {
-      console.error('[Finance] Restore error:', error);
+      log.error('Restore error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to restore record' });
     }
 
@@ -1774,7 +1775,7 @@ async function restoreRecord(req, res) {
 
     res.json({ success: true, data: data[0] });
   } catch (error) {
-    console.error('[Finance] Restore error:', error);
+    log.error('Restore error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -1796,13 +1797,13 @@ async function listAssets(req, res) {
       .order('purchase_date', { ascending: false });
 
     if (error) {
-      console.error('[Finance] List assets error:', error);
+      log.error('List assets error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to fetch assets' });
     }
 
     res.json({ success: true, data });
   } catch (error) {
-    console.error('[Finance] List assets error:', error);
+    log.error('List assets error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -1833,7 +1834,7 @@ async function createAsset(req, res) {
       .select();
 
     if (error) {
-      console.error('[Finance] Create asset error:', error);
+      log.error('Create asset error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to create asset' });
     }
 
@@ -1841,7 +1842,7 @@ async function createAsset(req, res) {
 
     res.json({ success: true, data: data[0] });
   } catch (error) {
-    console.error('[Finance] Create asset error:', error);
+    log.error('Create asset error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -1870,7 +1871,7 @@ async function updateAsset(req, res) {
       .select();
 
     if (error) {
-      console.error('[Finance] Update asset error:', error);
+      log.error('Update asset error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to update asset' });
     }
 
@@ -1878,7 +1879,7 @@ async function updateAsset(req, res) {
 
     res.json({ success: true, data: data[0] });
   } catch (error) {
-    console.error('[Finance] Update asset error:', error);
+    log.error('Update asset error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -1898,7 +1899,7 @@ async function deleteAsset(req, res) {
       .eq('id', id);
 
     if (error) {
-      console.error('[Finance] Delete asset error:', error);
+      log.error('Delete asset error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to delete asset' });
     }
 
@@ -1906,7 +1907,7 @@ async function deleteAsset(req, res) {
 
     res.json({ success: true });
   } catch (error) {
-    console.error('[Finance] Delete asset error:', error);
+    log.error('Delete asset error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -1928,7 +1929,7 @@ async function listTaxSavings(req, res) {
       .order('date', { ascending: false });
 
     if (error) {
-      console.error('[Finance] List tax savings error:', error);
+      log.error('List tax savings error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to fetch tax savings' });
     }
 
@@ -1936,7 +1937,7 @@ async function listTaxSavings(req, res) {
 
     res.json({ success: true, data, total_saved: Math.round(total * 100) / 100 });
   } catch (error) {
-    console.error('[Finance] List tax savings error:', error);
+    log.error('List tax savings error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -1963,13 +1964,13 @@ async function createTaxSaving(req, res) {
       .select();
 
     if (error) {
-      console.error('[Finance] Create tax saving error:', error);
+      log.error('Create tax saving error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to create tax saving' });
     }
 
     res.json({ success: true, data: data[0] });
   } catch (error) {
-    console.error('[Finance] Create tax saving error:', error);
+    log.error('Create tax saving error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -1988,13 +1989,13 @@ async function deleteTaxSaving(req, res) {
       .eq('id', id);
 
     if (error) {
-      console.error('[Finance] Delete tax saving error:', error);
+      log.error('Delete tax saving error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to delete tax saving' });
     }
 
     res.json({ success: true });
   } catch (error) {
-    console.error('[Finance] Delete tax saving error:', error);
+    log.error('Delete tax saving error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -2181,7 +2182,7 @@ async function getTaxForecast(req, res) {
       }
     });
   } catch (error) {
-    console.error('[Finance] Tax forecast error:', error);
+    log.error('Tax forecast error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -2376,7 +2377,7 @@ Report generated: ${fmtDate(now)}</p>
     res.setHeader('Content-Type', 'text/html');
     res.send(html);
   } catch (error) {
-    console.error('[Finance] Tax report error:', error);
+    log.error('Tax report error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }

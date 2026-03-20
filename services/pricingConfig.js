@@ -7,6 +7,7 @@
  */
 
 const fileDefaults = require('../config/pricing');
+const log = require('./logger').child('Pricing');
 
 let supabase;
 
@@ -47,7 +48,7 @@ async function getPricingConfig() {
         return config;
       }
     } catch (err) {
-      console.error('[PricingConfig] DB load failed, using file defaults:', err.message);
+      log.error('DB load failed, using file defaults', { error: err.message });
     }
   }
 
@@ -156,7 +157,7 @@ async function logPricingChange(section, oldValue, newValue, description) {
       description: description
     });
   } catch (err) {
-    console.error('[PricingConfig] Failed to log pricing change:', err.message);
+    log.error('Failed to log pricing change', { error: err.message });
   }
 }
 
@@ -175,7 +176,7 @@ async function getPricingHistory(limit) {
     .limit(limit || 20);
 
   if (error) {
-    console.error('[PricingConfig] Failed to load pricing history:', error.message);
+    log.error('Failed to load pricing history', { error: error.message });
     return [];
   }
 

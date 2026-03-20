@@ -5,6 +5,8 @@
  * All routes require ADMIN_TOKEN in Authorization header.
  */
 
+const log = require('../services/logger').child('Jobs');
+
 let supabase;
 
 function setSupabaseClient(client) {
@@ -48,13 +50,13 @@ async function listJobs(req, res) {
     const { data, error } = await query;
 
     if (error) {
-      console.error('[Jobs] List error:', error);
+      log.error('List error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to fetch jobs' });
     }
 
     res.json({ success: true, data });
   } catch (error) {
-    console.error('[Jobs] List error:', error);
+    log.error('List error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -111,7 +113,7 @@ async function createJob(req, res) {
           postcode: postcode
         });
       } catch (e) {
-        console.error('[Jobs] Customer resolution failed, continuing:', e.message);
+        log.error('Customer resolution failed, continuing', { error: e.message });
       }
     }
 
@@ -137,14 +139,14 @@ async function createJob(req, res) {
       .select();
 
     if (error) {
-      console.error('[Jobs] Create error:', error);
+      log.error('Create error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to create job' });
     }
 
-    console.log(`[Jobs] Created job ${data[0].id} for ${customer_name} on ${scheduled_date}`);
+    log.info('Created job', { jobId: data[0].id, customerName: customer_name, scheduledDate: scheduled_date });
     res.status(201).json({ success: true, data: data[0] });
   } catch (error) {
-    console.error('[Jobs] Create error:', error);
+    log.error('Create error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -185,7 +187,7 @@ async function updateJob(req, res) {
       .select();
 
     if (error) {
-      console.error('[Jobs] Update error:', error);
+      log.error('Update error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to update job' });
     }
 
@@ -193,7 +195,7 @@ async function updateJob(req, res) {
       return res.status(404).json({ success: false, error: 'Job not found' });
     }
 
-    console.log(`[Jobs] Updated job ${id}:`, Object.keys(filtered).join(', '));
+    log.info('Updated job', { jobId: id, fields: Object.keys(filtered).join(', ') });
 
     // Refresh customer aggregates if status or payment changed
     if ((filtered.status || filtered.payment_status) && data[0].customer_id) {
@@ -201,13 +203,13 @@ async function updateJob(req, res) {
         const customerRoutes = require('./customers');
         customerRoutes.refreshCustomerAggregates(data[0].customer_id);
       } catch (e) {
-        console.error('[Jobs] Customer aggregate refresh failed:', e.message);
+        log.error('Customer aggregate refresh failed', { error: e.message });
       }
     }
 
     res.json({ success: true, data: data[0] });
   } catch (error) {
-    console.error('[Jobs] Update error:', error);
+    log.error('Update error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -227,7 +229,7 @@ async function deleteJob(req, res) {
       .select();
 
     if (error) {
-      console.error('[Jobs] Delete error:', error);
+      log.error('Delete error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to delete job' });
     }
 
@@ -235,10 +237,10 @@ async function deleteJob(req, res) {
       return res.status(404).json({ success: false, error: 'Job not found' });
     }
 
-    console.log(`[Jobs] Deleted job ${id}`);
+    log.info('Deleted job', { jobId: id });
     res.json({ success: true, message: 'Job deleted' });
   } catch (error) {
-    console.error('[Jobs] Delete error:', error);
+    log.error('Delete error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -269,7 +271,7 @@ async function getAvailability(req, res) {
       .not('status', 'eq', 'cancelled');
 
     if (error) {
-      console.error('[Jobs] Availability query error:', error);
+      log.error('Availability query error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to fetch availability' });
     }
 
@@ -283,7 +285,7 @@ async function getAvailability(req, res) {
     res.json({ success: true, dates });
 
   } catch (error) {
-    console.error('[Jobs] Availability error:', error);
+    log.error('Availability error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -325,7 +327,7 @@ async function getWeekJobs(req, res) {
     const { data, error } = await query;
 
     if (error) {
-      console.error('[Jobs] Week query error:', error);
+      log.error('Week query error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to fetch week jobs' });
     }
 
@@ -335,7 +337,7 @@ async function getWeekJobs(req, res) {
       data
     });
   } catch (error) {
-    console.error('[Jobs] Week error:', error);
+    log.error('Week error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -356,13 +358,13 @@ async function listRecurring(req, res) {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('[Recurring] List error:', error);
+      log.error('Recurring list error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to fetch recurring jobs' });
     }
 
     res.json({ success: true, data });
   } catch (error) {
-    console.error('[Recurring] List error:', error);
+    log.error('Recurring list error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -424,14 +426,14 @@ async function createRecurring(req, res) {
       .select();
 
     if (error) {
-      console.error('[Recurring] Create error:', error);
+      log.error('Recurring create error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to create recurring job' });
     }
 
-    console.log(`[Recurring] Created pattern ${data[0].id} for ${customer_name} (${repeat_interval})`);
+    log.info('Recurring pattern created', { patternId: data[0].id, customerName: customer_name, interval: repeat_interval });
     res.status(201).json({ success: true, data: data[0] });
   } catch (error) {
-    console.error('[Recurring] Create error:', error);
+    log.error('Recurring create error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -471,7 +473,7 @@ async function updateRecurring(req, res) {
       .select();
 
     if (error) {
-      console.error('[Recurring] Update error:', error);
+      log.error('Recurring update error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to update recurring job' });
     }
 
@@ -479,10 +481,10 @@ async function updateRecurring(req, res) {
       return res.status(404).json({ success: false, error: 'Recurring job not found' });
     }
 
-    console.log(`[Recurring] Updated pattern ${id}`);
+    log.info('Recurring pattern updated', { patternId: id });
     res.json({ success: true, data: data[0] });
   } catch (error) {
-    console.error('[Recurring] Update error:', error);
+    log.error('Recurring update error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -591,14 +593,14 @@ async function generateFromRecurring(req, res) {
       .select();
 
     if (error) {
-      console.error('[Recurring] Generate error:', error);
+      log.error('Recurring generate error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to generate jobs' });
     }
 
-    console.log(`[Recurring] Generated ${data.length} jobs from pattern ${id}`);
+    log.info('Generated jobs from pattern', { count: data.length, patternId: id });
     res.json({ success: true, created: data.length, data });
   } catch (error) {
-    console.error('[Recurring] Generate error:', error);
+    log.error('Recurring generate error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -619,13 +621,13 @@ async function listTeam(req, res) {
       .order('name', { ascending: true });
 
     if (error) {
-      console.error('[Team] List error:', error);
+      log.error('Team list error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to fetch team members' });
     }
 
     res.json({ success: true, data });
   } catch (error) {
-    console.error('[Team] List error:', error);
+    log.error('Team list error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -651,14 +653,14 @@ async function createTeamMember(req, res) {
       .select();
 
     if (error) {
-      console.error('[Team] Create error:', error);
+      log.error('Team create error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to create team member' });
     }
 
-    console.log(`[Team] Added member: ${name}`);
+    log.info('Added team member', { name });
     res.status(201).json({ success: true, data: data[0] });
   } catch (error) {
-    console.error('[Team] Create error:', error);
+    log.error('Team create error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -688,7 +690,7 @@ async function updateTeamMember(req, res) {
       .select();
 
     if (error) {
-      console.error('[Team] Update error:', error);
+      log.error('Team update error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to update team member' });
     }
 
@@ -696,10 +698,10 @@ async function updateTeamMember(req, res) {
       return res.status(404).json({ success: false, error: 'Team member not found' });
     }
 
-    console.log(`[Team] Updated member ${id}`);
+    log.info('Updated team member', { memberId: id });
     res.json({ success: true, data: data[0] });
   } catch (error) {
-    console.error('[Team] Update error:', error);
+    log.error('Team update error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -752,7 +754,7 @@ async function getMySchedule(req, res) {
     const { data: jobs, error: jobsError } = await query;
 
     if (jobsError) {
-      console.error('[MySchedule] Query error:', jobsError);
+      log.error('MySchedule query error', { error: jobsError.message });
       return res.status(500).json({ success: false, error: 'Failed to fetch schedule' });
     }
 
@@ -762,7 +764,7 @@ async function getMySchedule(req, res) {
       data: jobs
     });
   } catch (error) {
-    console.error('[MySchedule] Error:', error);
+    log.error('MySchedule error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -822,11 +824,11 @@ async function updateMyJob(req, res) {
       .select();
 
     if (error) {
-      console.error('[MySchedule] Update error:', error);
+      log.error('MySchedule update error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to update job' });
     }
 
-    console.log(`[MySchedule] ${member.name} updated job ${jobId}:`, Object.keys(filtered).join(', '));
+    log.info('MySchedule job updated', { memberName: member.name, jobId, fields: Object.keys(filtered).join(', ') });
 
     // Refresh customer aggregates if status or payment changed
     if ((filtered.status || filtered.payment_status) && data[0].customer_id) {
@@ -834,13 +836,13 @@ async function updateMyJob(req, res) {
         const customerRoutes = require('./customers');
         customerRoutes.refreshCustomerAggregates(data[0].customer_id);
       } catch (e) {
-        console.error('[MySchedule] Customer aggregate refresh failed:', e.message);
+        log.error('MySchedule customer aggregate refresh failed', { error: e.message });
       }
     }
 
     res.json({ success: true, data: data[0] });
   } catch (error) {
-    console.error('[MySchedule] Update error:', error);
+    log.error('MySchedule update error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -881,7 +883,7 @@ async function notifyReschedule(req, res) {
       const { sendRescheduleEmail } = require('../services/emailer');
       results.email = await sendRescheduleEmail(job, formattedDate, timeDisplay);
     } catch (e) {
-      console.error('[Jobs] Reschedule email failed:', e.message);
+      log.error('Reschedule email failed', { error: e.message });
       results.email = { success: false, error: e.message };
     }
 
@@ -890,11 +892,11 @@ async function notifyReschedule(req, res) {
       const { sendRescheduleWhatsApp } = require('../services/whatsapp');
       results.whatsapp = await sendRescheduleWhatsApp(job, formattedDate, timeDisplay);
     } catch (e) {
-      console.error('[Jobs] Reschedule WhatsApp failed:', e.message);
+      log.error('Reschedule WhatsApp failed', { error: e.message });
       results.whatsapp = { success: false, error: e.message };
     }
 
-    console.log(`[Jobs] Reschedule notification sent for job ${id}: email=${results.email?.success}, whatsapp=${results.whatsapp?.success}`);
+    log.info('Reschedule notification sent', { jobId: id, emailSuccess: results.email?.success, whatsappSuccess: results.whatsapp?.success });
 
     res.json({
       success: true,
@@ -902,7 +904,7 @@ async function notifyReschedule(req, res) {
     });
 
   } catch (error) {
-    console.error('[Jobs] Notify reschedule error:', error);
+    log.error('Notify reschedule error', { error: error.message });
     res.status(500).json({ success: false, error: 'Failed to send notification' });
   }
 }

@@ -3,6 +3,10 @@ console.log("INDEX.JS IS RUNNING");
 // Load environment variables
 require('dotenv').config();
 
+// Structured logger
+const logger = require('./services/logger');
+const log = logger.child('Server');
+
 // Import required packages
 const express = require('express');
 const path = require('path');
@@ -130,6 +134,98 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// JSON-LD Structured Data for SEO and AI discoverability
+app.get('/api/structured-data', (req, res) => {
+  const { SERVICE_PRICING } = require('./config/pricing');
+  const baseUrl = 'https://www.reviveexteriorcleaningsolutions.co.uk';
+  const backendUrl = process.env.BASE_URL || 'https://revive-backend-repo-production.up.railway.app';
+
+  const serviceNames = {
+    roof: { name: 'Roof Cleaning', description: 'Professional soft wash roof cleaning to remove moss, algae, and lichen. Safe low-pressure treatment that protects tiles while restoring appearance.' },
+    driveway: { name: 'Driveway & Patio Cleaning', description: 'Professional pressure washing for driveways, patios, and block paving. Removes years of dirt, moss, and staining.' },
+    gutter: { name: 'Gutter Cleaning & Repairs', description: 'Thorough gutter clearing and repairs including bracket fixes and replacements. Prevents water damage and blockages.' },
+    softwash: { name: 'Soft Washing', description: 'Specialist low-pressure cleaning using biodegradable solutions for delicate surfaces like render, painted walls, and conservatories.' },
+    render: { name: 'Render & Cladding Cleaning', description: 'Expert render and cladding cleaning using soft wash techniques. Removes algae, green growth, and weathering stains safely.' },
+    window: { name: 'Window Cleaning', description: 'Professional window cleaning for residential and commercial properties. Crystal clear results inside and out.' },
+    solar: { name: 'Solar Panel Cleaning', description: 'Specialist solar panel cleaning to maintain maximum energy efficiency. Safe, streak-free cleaning that improves output.' }
+  };
+
+  const serviceSchemas = Object.entries(SERVICE_PRICING)
+    .filter(([key]) => key !== 'other')
+    .map(([key, pricing]) => ({
+      '@context': 'https://schema.org',
+      '@type': 'Service',
+      serviceType: serviceNames[key]?.name || key,
+      description: serviceNames[key]?.description || '',
+      provider: { '@id': `${baseUrl}/#organization` },
+      areaServed: { '@type': 'City', name: 'Swansea', containedInPlace: { '@type': 'AdministrativeArea', name: 'South Wales' } },
+      offers: {
+        '@type': 'AggregateOffer',
+        priceCurrency: 'GBP',
+        lowPrice: String(pricing.small[0]),
+        highPrice: String(pricing.large[1])
+      }
+    }));
+
+  const structuredData = [
+    {
+      '@context': 'https://schema.org',
+      '@type': ['LocalBusiness', 'HomeAndConstructionBusiness'],
+      '@id': `${baseUrl}/#organization`,
+      name: 'Revive Exterior Cleaning Solutions',
+      description: 'Professional exterior cleaning and property maintenance services in Swansea & South Wales. AI-powered instant quoting, driveway cleaning, roof cleaning, gutter cleaning and more.',
+      url: baseUrl,
+      telephone: '+447934032980',
+      email: 'info@reviveexteriorcleaningsolutions.co.uk',
+      address: {
+        '@type': 'PostalAddress',
+        addressLocality: 'Swansea',
+        addressRegion: 'South Wales',
+        addressCountry: 'GB'
+      },
+      areaServed: {
+        '@type': 'GeoCircle',
+        geoMidpoint: { '@type': 'GeoCoordinates', latitude: 51.6214, longitude: -3.9436 },
+        geoRadius: '30 mi'
+      },
+      priceRange: '££',
+      paymentAccepted: 'Bank Transfer, Card Payment',
+      image: `${backendUrl}/logo.png`,
+      logo: `${backendUrl}/logo.png`,
+      sameAs: ['https://wa.me/447934032980'],
+      knowsAbout: [
+        'pressure washing', 'soft washing', 'roof cleaning', 'driveway cleaning',
+        'gutter cleaning', 'render cleaning', 'solar panel cleaning', 'patio cleaning',
+        'exterior property maintenance', 'garden maintenance', 'fencing', 'decking'
+      ],
+      slogan: 'Premium Property Care',
+      hasOfferCatalog: {
+        '@type': 'OfferCatalog',
+        name: 'Exterior Cleaning Services',
+        itemListElement: serviceSchemas.map(s => ({
+          '@type': 'OfferCatalog',
+          name: s.serviceType,
+          itemListElement: [{ '@type': 'Offer', itemOffered: { '@type': 'Service', name: s.serviceType } }]
+        }))
+      }
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: 'Revive Exterior Cleaning Solutions',
+      url: baseUrl,
+      potentialAction: {
+        '@type': 'OrderAction',
+        target: `${baseUrl}/instant-quote-page`,
+        name: 'Get Instant Quote'
+      }
+    },
+    ...serviceSchemas
+  ];
+
+  res.json(structuredData);
+});
+
 // Example API route
 app.get('/api/hello', (req, res) => {
   res.json({
@@ -141,7 +237,7 @@ app.get('/api/hello', (req, res) => {
 // Example POST route
 app.post('/api/data', (req, res) => {
   const receivedData = req.body;
-  console.log('Received data:', receivedData);
+  log.info('Received data', { receivedData });
 
   res.json({
     success: true,
@@ -232,7 +328,7 @@ app.post('/api/quote', quoteLimiter, async (req, res) => {
       .select();
 
     if (error) {
-      console.error('Database error:', error);
+      log.error('Database error', { error: error.message });
       return res.status(500).json({
         success: false,
         error: 'Failed to save quote request'
@@ -240,13 +336,7 @@ app.post('/api/quote', quoteLimiter, async (req, res) => {
     }
 
     // Log successful submission
-    console.log('--- NEW QUOTE SAVED ---');
-    console.log('ID:', data[0].id);
-    console.log('Name:', name);
-    console.log('Email:', email);
-    console.log('Services:', servicesArray.join(', ') || 'none');
-    console.log('Time:', new Date().toISOString());
-    console.log('-------------------------');
+    log.info('New quote saved', { id: data[0].id, name, email, services: servicesArray.join(', ') || 'none' });
 
     const savedQuote = data[0];
 
@@ -259,7 +349,7 @@ app.post('/api/quote', quoteLimiter, async (req, res) => {
 
     // Sync to Google Sheets (non-blocking)
     syncQuoteToSheets(savedQuote).catch(err => {
-      console.error('[Quote Route] Failed to sync to Google Sheets:', err);
+      log.error('Failed to sync to Google Sheets', { error: err.message });
       // Continue even if Sheets sync fails - don't block customer workflow
     });
 
@@ -272,7 +362,7 @@ app.post('/api/quote', quoteLimiter, async (req, res) => {
       try {
         await sendConfirmationWhatsApp(savedQuote);
       } catch (err) {
-        console.error('[Quote Route] Failed to send confirmation WhatsApp:', err);
+        log.error('Failed to send confirmation WhatsApp', { error: err.message });
       }
       try {
         const emailResult = await sendConfirmationEmail(savedQuote);
@@ -280,7 +370,7 @@ app.post('/api/quote', quoteLimiter, async (req, res) => {
           confirmUpdates.confirmation_email_sent_at = new Date().toISOString();
         }
       } catch (err) {
-        console.error('[Quote Route] Failed to send confirmation email:', err);
+        log.error('Failed to send confirmation email', { error: err.message });
       }
       if (Object.keys(confirmUpdates).length > 0) {
         await supabase.from('quotes').update(confirmUpdates).eq('id', savedQuote.id);
@@ -294,7 +384,7 @@ app.post('/api/quote', quoteLimiter, async (req, res) => {
     });
 
   } catch (err) {
-    console.error('Unexpected error:', err);
+    log.error('Unexpected error', { error: err.message });
     res.status(500).json({
       success: false,
       error: 'An unexpected error occurred'
@@ -372,7 +462,7 @@ async function persistConversation(sessionId, messages, result, ip) {
         });
     }
   } catch (err) {
-    console.error('[Chat Persist] Error:', err.message);
+    log.error('Chat persist error', { error: err.message });
   }
 }
 
@@ -413,12 +503,12 @@ app.post('/api/chat', chatLimiter, async (req, res) => {
           .select();
 
         if (error) {
-          console.error('[Chat Lead] Supabase insert error:', error);
+          log.error('Chat lead Supabase insert error', { error: error.message });
           return { success: false, error: error.message };
         }
 
         const savedQuote = data[0];
-        console.log(`[Chat Lead] Created quote ${savedQuote.id} from chat session ${sessionId}`);
+        log.info('Created quote from chat', { quoteId: savedQuote.id, sessionId });
 
         // Link conversation to quote
         if (sessionId) {
@@ -440,12 +530,12 @@ app.post('/api/chat', chatLimiter, async (req, res) => {
 
         // Send admin alert for chat leads (non-blocking)
         sendAdminAlert({ ...savedQuote, lead_score: 70 }).catch(err => {
-          console.error('[Chat Lead] Admin alert failed:', err);
+          log.error('Chat lead admin alert failed', { error: err.message });
         });
 
         return { success: true, quoteId: savedQuote.id };
       } catch (err) {
-        console.error('[Chat Lead] Error capturing lead:', err);
+        log.error('Error capturing lead', { error: err.message });
         return { success: false, error: err.message };
       }
     };
@@ -455,7 +545,7 @@ app.post('/api/chat', chatLimiter, async (req, res) => {
     // Persist conversation (non-blocking)
     if (sessionId) {
       persistConversation(sessionId, trimmedMessages, result, ip).catch(err => {
-        console.error('[Chat] Failed to persist conversation:', err);
+        log.error('Failed to persist conversation', { error: err.message });
       });
     }
 
@@ -467,7 +557,7 @@ app.post('/api/chat', chatLimiter, async (req, res) => {
     });
 
   } catch (err) {
-    console.error('[Chat Route] Error:', err.message);
+    log.error('Chat route error', { error: err.message });
     res.status(500).json({ success: false, error: 'Failed to process chat message' });
   }
 });
@@ -496,7 +586,7 @@ app.get('/api/chat/history', async (req, res) => {
       leadCaptured: data.lead_captured || false
     });
   } catch (err) {
-    console.error('[Chat History] Error:', err.message);
+    log.error('Chat history error', { error: err.message });
     res.json({ success: true, messages: [] });
   }
 });
@@ -531,7 +621,7 @@ app.get('/admin/chats', requireAdminAuth, async (req, res) => {
       pagination: { total: count, limit: limitNum, offset: offsetNum }
     });
   } catch (err) {
-    console.error('[Admin Chats] Error:', err.message);
+    log.error('Admin chats error', { error: err.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 });
@@ -597,7 +687,7 @@ app.get('/accept-estimate/:quoteId', async (req, res) => {
       .single();
 
     if (error || !quote) {
-      console.error('[Accept Route] Quote not found:', quoteId, error);
+      log.error('Quote not found', { quoteId, error: error?.message });
       return res.status(404).send(`
         <!DOCTYPE html>
         <html>
@@ -762,7 +852,7 @@ app.get('/accept-estimate/:quoteId', async (req, res) => {
     `);
 
   } catch (err) {
-    console.error('[Accept Route] Unexpected error:', err);
+    log.error('Accept route unexpected error', { error: err.message });
     res.status(500).send(`
       <!DOCTYPE html>
       <html>
@@ -841,7 +931,7 @@ app.post('/confirm-acceptance/:quoteId', async (req, res) => {
       .single();
 
     if (error || !quote) {
-      console.error('[Confirm Route] Quote not found:', quoteId, error);
+      log.error('Quote not found', { quoteId, error: error?.message });
       return res.status(404).send(`
         <!DOCTYPE html>
         <html>
@@ -885,7 +975,7 @@ app.post('/confirm-acceptance/:quoteId', async (req, res) => {
 
     // Check if already accepted
     if (quote.customer_accepted_estimate) {
-      console.log(`[Confirm Route] Quote ${quoteId} already accepted at ${quote.customer_accepted_at}`);
+      log.info('Quote already accepted', { quoteId, acceptedAt: quote.customer_accepted_at });
       return res.send(`
         <!DOCTYPE html>
         <html>
@@ -954,7 +1044,7 @@ app.post('/confirm-acceptance/:quoteId', async (req, res) => {
       .eq('id', quoteId);
 
     if (updateError) {
-      console.error('[Accept Route] Failed to update quote:', updateError);
+      log.error('Failed to update quote', { error: updateError.message });
       return res.status(500).send(`
         <!DOCTYPE html>
         <html>
@@ -995,7 +1085,7 @@ app.post('/confirm-acceptance/:quoteId', async (req, res) => {
       `);
     }
 
-    console.log(`[Accept Route] ✅ Quote ${quoteId} accepted by ${quote.name}`);
+    log.info('Quote accepted', { quoteId, customerName: quote.name });
 
     const acceptedAt = new Date().toISOString();
 
@@ -1005,19 +1095,19 @@ app.post('/confirm-acceptance/:quoteId', async (req, res) => {
       customer_accepted_estimate: true,
       customer_accepted_at: acceptedAt
     }).catch(err => {
-      console.error('[Accept Route] Failed to update Google Sheets:', err);
+      log.error('Failed to update Google Sheets', { error: err.message });
     });
 
     // Send admin notification (email)
     const updatedQuote = { ...quote, customer_accepted_estimate: true, customer_accepted_at: acceptedAt };
     sendAdminAlert(updatedQuote, true).catch(err => {
-      console.error('[Accept Route] Failed to send admin alert email:', err);
+      log.error('Failed to send admin alert email', { error: err.message });
     });
 
     // Send admin notification (WhatsApp if configured)
     if (process.env.ADMIN_PHONE) {
       sendAdminAlertWhatsApp(updatedQuote, true).catch(err => {
-        console.error('[Accept Route] Failed to send admin alert WhatsApp:', err);
+        log.error('Failed to send admin alert WhatsApp', { error: err.message });
       });
     }
 
@@ -1135,7 +1225,7 @@ app.post('/confirm-acceptance/:quoteId', async (req, res) => {
     `);
 
   } catch (err) {
-    console.error('[Accept Route] Unexpected error:', err);
+    log.error('Accept route unexpected error', { error: err.message });
     res.status(500).send(`
       <!DOCTYPE html>
       <html>
@@ -1337,7 +1427,7 @@ app.use((req, res) => {
 
 // General error handler
 app.use((err, req, res, next) => {
-  console.error('Error:', err);
+  log.error('Unhandled error', { error: err.message });
   res.status(500).json({
     error: 'Internal server error',
     message: err.message
@@ -1355,8 +1445,8 @@ app.post('/webhooks/twilio', webhookRoutes.handleTwilioWebhook);
 // =======================
 
 app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-  console.log(`Serving static files from ${path.join(__dirname, 'public')}`);
+  log.info('Server running', { port: PORT, url: `http://localhost:${PORT}` });
+  log.info('Serving static files', { path: path.join(__dirname, 'public') });
   followUpScheduler.startScheduler();
 
   // Retry any estimations that were missed due to server restarts

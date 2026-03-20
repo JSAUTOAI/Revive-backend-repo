@@ -5,6 +5,8 @@
  * All routes require ADMIN_TOKEN in Authorization header.
  */
 
+const log = require('../services/logger').child('Customers');
+
 // Supabase client will be passed from index.js
 let supabase;
 
@@ -53,13 +55,13 @@ async function listCustomers(req, res) {
     const { data, error, count } = await query;
 
     if (error) {
-      console.error('[Customers] List error:', error);
+      log.error('List error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to fetch customers' });
     }
 
     res.json({ success: true, data, total: count });
   } catch (error) {
-    console.error('[Customers] List error:', error);
+    log.error('List error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -86,13 +88,13 @@ async function searchCustomers(req, res) {
       .limit(10);
 
     if (error) {
-      console.error('[Customers] Search error:', error);
+      log.error('Search error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Search failed' });
     }
 
     res.json({ success: true, data });
   } catch (error) {
-    console.error('[Customers] Search error:', error);
+    log.error('Search error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -108,7 +110,7 @@ async function getStats(req, res) {
       .select('total_spent, total_jobs, last_job_date', { count: 'exact' });
 
     if (error) {
-      console.error('[Customers] Stats error:', error);
+      log.error('Stats error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to fetch stats' });
     }
 
@@ -132,7 +134,7 @@ async function getStats(req, res) {
       }
     });
   } catch (error) {
-    console.error('[Customers] Stats error:', error);
+    log.error('Stats error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -179,7 +181,7 @@ async function getCustomer(req, res) {
       }
     });
   } catch (error) {
-    console.error('[Customers] Get error:', error);
+    log.error('Get error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -212,7 +214,7 @@ async function updateCustomer(req, res) {
       .select();
 
     if (error) {
-      console.error('[Customers] Update error:', error);
+      log.error('Update error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to update customer' });
     }
 
@@ -220,10 +222,10 @@ async function updateCustomer(req, res) {
       return res.status(404).json({ success: false, error: 'Customer not found' });
     }
 
-    console.log(`[Customers] Updated ${id}:`, Object.keys(filtered).join(', '));
+    log.info('Updated customer', { customerId: id, fields: Object.keys(filtered).join(', ') });
     res.json({ success: true, data: data[0] });
   } catch (error) {
-    console.error('[Customers] Update error:', error);
+    log.error('Update error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -283,10 +285,10 @@ async function sendFollowUp(req, res) {
       .update({ last_followup_sent_at: new Date().toISOString() })
       .eq('id', id);
 
-    console.log(`[Customers] Follow-up sent to ${customer.email}`);
+    log.info('Follow-up sent', { to: customer.email });
     res.json({ success: true, emailId: result.emailId });
   } catch (error) {
-    console.error('[Customers] Follow-up error:', error);
+    log.error('Follow-up error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -343,10 +345,10 @@ async function sendBulkFollowUp(req, res) {
       }
     }
 
-    console.log(`[Customers] Bulk follow-up: ${results.sent} sent, ${results.failed} failed, ${results.skipped} skipped`);
+    log.info('Bulk follow-up complete', { sent: results.sent, failed: results.failed, skipped: results.skipped });
     res.json({ success: true, results });
   } catch (error) {
-    console.error('[Customers] Bulk follow-up error:', error);
+    log.error('Bulk follow-up error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -448,7 +450,7 @@ async function getBulkPreview(req, res) {
 
     res.json({ success: true, customer_ids: customerIds, count: customerIds.length });
   } catch (error) {
-    console.error('[Customers] Bulk preview error:', error);
+    log.error('Bulk preview error', { error: error.message });
     res.status(500).json({ success: false, error: 'Failed to preview recipients' });
   }
 }
@@ -693,7 +695,7 @@ async function getConversionAnalytics(req, res) {
       }
     });
   } catch (error) {
-    console.error('[Customers] Analytics error:', error);
+    log.error('Analytics error', { error: error.message });
     res.status(500).json({ success: false, error: 'Failed to compute analytics' });
   }
 }
@@ -741,9 +743,9 @@ async function refreshCustomerAggregates(customerId) {
       })
       .eq('id', customerId);
 
-    console.log(`[Customers] Refreshed aggregates for ${customerId}: £${totalSpent}, ${totalJobs} jobs`);
+    log.info('Refreshed aggregates', { customerId, totalSpent, totalJobs });
   } catch (error) {
-    console.error('[Customers] Aggregate refresh error:', error);
+    log.error('Aggregate refresh error', { error: error.message });
   }
 }
 
@@ -810,14 +812,14 @@ async function createCustomer(req, res) {
       .select();
 
     if (error) {
-      console.error('[Customers] Create error:', error);
+      log.error('Create error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to create customer' });
     }
 
-    console.log(`[Customers] Manually created customer ${data[0].id}: ${name}`);
+    log.info('Manually created customer', { customerId: data[0].id, name });
     res.json({ success: true, data: data[0] });
   } catch (error) {
-    console.error('[Customers] Create error:', error);
+    log.error('Create error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -929,7 +931,7 @@ async function importCustomers(req, res) {
       const { error } = await supabase.from('customers').insert(batch);
 
       if (error) {
-        console.error('[Customers] Import batch error:', error);
+        log.error('Import batch error', { error: error.message });
         // Count remaining as errors
         for (let j = i; j < toInsert.length; j++) {
           errors.push({ row: j + 1, reason: 'Database insert failed', data: toInsert[j] });
@@ -940,7 +942,7 @@ async function importCustomers(req, res) {
       imported += batch.length;
     }
 
-    console.log(`[Customers] Import complete: ${imported} imported, ${skipped.length} skipped, ${errors.length} errors`);
+    log.info('Import complete', { imported, skipped: skipped.length, errors: errors.length });
 
     res.json({
       success: true,
@@ -956,7 +958,7 @@ async function importCustomers(req, res) {
       }
     });
   } catch (error) {
-    console.error('[Customers] Import error:', error);
+    log.error('Import error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -1005,7 +1007,7 @@ async function findOrCreateCustomer(quoteData) {
         })
         .eq('id', existing.id);
 
-      console.log(`[Customers] Linked to existing customer ${existing.id}`);
+      log.info('Linked to existing customer', { customerId: existing.id });
       return existing.id;
     }
 
@@ -1023,14 +1025,14 @@ async function findOrCreateCustomer(quoteData) {
       .select();
 
     if (error) {
-      console.error('[Customers] Create error:', error);
+      log.error('Create error', { error: error.message });
       return null;
     }
 
-    console.log(`[Customers] Created new customer ${data[0].id} for ${name}`);
+    log.info('Created new customer', { customerId: data[0].id, name });
     return data[0].id;
   } catch (error) {
-    console.error('[Customers] findOrCreate error:', error);
+    log.error('findOrCreate error', { error: error.message });
     return null;
   }
 }

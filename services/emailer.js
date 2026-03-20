@@ -5,6 +5,7 @@
  */
 
 const { Resend } = require('resend');
+const log = require('./logger').child('Email');
 
 // Initialize Resend client
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -26,7 +27,7 @@ function h(str) {
  */
 async function sendConfirmationEmail(quote) {
   try {
-    console.log(`[Email] Sending confirmation to ${quote.email}`);
+    log.info('Sending confirmation', { to: quote.email });
 
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
@@ -82,15 +83,15 @@ async function sendConfirmationEmail(quote) {
     });
 
     if (error) {
-      console.error('[Email] Confirmation send error:', error);
+      log.error('Confirmation send error', { error: error.message || error });
       throw error;
     }
 
-    console.log('[Email] Confirmation sent successfully:', data.id);
+    log.info('Confirmation sent successfully', { emailId: data.id });
     return { success: true, emailId: data.id };
 
   } catch (error) {
-    console.error('[Email] Failed to send confirmation:', error);
+    log.error('Failed to send confirmation', { error: error.message });
     return { success: false, error: error.message };
   }
 }
@@ -103,7 +104,7 @@ async function sendConfirmationEmail(quote) {
  */
 async function sendEstimateEmail(quote) {
   try {
-    console.log(`[Email] Sending estimate to ${quote.email}`);
+    log.info('Sending estimate', { to: quote.email });
 
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
@@ -174,15 +175,15 @@ async function sendEstimateEmail(quote) {
     });
 
     if (error) {
-      console.error('[Email] Estimate send error:', error);
+      log.error('Estimate send error', { error: error.message || error });
       throw error;
     }
 
-    console.log('[Email] Estimate sent successfully:', data.id);
+    log.info('Estimate sent successfully', { emailId: data.id });
     return { success: true, emailId: data.id };
 
   } catch (error) {
-    console.error('[Email] Failed to send estimate:', error);
+    log.error('Failed to send estimate', { error: error.message });
     return { success: false, error: error.message };
   }
 }
@@ -200,17 +201,17 @@ async function sendAdminAlert(quote, isAcceptance = false) {
     if (!isAcceptance) {
       // Only send if lead score is high (80+) or high estimated value
       if (quote.lead_score < 80 && quote.estimated_value_max < 500) {
-        console.log('[Email] Skipping admin alert - lead score too low');
+        log.info('Skipping admin alert - lead score too low');
         return { success: true, skipped: true };
       }
     }
 
     const alertType = isAcceptance ? 'Customer Accepted Quote' : 'High-Value Lead';
-    console.log(`[Email] Sending admin alert for ${alertType.toLowerCase()}`);
+    log.info('Sending admin alert', { alertType: alertType.toLowerCase() });
 
     const adminEmail = process.env.ADMIN_EMAIL;
     if (!adminEmail) {
-      console.error('[Email] ADMIN_EMAIL not set, skipping admin alert');
+      log.error('ADMIN_EMAIL not set, skipping admin alert');
       return { success: false, error: 'ADMIN_EMAIL not configured' };
     }
 
@@ -275,15 +276,15 @@ async function sendAdminAlert(quote, isAcceptance = false) {
     });
 
     if (error) {
-      console.error('[Email] Admin alert send error:', error);
+      log.error('Admin alert send error', { error: error.message || error });
       throw error;
     }
 
-    console.log('[Email] Admin alert sent successfully:', data.id);
+    log.info('Admin alert sent successfully', { emailId: data.id });
     return { success: true, emailId: data.id };
 
   } catch (error) {
-    console.error('[Email] Failed to send admin alert:', error);
+    log.error('Failed to send admin alert', { error: error.message });
     return { success: false, error: error.message };
   }
 }
@@ -298,7 +299,7 @@ async function sendAdminAlert(quote, isAcceptance = false) {
  */
 async function sendFollowUpEmail(customer, subject, body) {
   try {
-    console.log(`[Email] Sending follow-up to ${customer.email}`);
+    log.info('Sending follow-up', { to: customer.email });
 
     // Convert plain text body to HTML paragraphs
     const htmlBody = body.split('\n').filter(l => l.trim()).map(l => `<p style="margin: 0 0 12px 0;">${h(l)}</p>`).join('');
@@ -344,15 +345,15 @@ async function sendFollowUpEmail(customer, subject, body) {
     });
 
     if (error) {
-      console.error('[Email] Follow-up send error:', error);
+      log.error('Follow-up send error', { error: error.message || error });
       throw error;
     }
 
-    console.log('[Email] Follow-up sent successfully:', data.id);
+    log.info('Follow-up sent successfully', { emailId: data.id });
     return { success: true, emailId: data.id };
 
   } catch (error) {
-    console.error('[Email] Failed to send follow-up:', error);
+    log.error('Failed to send follow-up', { error: error.message });
     return { success: false, error: error.message };
   }
 }
@@ -368,11 +369,11 @@ async function sendFollowUpEmail(customer, subject, body) {
 async function sendRescheduleEmail(job, formattedDate, timeSlot) {
   try {
     if (!job.customer_email) {
-      console.log('[Email] No customer email for reschedule notification');
+      log.info('No customer email for reschedule notification');
       return { success: false, error: 'No customer email' };
     }
 
-    console.log(`[Email] Sending reschedule notification to ${job.customer_email}`);
+    log.info('Sending reschedule notification', { to: job.customer_email });
 
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
@@ -424,15 +425,15 @@ async function sendRescheduleEmail(job, formattedDate, timeSlot) {
     });
 
     if (error) {
-      console.error('[Email] Reschedule send error:', error);
+      log.error('Reschedule send error', { error: error.message || error });
       throw error;
     }
 
-    console.log('[Email] Reschedule notification sent:', data.id);
+    log.info('Reschedule notification sent', { emailId: data.id });
     return { success: true, emailId: data.id };
 
   } catch (error) {
-    console.error('[Email] Failed to send reschedule notification:', error);
+    log.error('Failed to send reschedule notification', { error: error.message });
     return { success: false, error: error.message };
   }
 }
@@ -447,11 +448,11 @@ async function sendRescheduleEmail(job, formattedDate, timeSlot) {
 async function sendInvoiceEmail(invoice, viewUrl) {
   try {
     if (!invoice.customer_email) {
-      console.log('[Email] No customer email for invoice');
+      log.info('No customer email for invoice');
       return { success: false, error: 'No customer email' };
     }
 
-    console.log(`[Email] Sending invoice ${invoice.invoice_number} to ${invoice.customer_email}`);
+    log.info('Sending invoice', { invoiceNumber: invoice.invoice_number, to: invoice.customer_email });
 
     const bizName = process.env.BUSINESS_NAME || 'Revive Exterior Cleaning';
     const bizAddress = process.env.BUSINESS_ADDRESS || '';
@@ -595,15 +596,15 @@ async function sendInvoiceEmail(invoice, viewUrl) {
     });
 
     if (error) {
-      console.error('[Email] Invoice send error:', error);
+      log.error('Invoice send error', { error: error.message || error });
       throw error;
     }
 
-    console.log('[Email] Invoice sent successfully:', data.id);
+    log.info('Invoice sent successfully', { emailId: data.id });
     return { success: true, emailId: data.id };
 
   } catch (error) {
-    console.error('[Email] Failed to send invoice:', error);
+    log.error('Failed to send invoice', { error: error.message });
     return { success: false, error: error.message };
   }
 }

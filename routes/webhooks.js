@@ -6,6 +6,7 @@
  */
 
 const crypto = require('crypto');
+const log = require('../services/logger').child('Webhooks');
 
 let supabase;
 
@@ -41,7 +42,7 @@ function verifyResendSignature(payload, signature, secret) {
 
     return crypto.timingSafeEqual(sigBytes, expected);
   } catch (err) {
-    console.error('[Webhook] Resend signature verification error:', err.message);
+    log.error('Resend signature verification error', { error: err.message });
     return false;
   }
 }
@@ -58,13 +59,13 @@ async function handleResendWebhook(req, res) {
 
     // If no secret configured, accept but log warning
     if (!secret) {
-      console.warn('[Webhook] RESEND_WEBHOOK_SECRET not set — skipping signature verification');
+      log.warn('RESEND_WEBHOOK_SECRET not set — skipping signature verification');
     } else {
       const signature = req.headers['svix-signature'];
       const rawBody = JSON.stringify(req.body);
 
       if (!signature || !verifyResendSignature(rawBody, signature, secret)) {
-        console.error('[Webhook] Resend signature verification failed');
+        log.error('Resend signature verification failed');
         return res.status(401).json({ error: 'Invalid signature' });
       }
     }
@@ -73,7 +74,7 @@ async function handleResendWebhook(req, res) {
     const eventType = event.type;
     const emailData = event.data;
 
-    console.log(`[Webhook] Resend event: ${eventType} for ${emailData?.to?.[0] || 'unknown'}`);
+    log.info('Resend event', { eventType, to: emailData?.to?.[0] || 'unknown' });
 
     // Track email events in quote activity if we can identify the quote
     if (emailData?.to && supabase) {
@@ -123,7 +124,7 @@ async function handleResendWebhook(req, res) {
     res.json({ received: true });
 
   } catch (error) {
-    console.error('[Webhook] Resend handler error:', error.message);
+    log.error('Resend handler error', { error: error.message });
     res.status(500).json({ error: 'Webhook processing failed' });
   }
 }
@@ -158,7 +159,7 @@ function verifyTwilioSignature(url, params, signature, authToken) {
     if (sig.length !== exp.length) return false;
     return crypto.timingSafeEqual(sig, exp);
   } catch (err) {
-    console.error('[Webhook] Twilio signature verification error:', err.message);
+    log.error('Twilio signature verification error', { error: err.message });
     return false;
   }
 }
@@ -174,7 +175,7 @@ async function handleTwilioWebhook(req, res) {
     const authToken = process.env.TWILIO_AUTH_TOKEN;
 
     if (!authToken) {
-      console.warn('[Webhook] TWILIO_AUTH_TOKEN not set — skipping signature verification');
+      log.warn('TWILIO_AUTH_TOKEN not set — skipping signature verification');
     } else {
       const signature = req.headers['x-twilio-signature'];
       // Build the full URL Twilio used to call us
@@ -182,7 +183,7 @@ async function handleTwilioWebhook(req, res) {
       const fullUrl = `${protocol}://${req.headers.host}${req.originalUrl}`;
 
       if (!signature || !verifyTwilioSignature(fullUrl, req.body || {}, signature, authToken)) {
-        console.error('[Webhook] Twilio signature verification failed');
+        log.error('Twilio signature verification failed');
         return res.status(401).json({ error: 'Invalid signature' });
       }
     }
@@ -195,11 +196,11 @@ async function handleTwilioWebhook(req, res) {
       ErrorMessage
     } = req.body || {};
 
-    console.log(`[Webhook] Twilio status: ${MessageStatus} for ${To || 'unknown'} (SID: ${MessageSid || 'unknown'})`);
+    log.info('Twilio status', { status: MessageStatus, to: To || 'unknown', sid: MessageSid || 'unknown' });
 
     // Log failures for debugging
     if (MessageStatus === 'failed' || MessageStatus === 'undelivered') {
-      console.error(`[Webhook] WhatsApp delivery failed: ${ErrorCode} - ${ErrorMessage}`);
+      log.error('WhatsApp delivery failed', { errorCode: ErrorCode, errorMessage: ErrorMessage });
     }
 
     // Track in quote activity if we can identify the recipient
@@ -239,7 +240,7 @@ async function handleTwilioWebhook(req, res) {
     res.status(200).send('<Response></Response>');
 
   } catch (error) {
-    console.error('[Webhook] Twilio handler error:', error.message);
+    log.error('Twilio handler error', { error: error.message });
     res.status(500).send('<Response></Response>');
   }
 }

@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /webhooks/
+Disallow: /accept-estimate/
+Disallow: /confirm-acceptance/
+Disallow: /invoice/
+
+Sitemap: https://www.reviveexteriorcleaningsolutions.co.uk/sitemap.xml

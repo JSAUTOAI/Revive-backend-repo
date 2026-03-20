@@ -6,6 +6,7 @@
  */
 
 const { parse } = require('json2csv');
+const log = require('../services/logger').child('Admin');
 
 // Supabase client will be passed from index.js
 let supabase;
@@ -74,14 +75,14 @@ async function listQuotes(req, res) {
     const { data, error, count } = await query;
 
     if (error) {
-      console.error('[Admin] Database query error:', error);
+      log.error('Database query error', { error: error.message });
       return res.status(500).json({
         success: false,
         error: 'Database query failed'
       });
     }
 
-    console.log(`[Admin] Returned ${data.length} quotes (total: ${count})`);
+    log.info('Returned quotes', { count: data.length, total: count });
 
     res.json({
       success: true,
@@ -95,7 +96,7 @@ async function listQuotes(req, res) {
     });
 
   } catch (error) {
-    console.error('[Admin] List quotes error:', error);
+    log.error('List quotes error', { error: error.message });
     res.status(500).json({
       success: false,
       error: 'Internal server error'
@@ -143,7 +144,7 @@ async function updateQuoteStatus(req, res) {
       .select();
 
     if (error) {
-      console.error('[Admin] Update status error:', error);
+      log.error('Update status error', { error: error.message });
       return res.status(500).json({
         success: false,
         error: 'Failed to update status'
@@ -157,7 +158,7 @@ async function updateQuoteStatus(req, res) {
       });
     }
 
-    console.log(`[Admin] Updated quote ${id} status to: ${status}`);
+    log.info('Updated quote status', { quoteId: id, status });
 
     res.json({
       success: true,
@@ -165,7 +166,7 @@ async function updateQuoteStatus(req, res) {
     });
 
   } catch (error) {
-    console.error('[Admin] Update status error:', error);
+    log.error('Update status error', { error: error.message });
     res.status(500).json({
       success: false,
       error: 'Internal server error'
@@ -201,7 +202,7 @@ async function updateQuoteNotes(req, res) {
       .select();
 
     if (error) {
-      console.error('[Admin] Update notes error:', error);
+      log.error('Update notes error', { error: error.message });
       return res.status(500).json({
         success: false,
         error: 'Failed to update notes'
@@ -215,7 +216,7 @@ async function updateQuoteNotes(req, res) {
       });
     }
 
-    console.log(`[Admin] Updated notes for quote ${id}`);
+    log.info('Updated notes', { quoteId: id });
 
     res.json({
       success: true,
@@ -223,7 +224,7 @@ async function updateQuoteNotes(req, res) {
     });
 
   } catch (error) {
-    console.error('[Admin] Update notes error:', error);
+    log.error('Update notes error', { error: error.message });
     res.status(500).json({
       success: false,
       error: 'Internal server error'
@@ -253,7 +254,7 @@ async function getQuote(req, res) {
           error: 'Quote not found'
         });
       }
-      console.error('[Admin] Get quote error:', error);
+      log.error('Get quote error', { error: error.message });
       return res.status(500).json({
         success: false,
         error: 'Failed to retrieve quote'
@@ -266,7 +267,7 @@ async function getQuote(req, res) {
     });
 
   } catch (error) {
-    console.error('[Admin] Get quote error:', error);
+    log.error('Get quote error', { error: error.message });
     res.status(500).json({
       success: false,
       error: 'Internal server error'
@@ -289,7 +290,7 @@ async function exportQuotes(req, res) {
   try {
     const { status, service, from_date, to_date } = req.query;
 
-    console.log('[Admin] Exporting quotes with filters:', { status, service, from_date, to_date });
+    log.info('Exporting quotes with filters', { status, service, from_date, to_date });
 
     // Build query
     let query = supabase
@@ -322,7 +323,7 @@ async function exportQuotes(req, res) {
     const { data, error } = await query;
 
     if (error) {
-      console.error('[Admin] Export query error:', error);
+      log.error('Export query error', { error: error.message });
       return res.status(500).json({
         success: false,
         error: 'Database query failed'
@@ -394,7 +395,7 @@ async function exportQuotes(req, res) {
     const timestamp = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
     const filename = `revive-quotes-${timestamp}.csv`;
 
-    console.log(`[Admin] Exported ${csvRows.length} quotes to CSV`);
+    log.info('Exported quotes to CSV', { count: csvRows.length });
 
     // Send as downloadable file
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -402,7 +403,7 @@ async function exportQuotes(req, res) {
     res.send(csv);
 
   } catch (error) {
-    console.error('[Admin] Export error:', error);
+    log.error('Export error', { error: error.message });
     res.status(500).json({
       success: false,
       error: 'Export failed: ' + error.message
@@ -471,7 +472,7 @@ async function updateQuote(req, res) {
       .select();
 
     if (error) {
-      console.error('[Admin] Update quote error:', error);
+      log.error('Update quote error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to update quote' });
     }
 
@@ -512,11 +513,11 @@ async function updateQuote(req, res) {
       }
     }
 
-    console.log(`[Admin] Updated quote ${id}:`, Object.keys(filtered).join(', '));
+    log.info('Updated quote', { quoteId: id, fields: Object.keys(filtered).join(', ') });
     res.json({ success: true, data: data[0] });
 
   } catch (error) {
-    console.error('[Admin] Update quote error:', error);
+    log.error('Update quote error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -537,14 +538,14 @@ async function getQuoteActivity(req, res) {
       .limit(100);
 
     if (error) {
-      console.error('[Admin] Get activity error:', error);
+      log.error('Get activity error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to fetch activity' });
     }
 
     res.json({ success: true, data: data || [] });
 
   } catch (error) {
-    console.error('[Admin] Get activity error:', error);
+    log.error('Get activity error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -572,14 +573,14 @@ async function addQuoteActivity(req, res) {
       .select();
 
     if (error) {
-      console.error('[Admin] Add activity error:', error);
+      log.error('Add activity error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to add activity' });
     }
 
     res.json({ success: true, data: data[0] });
 
   } catch (error) {
-    console.error('[Admin] Add activity error:', error);
+    log.error('Add activity error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -621,7 +622,7 @@ async function uploadAttachment(req, res) {
       });
 
     if (error) {
-      console.error('[Admin] Upload error:', error);
+      log.error('Upload error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Upload failed: ' + error.message });
     }
 
@@ -637,11 +638,11 @@ async function uploadAttachment(req, res) {
       description: `File attached: ${filename}`
     }).then(() => {}).catch(() => {});
 
-    console.log(`[Admin] Uploaded attachment ${filename} for quote ${id}`);
+    log.info('Uploaded attachment', { filename, quoteId: id });
     res.json({ success: true, url: urlData.publicUrl, path: filePath });
 
   } catch (error) {
-    console.error('[Admin] Upload error:', error);
+    log.error('Upload error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -659,7 +660,7 @@ async function listAttachments(req, res) {
       .list(id, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } });
 
     if (error) {
-      console.error('[Admin] List attachments error:', error);
+      log.error('List attachments error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to list attachments' });
     }
 
@@ -680,7 +681,7 @@ async function listAttachments(req, res) {
     res.json({ success: true, data: files });
 
   } catch (error) {
-    console.error('[Admin] List attachments error:', error);
+    log.error('List attachments error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -698,7 +699,7 @@ async function deleteAttachment(req, res) {
       .remove([`${id}/${filename}`]);
 
     if (error) {
-      console.error('[Admin] Delete attachment error:', error);
+      log.error('Delete attachment error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to delete attachment' });
     }
 
@@ -709,11 +710,11 @@ async function deleteAttachment(req, res) {
       description: `File removed: ${filename}`
     }).then(() => {}).catch(() => {});
 
-    console.log(`[Admin] Deleted attachment ${filename} for quote ${id}`);
+    log.info('Deleted attachment', { filename, quoteId: id });
     res.json({ success: true });
 
   } catch (error) {
-    console.error('[Admin] Delete attachment error:', error);
+    log.error('Delete attachment error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -771,7 +772,7 @@ async function getPricingSettings(req, res) {
       lastUpdated
     });
   } catch (error) {
-    console.error('[Admin] Get pricing settings error:', error);
+    log.error('Get pricing settings error', { error: error.message });
     res.status(500).json({ success: false, error: 'Failed to load pricing settings' });
   }
 }
@@ -887,11 +888,11 @@ async function updatePricingSettings(req, res) {
       );
     }
 
-    console.log(`[Admin] Pricing settings updated: ${changedSections.join(', ')}`);
+    log.info('Pricing settings updated', { changedSections: changedSections.join(', ') });
     res.json({ success: true, changedSections });
 
   } catch (error) {
-    console.error('[Admin] Update pricing settings error:', error);
+    log.error('Update pricing settings error', { error: error.message });
     res.status(500).json({ success: false, error: 'Failed to save pricing settings' });
   }
 }
@@ -914,11 +915,11 @@ async function resetPricingSettings(req, res) {
       'Reset all pricing to file defaults'
     );
 
-    console.log('[Admin] Pricing settings reset to defaults');
+    log.info('Pricing settings reset to defaults');
     res.json({ success: true });
 
   } catch (error) {
-    console.error('[Admin] Reset pricing settings error:', error);
+    log.error('Reset pricing settings error', { error: error.message });
     res.status(500).json({ success: false, error: 'Failed to reset pricing settings' });
   }
 }
@@ -941,7 +942,7 @@ async function testEstimate(req, res) {
     res.json({ success: true, data: result });
 
   } catch (error) {
-    console.error('[Admin] Test estimate error:', error);
+    log.error('Test estimate error', { error: error.message });
     res.status(500).json({ success: false, error: 'Failed to calculate test estimate' });
   }
 }
@@ -958,7 +959,7 @@ async function getPricingHistory(req, res) {
     res.json({ success: true, data: history });
 
   } catch (error) {
-    console.error('[Admin] Get pricing history error:', error);
+    log.error('Get pricing history error', { error: error.message });
     res.status(500).json({ success: false, error: 'Failed to load pricing history' });
   }
 }
@@ -979,7 +980,7 @@ async function softDeleteQuote(req, res) {
       .select('id, name');
 
     if (error) {
-      console.error('[Admin] Soft delete error:', error);
+      log.error('Soft delete error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to delete quote' });
     }
 
@@ -994,11 +995,11 @@ async function softDeleteQuote(req, res) {
       description: 'Quote deleted (soft delete)'
     }).then(() => {}).catch(() => {});
 
-    console.log(`[Admin] Soft-deleted quote ${id} (${data[0].name})`);
+    log.info('Soft-deleted quote', { quoteId: id, name: data[0].name });
     res.json({ success: true });
 
   } catch (error) {
-    console.error('[Admin] Soft delete error:', error);
+    log.error('Soft delete error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -1019,7 +1020,7 @@ async function restoreQuote(req, res) {
       .select('id, name');
 
     if (error) {
-      console.error('[Admin] Restore quote error:', error);
+      log.error('Restore quote error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to restore quote' });
     }
 
@@ -1034,11 +1035,11 @@ async function restoreQuote(req, res) {
       description: 'Quote restored from deleted'
     }).then(() => {}).catch(() => {});
 
-    console.log(`[Admin] Restored quote ${id} (${data[0].name})`);
+    log.info('Restored quote', { quoteId: id, name: data[0].name });
     res.json({ success: true });
 
   } catch (error) {
-    console.error('[Admin] Restore quote error:', error);
+    log.error('Restore quote error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }

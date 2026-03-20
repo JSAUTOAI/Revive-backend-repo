@@ -7,6 +7,7 @@
  */
 
 const crypto = require('crypto');
+const log = require('../services/logger').child('Invoices');
 
 let supabase;
 
@@ -140,14 +141,14 @@ async function createInvoice(req, res) {
       .single();
 
     if (error) {
-      console.error('[Invoices] Create error:', error);
+      log.error('Create error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to create invoice' });
     }
 
-    console.log(`[Invoices] Created ${invoiceNumber} for job ${jobId} (${job.customer_name})`);
+    log.info('Created invoice', { invoiceNumber, jobId, customerName: job.customer_name });
     res.status(201).json({ success: true, data: invoice });
   } catch (error) {
-    console.error('[Invoices] Create error:', error);
+    log.error('Create error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -175,13 +176,13 @@ async function listInvoices(req, res) {
     const { data, error } = await query;
 
     if (error) {
-      console.error('[Invoices] List error:', error);
+      log.error('List error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to fetch invoices' });
     }
 
     res.json({ success: true, data });
   } catch (error) {
-    console.error('[Invoices] List error:', error);
+    log.error('List error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -206,7 +207,7 @@ async function getInvoice(req, res) {
 
     res.json({ success: true, data });
   } catch (error) {
-    console.error('[Invoices] Get error:', error);
+    log.error('Get error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -246,7 +247,7 @@ async function updateInvoice(req, res) {
       .single();
 
     if (error) {
-      console.error('[Invoices] Update error:', error);
+      log.error('Update error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to update invoice' });
     }
 
@@ -254,10 +255,10 @@ async function updateInvoice(req, res) {
       return res.status(404).json({ success: false, error: 'Invoice not found' });
     }
 
-    console.log(`[Invoices] Updated ${data.invoice_number}:`, Object.keys(filtered).join(', '));
+    log.info('Updated invoice', { invoiceNumber: data.invoice_number, fields: Object.keys(filtered).join(', ') });
     res.json({ success: true, data });
   } catch (error) {
-    console.error('[Invoices] Update error:', error);
+    log.error('Update error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -297,7 +298,7 @@ async function sendInvoice(req, res) {
     const emailResult = await sendInvoiceEmail(invoice, viewUrl);
 
     if (!emailResult.success) {
-      console.error('[Invoices] Email send failed:', emailResult.error);
+      log.error('Email send failed', { error: emailResult.error });
       return res.status(500).json({ success: false, error: emailResult.error || 'Failed to send invoice email' });
     }
 
@@ -314,13 +315,13 @@ async function sendInvoice(req, res) {
       .single();
 
     if (updateError) {
-      console.error('[Invoices] Status update after send failed:', updateError);
+      log.error('Status update after send failed', { error: updateError.message });
     }
 
-    console.log(`[Invoices] Sent ${invoice.invoice_number} to ${invoice.customer_email}`);
+    log.info('Sent invoice', { invoiceNumber: invoice.invoice_number, to: invoice.customer_email });
     res.json({ success: true, data: updated || invoice });
   } catch (error) {
-    console.error('[Invoices] Send error:', error);
+    log.error('Send error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -340,13 +341,13 @@ async function getJobInvoice(req, res) {
       .limit(1);
 
     if (error) {
-      console.error('[Invoices] Job invoice lookup error:', error);
+      log.error('Job invoice lookup error', { error: error.message });
       return res.status(500).json({ success: false, error: 'Failed to check invoice' });
     }
 
     res.json({ success: true, data: data && data.length > 0 ? data[0] : null });
   } catch (error) {
-    console.error('[Invoices] Job invoice lookup error:', error);
+    log.error('Job invoice lookup error', { error: error.message });
     res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }
@@ -528,7 +529,7 @@ async function viewInvoice(req, res) {
 
     res.send(html);
   } catch (error) {
-    console.error('[Invoices] View error:', error);
+    log.error('View error', { error: error.message });
     res.status(500).send('<html><body><h1>Error</h1><p>Failed to load invoice.</p></body></html>');
   }
 }

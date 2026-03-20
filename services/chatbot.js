@@ -7,6 +7,7 @@
  */
 
 const Anthropic = require('@anthropic-ai/sdk');
+const log = require('./logger').child('Chat');
 const { getPricingConfig } = require('./pricingConfig');
 
 // Initialize Anthropic client
@@ -377,7 +378,7 @@ async function chat(messages, onLeadCapture) {
       formData: null
     };
   } catch (error) {
-    console.error('[Chatbot] Claude API error:', error.message);
+    log.error('Claude API error', { error: error.message });
     throw error;
   }
 }

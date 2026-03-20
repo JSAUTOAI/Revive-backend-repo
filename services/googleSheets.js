@@ -6,6 +6,7 @@
  */
 
 const { google } = require('googleapis');
+const log = require('./logger').child('Sheets');
 const path = require('path');
 
 // Initialize Google Sheets API
@@ -42,10 +43,10 @@ async function initializeSheets() {
     // Create sheets client
     sheets = google.sheets({ version: 'v4', auth });
 
-    console.log('[Google Sheets] ✅ Initialized successfully');
+    log.info('Initialized successfully');
     return true;
   } catch (error) {
-    console.error('[Google Sheets] ❌ Failed to initialize:', error.message);
+    log.error('Failed to initialize', { error: error.message });
     return false;
   }
 }
@@ -69,7 +70,7 @@ async function syncQuoteToSheets(quote) {
     const spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID;
 
     if (!spreadsheetId) {
-      console.error('[Google Sheets] GOOGLE_SPREADSHEET_ID not set in .env');
+      log.error('GOOGLE_SPREADSHEET_ID not set in .env');
       return { success: false, error: 'Spreadsheet ID not configured' };
     }
 
@@ -135,7 +136,7 @@ async function syncQuoteToSheets(quote) {
       }
     });
 
-    console.log(`[Google Sheets] ✅ Quote ${quote.id} synced to row ${response.data.updates.updatedRange}`);
+    log.info('Quote synced', { quoteId: quote.id, range: response.data.updates.updatedRange });
 
     return {
       success: true,
@@ -144,7 +145,7 @@ async function syncQuoteToSheets(quote) {
     };
 
   } catch (error) {
-    console.error('[Google Sheets] ❌ Failed to sync quote:', error.message);
+    log.error('Failed to sync quote', { error: error.message });
     return { success: false, error: error.message };
   }
 }
@@ -196,11 +197,11 @@ async function setupSheetHeaders() {
       }
     });
 
-    console.log('[Google Sheets] ✅ Headers set up successfully');
+    log.info('Headers set up successfully');
     return { success: true };
 
   } catch (error) {
-    console.error('[Google Sheets] ❌ Failed to set up headers:', error.message);
+    log.error('Failed to set up headers', { error: error.message });
     return { success: false, error: error.message };
   }
 }
@@ -229,7 +230,7 @@ async function updateQuoteInSheets(quoteId, updates) {
     const rowIndex = rows.findIndex(row => row[0] === quoteId);
 
     if (rowIndex === -1) {
-      console.log(`[Google Sheets] Quote ${quoteId} not found in sheet`);
+      log.info('Quote not found in sheet', { quoteId });
       return { success: false, error: 'Quote not found in sheet' };
     }
 
@@ -291,13 +292,13 @@ async function updateQuoteInSheets(quoteId, updates) {
         }
       });
 
-      console.log(`[Google Sheets] ✅ Updated quote ${quoteId} at row ${rowNumber}`);
+      log.info('Updated quote', { quoteId, rowNumber });
     }
 
     return { success: true, rowNumber };
 
   } catch (error) {
-    console.error('[Google Sheets] ❌ Failed to update quote:', error.message);
+    log.error('Failed to update quote', { error: error.message });
     return { success: false, error: error.message };
   }
 }
