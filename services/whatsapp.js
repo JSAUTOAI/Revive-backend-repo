@@ -329,10 +329,45 @@ function capitalizeService(service) {
   return serviceNames[service] || service.charAt(0).toUpperCase() + service.slice(1);
 }
 
+/**
+ * Send review request via WhatsApp (freeform - within 24h window)
+ *
+ * @param {Object} job - Job data with customer info
+ * @param {string} reviewUrl - Google Business Profile review URL
+ * @returns {Promise<Object>} - Twilio API response
+ */
+async function sendReviewRequestWhatsApp(job, reviewUrl) {
+  try {
+    if (!job.customer_phone) {
+      log.info('No customer phone for review request');
+      return { success: false, error: 'No customer phone' };
+    }
+
+    log.info('Sending review request', { phone: job.customer_phone });
+
+    const toWhatsApp = formatPhoneNumber(job.customer_phone);
+    const body = `Hi ${job.customer_name || 'there'}, thanks for choosing Revive! We hope your ${job.service || 'property'} is looking brilliant. If you have 30 seconds, a quick Google review would really help us out:\n\n${reviewUrl}\n\nThanks again! - The Revive Team`;
+
+    const message = await client.messages.create({
+      from: FROM_WHATSAPP,
+      to: toWhatsApp,
+      body: body
+    });
+
+    log.info('Review request sent', { messageSid: message.sid });
+    return { success: true, messageSid: message.sid };
+
+  } catch (error) {
+    log.error('Review request failed', { error: error.message });
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   sendConfirmationWhatsApp,
   sendEstimateWhatsApp,
   sendAdminAlertWhatsApp,
   sendFollowUpWhatsApp,
-  sendRescheduleWhatsApp
+  sendRescheduleWhatsApp,
+  sendReviewRequestWhatsApp
 };

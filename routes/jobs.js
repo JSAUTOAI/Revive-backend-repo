@@ -197,6 +197,50 @@ async function updateJob(req, res) {
 
     log.info('Updated job', { jobId: id, fields: Object.keys(filtered).join(', ') });
 
+    // Auto-send review request when job marked as completed
+    if (filtered.status === 'completed' && !data[0].review_request_sent_at) {
+      const reviewUrl = process.env.GOOGLE_REVIEW_URL;
+      if (reviewUrl) {
+        // Delay 2 hours so customer has time to see the results
+        const delayMs = 2 * 60 * 60 * 1000;
+        setTimeout(async () => {
+          try {
+            const job = data[0];
+            const channels = [];
+
+            // Send email review request
+            if (job.customer_email) {
+              const { sendReviewRequestEmail } = require('../services/emailer');
+              const emailResult = await sendReviewRequestEmail(job, reviewUrl);
+              if (emailResult.success) channels.push('email');
+            }
+
+            // Send WhatsApp review request
+            if (job.customer_phone) {
+              const { sendReviewRequestWhatsApp } = require('../services/whatsapp');
+              const waResult = await sendReviewRequestWhatsApp(job, reviewUrl);
+              if (waResult.success) channels.push('whatsapp');
+            }
+
+            // Mark review request as sent
+            if (channels.length > 0) {
+              await supabase
+                .from('jobs')
+                .update({
+                  review_request_sent_at: new Date().toISOString(),
+                  review_request_channel: channels.join(', ')
+                })
+                .eq('id', id);
+              log.info('Review request sent', { jobId: id, channels });
+            }
+          } catch (e) {
+            log.error('Review request failed', { jobId: id, error: e.message });
+          }
+        }, delayMs);
+        log.info('Review request scheduled', { jobId: id, delayHours: 2 });
+      }
+    }
+
     // Refresh customer aggregates if status or payment changed
     if ((filtered.status || filtered.payment_status) && data[0].customer_id) {
       try {
@@ -909,6 +953,72 @@ async function notifyReschedule(req, res) {
   }
 }
 
+/**
+ * POST /admin/jobs/:id/request-review
+ * Manually send a review request to the customer
+ */
+async function requestReview(req, res) {
+  try {
+    const { id } = req.params;
+
+    const reviewUrl = process.env.GOOGLE_REVIEW_URL;
+    if (!reviewUrl) {
+      return res.status(400).json({ success: false, error: 'GOOGLE_REVIEW_URL not configured. Set up your Google Business Profile first.' });
+    }
+
+    // Fetch the job
+    const { data: job, error } = await supabase
+      .from('jobs')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error || !job) {
+      return res.status(404).json({ success: false, error: 'Job not found' });
+    }
+
+    if (job.review_request_sent_at) {
+      return res.status(400).json({ success: false, error: 'Review request already sent on ' + new Date(job.review_request_sent_at).toLocaleDateString('en-GB') });
+    }
+
+    const channels = [];
+
+    // Send email
+    if (job.customer_email) {
+      const { sendReviewRequestEmail } = require('../services/emailer');
+      const emailResult = await sendReviewRequestEmail(job, reviewUrl);
+      if (emailResult.success) channels.push('email');
+    }
+
+    // Send WhatsApp
+    if (job.customer_phone) {
+      const { sendReviewRequestWhatsApp } = require('../services/whatsapp');
+      const waResult = await sendReviewRequestWhatsApp(job, reviewUrl);
+      if (waResult.success) channels.push('whatsapp');
+    }
+
+    if (channels.length === 0) {
+      return res.status(400).json({ success: false, error: 'No customer contact details available' });
+    }
+
+    // Mark as sent
+    await supabase
+      .from('jobs')
+      .update({
+        review_request_sent_at: new Date().toISOString(),
+        review_request_channel: channels.join(', ')
+      })
+      .eq('id', id);
+
+    log.info('Manual review request sent', { jobId: id, channels });
+    res.json({ success: true, channels });
+
+  } catch (error) {
+    log.error('Review request error', { error: error.message });
+    res.status(500).json({ success: false, error: 'Failed to send review request' });
+  }
+}
+
 module.exports = {
   setSupabaseClient,
   listJobs,
@@ -926,5 +1036,6 @@ module.exports = {
   getMySchedule,
   updateMyJob,
   notifyReschedule,
-  getAvailability
+  getAvailability,
+  requestReview
 };

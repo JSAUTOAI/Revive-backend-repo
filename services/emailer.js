@@ -609,11 +609,97 @@ async function sendInvoiceEmail(invoice, viewUrl) {
   }
 }
 
+/**
+ * Send review request email after job completion
+ *
+ * @param {Object} job - Job data with customer info
+ * @param {string} reviewUrl - Google Business Profile review URL
+ * @returns {Promise<Object>} - Resend API response
+ */
+async function sendReviewRequestEmail(job, reviewUrl) {
+  try {
+    if (!job.customer_email) {
+      log.info('No customer email for review request');
+      return { success: false, error: 'No customer email' };
+    }
+
+    log.info('Sending review request', { to: job.customer_email });
+
+    const bizName = process.env.BUSINESS_NAME || 'Revive Exterior Cleaning';
+
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: job.customer_email,
+      subject: `How did we do? - ${bizName}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background-color: #84cc16; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+            <h1 style="margin: 0; font-size: 24px;">Thank You, ${h(job.customer_name)}!</h1>
+          </div>
+
+          <div style="background-color: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px;">
+            <p style="font-size: 16px; margin-top: 0;">We hope you're happy with your <strong>${h(job.service || 'cleaning')}</strong> — your property should be looking brilliant!</p>
+
+            <div style="background-color: white; padding: 25px; border-radius: 8px; margin: 20px 0; text-align: center; border: 2px solid #84cc16;">
+              <p style="font-size: 18px; margin: 0 0 5px 0; font-weight: bold; color: #333;">Could you spare 30 seconds?</p>
+              <p style="font-size: 15px; color: #666; margin: 0 0 20px 0;">A quick Google review helps us reach more customers like you.</p>
+
+              <div style="margin: 20px 0;">
+                <span style="font-size: 32px; letter-spacing: 5px;">★★★★★</span>
+              </div>
+
+              <a href="${reviewUrl}"
+                 style="display: inline-block; background-color: #84cc16; color: white; padding: 16px 40px; text-decoration: none; border-radius: 8px; font-size: 18px; font-weight: bold;">
+                Leave a Google Review
+              </a>
+
+              <p style="font-size: 13px; color: #888; margin-top: 15px;">It only takes a moment and means the world to us.</p>
+            </div>
+
+            <p style="font-size: 14px; color: #666; margin-top: 20px;">
+              If anything wasn't up to scratch, please reply to this email and let us know — we'll make it right.
+            </p>
+
+            <p style="font-size: 14px; color: #666;">
+              Thanks again for choosing Revive!<br>
+              <strong>The ${bizName.split(' ')[0]} Team</strong>
+            </p>
+          </div>
+
+          <div style="text-align: center; padding: 20px; font-size: 12px; color: #999;">
+            <p>${bizName} - Professional Property Care</p>
+          </div>
+        </body>
+        </html>
+      `
+    });
+
+    if (error) {
+      log.error('Review request send error', { error: error.message || error });
+      throw error;
+    }
+
+    log.info('Review request sent successfully', { emailId: data.id });
+    return { success: true, emailId: data.id };
+
+  } catch (error) {
+    log.error('Failed to send review request', { error: error.message });
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   sendConfirmationEmail,
   sendEstimateEmail,
   sendAdminAlert,
   sendFollowUpEmail,
   sendRescheduleEmail,
-  sendInvoiceEmail
+  sendInvoiceEmail,
+  sendReviewRequestEmail
 };

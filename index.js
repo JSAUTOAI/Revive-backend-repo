@@ -1287,6 +1287,7 @@ app.get('/admin/jobs/availability', requireAdminAuth, jobRoutes.getAvailability)
 app.patch('/admin/jobs/:id', requireAdminAuth, jobRoutes.updateJob);
 app.delete('/admin/jobs/:id', requireAdminAuth, jobRoutes.deleteJob);
 app.post('/admin/jobs/:id/notify-reschedule', requireAdminAuth, jobRoutes.notifyReschedule);
+app.post('/admin/jobs/:id/request-review', requireAdminAuth, jobRoutes.requestReview);
 app.get('/admin/jobs/week/:date', requireAdminAuth, jobRoutes.getWeekJobs);
 
 // Recurring jobs
