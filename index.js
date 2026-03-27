@@ -38,6 +38,9 @@ const { sendAdminAlertWhatsApp } = require('./services/whatsapp');
 // Import pricing config loader
 const pricingConfig = require('./services/pricingConfig');
 
+// Import pipeline routes
+const pipelineRoutes = require('./routes/pipeline');
+
 // Import admin middleware and routes
 const { requireAdminAuth } = require('./middleware/auth');
 const adminRoutes = require('./routes/admin');
@@ -68,6 +71,7 @@ financeRoutes.setSupabaseClient(supabase);
 pricingConfig.setSupabaseClient(supabase);
 followUpScheduler.setSupabaseClient(supabase);
 webhookRoutes.setSupabaseClient(supabase);
+pipelineRoutes.setSupabaseClient(supabase);
 
 // =======================
 // MIDDLEWARE
@@ -89,8 +93,15 @@ app.use((req, res, next) => {
   next();
 });
 
-// Parse JSON bodies
-app.use(express.json({ limit: '15mb' }));
+// Parse JSON bodies (preserve raw body for Stripe webhook signature verification)
+app.use(express.json({
+  limit: '15mb',
+  verify: (req, res, buf) => {
+    if (req.originalUrl === '/webhooks/stripe') {
+      req.rawBody = buf;
+    }
+  }
+}));
 
 // Parse URL-encoded bodies (from forms)
 app.use(express.urlencoded({ extended: true }));
@@ -1404,8 +1415,23 @@ app.post('/admin/settings/pricing/reset', requireAdminAuth, adminRoutes.resetPri
 app.post('/admin/settings/pricing/test-estimate', requireAdminAuth, adminRoutes.testEstimate);
 app.get('/admin/settings/pricing/history', requireAdminAuth, adminRoutes.getPricingHistory);
 
-// Public invoice view (no auth - token acts as access key)
+// =======================
+// PIPELINE ROUTES (Public - customer-facing)
+// =======================
+app.use('/', pipelineRoutes.router);
+
+// =======================
+// PIPELINE ADMIN ROUTES (Protected)
+// =======================
+app.get('/admin/pipeline/stats', requireAdminAuth, adminRoutes.getPipelineStats);
+app.get('/admin/pipeline/pending-approvals', requireAdminAuth, adminRoutes.getPendingApprovals);
+app.post('/admin/pipeline/:quoteId/approve-price', requireAdminAuth, adminRoutes.approvePrice);
+app.get('/admin/settings/pipeline', requireAdminAuth, adminRoutes.getPipelineSettings);
+app.put('/admin/settings/pipeline', requireAdminAuth, adminRoutes.updatePipelineSettings);
+
+// Public invoice view and payment (no auth - token acts as access key)
 app.get('/invoice/:token', invoiceRoutes.viewInvoice);
+app.get('/invoice/:token/pay', invoiceRoutes.payInvoice);
 
 // =======================
 // TEAM MEMBER SCHEDULE (Public - UUID as access key)
@@ -1440,6 +1466,7 @@ app.use((err, req, res, next) => {
 // =======================
 app.post('/webhooks/resend', webhookRoutes.handleResendWebhook);
 app.post('/webhooks/twilio', webhookRoutes.handleTwilioWebhook);
+app.post('/webhooks/stripe', invoiceRoutes.handleStripeWebhook);
 
 // =======================
 // START SERVER

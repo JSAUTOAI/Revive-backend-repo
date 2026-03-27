@@ -445,7 +445,7 @@ async function sendRescheduleEmail(job, formattedDate, timeSlot) {
  * @param {string} viewUrl - Public URL to view the invoice
  * @returns {Promise<Object>} - Resend API response
  */
-async function sendInvoiceEmail(invoice, viewUrl) {
+async function sendInvoiceEmail(invoice, viewUrl, paymentUrl) {
   try {
     if (!invoice.customer_email) {
       log.info('No customer email for invoice');
@@ -570,7 +570,13 @@ async function sendInvoiceEmail(invoice, viewUrl) {
             ${bankSection}
 
             <div style="text-align: center; margin: 24px 0 16px;">
-              <a href="${viewUrl}" style="display: inline-block; background-color: #84cc16; color: white; padding: 14px 36px; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold;">
+              ${paymentUrl ? `
+              <a href="${paymentUrl}" style="display: inline-block; background-color: #84cc16; color: white; padding: 14px 36px; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold; margin-bottom: 12px;">
+                Pay Now by Card
+              </a>
+              <br>
+              ` : ''}
+              <a href="${viewUrl}" style="display: inline-block; background-color: ${paymentUrl ? '#6b7280' : '#84cc16'}; color: white; padding: ${paymentUrl ? '10px 28px' : '14px 36px'}; text-decoration: none; border-radius: 8px; font-size: ${paymentUrl ? '14px' : '16px'}; font-weight: bold;">
                 View Invoice Online
               </a>
               <p style="font-size: 12px; color: #888; margin-top: 8px;">You can also print or save as PDF from the online view.</p>
@@ -694,6 +700,247 @@ async function sendReviewRequestEmail(job, reviewUrl) {
   }
 }
 
+// ─── Pipeline Email Templates ─────────────────────────────────────
+
+/**
+ * Send photo request email after estimate is calculated
+ */
+async function sendPhotoRequestEmail(quote) {
+  try {
+    const BASE_URL = process.env.BASE_URL || 'https://revive-backend-repo-production.up.railway.app';
+    const uploadUrl = `${BASE_URL}/upload-photos/${quote.id}`;
+    const services = (quote.services || []).map(s => s.charAt(0).toUpperCase() + s.slice(1) + ' Cleaning').join(', ');
+
+    log.info('Sending photo request', { to: quote.email });
+
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: quote.email,
+      subject: `Quick next step — send us some photos!`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background-color: #84cc16; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+            <h1 style="margin: 0; font-size: 22px;">One Quick Step to Your Fixed Price</h1>
+          </div>
+
+          <div style="background-color: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px;">
+            <p style="font-size: 16px; margin-top: 0;">Hi ${h(quote.name)},</p>
+
+            <p>Thanks for your enquiry about <strong>${h(services)}</strong>.</p>
+
+            <div style="background: #f0fdf4; border-left: 4px solid #84cc16; padding: 16px; border-radius: 0 8px 8px 0; margin: 20px 0;">
+              <p style="margin: 0 0 4px 0; color: #365314; font-weight: 600;">Your Estimated Range</p>
+              <p style="margin: 0; font-size: 24px; font-weight: 800; color: #365314;">&pound;${Number(quote.estimated_value_min).toFixed(0)} &ndash; &pound;${Number(quote.estimated_value_max).toFixed(0)}</p>
+            </div>
+
+            <p>To give you a <strong>fixed price</strong>, we just need a few photos of the area to be cleaned. This helps us assess the condition and give you an accurate figure.</p>
+
+            <div style="text-align: center; margin: 24px 0;">
+              <a href="${uploadUrl}" style="background-color: #84cc16; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">Upload Photos Now</a>
+            </div>
+
+            <p style="font-size: 14px; color: #666;"><strong>What to photograph:</strong></p>
+            <ul style="font-size: 14px; color: #666; margin-bottom: 20px;">
+              <li>The front of your property showing the areas to be cleaned</li>
+              <li>Close-up shots of any dirty or stained areas</li>
+              <li>Any access points or tight spaces</li>
+            </ul>
+
+            <p>Once we've reviewed your photos, we'll send your fixed price through straight away. If you're happy with it, you can book a slot online — no need to call.</p>
+
+            <div style="margin-top: 25px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+              <p style="font-size: 14px; color: #666;">
+                Have questions? Just reply to this email or give us a call.<br>
+                <strong>The Revive Team</strong>
+              </p>
+            </div>
+          </div>
+
+          <div style="text-align: center; padding: 20px; font-size: 12px; color: #999;">
+            <p>Revive Exterior Cleaning - Professional Property Care</p>
+          </div>
+        </body>
+        </html>
+      `
+    });
+
+    if (error) throw error;
+    log.info('Photo request email sent', { emailId: data.id });
+    return { success: true, emailId: data.id };
+
+  } catch (error) {
+    log.error('Failed to send photo request email', { error: error.message });
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Send final fixed price email to customer
+ */
+async function sendFinalPriceEmail(quote) {
+  try {
+    const BASE_URL = process.env.BASE_URL || 'https://revive-backend-repo-production.up.railway.app';
+    const acceptUrl = `${BASE_URL}/final-price/${quote.id}`;
+    const services = (quote.services || []).map(s => s.charAt(0).toUpperCase() + s.slice(1) + ' Cleaning').join(', ');
+    const honestyClause = 'This price is based on the information provided and access to the site. If conditions differ from what was described, any adjustments will be discussed before work begins.';
+
+    log.info('Sending final price', { to: quote.email, price: quote.final_price });
+
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: quote.email,
+      subject: `Your fixed price is ready — £${Number(quote.final_price).toFixed(0)}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background-color: #84cc16; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+            <h1 style="margin: 0; font-size: 22px;">Your Fixed Price Is Ready</h1>
+          </div>
+
+          <div style="background-color: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px;">
+            <p style="font-size: 16px; margin-top: 0;">Hi ${h(quote.name)},</p>
+
+            <p>Thanks for sending those photos through. We've reviewed everything and here's your fixed price:</p>
+
+            <div style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 2px solid #84cc16; padding: 24px; border-radius: 12px; text-align: center; margin: 24px 0;">
+              <p style="margin: 0 0 4px 0; font-size: 12px; color: #65a30d; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Your Price</p>
+              <p style="margin: 0; font-size: 42px; font-weight: 800; color: #365314;">&pound;${Number(quote.final_price).toFixed(0)}</p>
+              <p style="margin: 8px 0 0 0; font-size: 14px; color: #365314;">${h(services)}</p>
+            </div>
+
+            <div style="text-align: center; margin: 24px 0;">
+              <a href="${acceptUrl}" style="background-color: #84cc16; color: white; padding: 16px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 18px; display: inline-block;">&#10003; Accept &amp; Book Online</a>
+            </div>
+
+            <p style="font-size: 15px;">Happy with the price? Click the button above to accept and choose a date that suits you — it only takes a minute.</p>
+
+            <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin-top: 20px;">
+              <p style="margin: 0; font-size: 13px; color: #64748b;"><strong>Please note:</strong> ${h(honestyClause)}</p>
+            </div>
+
+            <div style="margin-top: 25px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+              <p style="font-size: 14px; color: #666;">
+                Have questions? Just reply to this email or give us a call.<br>
+                <strong>The Revive Team</strong>
+              </p>
+            </div>
+          </div>
+
+          <div style="text-align: center; padding: 20px; font-size: 12px; color: #999;">
+            <p>Revive Exterior Cleaning - Professional Property Care</p>
+          </div>
+        </body>
+        </html>
+      `
+    });
+
+    if (error) throw error;
+    log.info('Final price email sent', { emailId: data.id });
+    return { success: true, emailId: data.id };
+
+  } catch (error) {
+    log.error('Failed to send final price email', { error: error.message });
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Send booking confirmation email
+ */
+async function sendBookingConfirmationEmail(quote, job) {
+  try {
+    const services = (quote.services || []).map(s => s.charAt(0).toUpperCase() + s.slice(1) + ' Cleaning').join(', ');
+    const timeLabels = { morning: 'Morning (8am - 12pm)', afternoon: 'Afternoon (12pm - 4pm)', evening: 'Evening (4pm - 7pm)' };
+    const dateFormatted = new Date(job.scheduled_date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const timeFormatted = timeLabels[job.time_slot] || job.time_slot;
+
+    log.info('Sending booking confirmation', { to: quote.email, date: job.scheduled_date });
+
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: quote.email,
+      subject: `Booking confirmed — ${dateFormatted}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background-color: #84cc16; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+            <h1 style="margin: 0; font-size: 22px;">&#127881; Booking Confirmed!</h1>
+          </div>
+
+          <div style="background-color: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px;">
+            <p style="font-size: 16px; margin-top: 0;">Hi ${h(quote.name)},</p>
+
+            <p>Great news — you're all booked in! Here are your booking details:</p>
+
+            <div style="background: white; border: 2px solid #84cc16; border-radius: 12px; padding: 20px; margin: 20px 0;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 8px 0; font-weight: 600; color: #365314; width: 120px;">Date</td>
+                  <td style="padding: 8px 0; color: #334155;">${h(dateFormatted)}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; font-weight: 600; color: #365314; border-top: 1px solid #e2e8f0;">Time</td>
+                  <td style="padding: 8px 0; color: #334155; border-top: 1px solid #e2e8f0;">${h(timeFormatted)}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; font-weight: 600; color: #365314; border-top: 1px solid #e2e8f0;">Services</td>
+                  <td style="padding: 8px 0; color: #334155; border-top: 1px solid #e2e8f0;">${h(services)}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; font-weight: 600; color: #365314; border-top: 1px solid #e2e8f0;">Price</td>
+                  <td style="padding: 8px 0; color: #334155; border-top: 1px solid #e2e8f0; font-weight: 700;">&pound;${Number(quote.final_price).toFixed(0)}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; font-weight: 600; color: #365314; border-top: 1px solid #e2e8f0;">Address</td>
+                  <td style="padding: 8px 0; color: #334155; border-top: 1px solid #e2e8f0;">${h(quote.address_line1)}, ${h(quote.postcode)}</td>
+                </tr>
+              </table>
+            </div>
+
+            <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 0 8px 8px 0; margin: 20px 0;">
+              <p style="margin: 0; font-size: 14px; color: #92400e;"><strong>Before the day:</strong></p>
+              <ul style="margin: 8px 0 0 0; padding-left: 20px; font-size: 14px; color: #92400e;">
+                <li>Please move any vehicles or items away from the work area</li>
+                <li>Ensure access to outdoor taps or water supply if possible</li>
+                <li>Let us know if there are any pets or security gates to be aware of</li>
+              </ul>
+            </div>
+
+            <p style="font-size: 15px;">If you need to reschedule, just get in touch with us as soon as possible and we'll sort a new date for you.</p>
+
+            <div style="margin-top: 25px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+              <p style="font-size: 14px; color: #666;">
+                We look forward to transforming your property!<br>
+                <strong>The Revive Team</strong>
+              </p>
+            </div>
+          </div>
+
+          <div style="text-align: center; padding: 20px; font-size: 12px; color: #999;">
+            <p>Revive Exterior Cleaning - Professional Property Care</p>
+          </div>
+        </body>
+        </html>
+      `
+    });
+
+    if (error) throw error;
+    log.info('Booking confirmation email sent', { emailId: data.id });
+    return { success: true, emailId: data.id };
+
+  } catch (error) {
+    log.error('Failed to send booking confirmation email', { error: error.message });
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   sendConfirmationEmail,
   sendEstimateEmail,
@@ -701,5 +948,8 @@ module.exports = {
   sendFollowUpEmail,
   sendRescheduleEmail,
   sendInvoiceEmail,
-  sendReviewRequestEmail
+  sendReviewRequestEmail,
+  sendPhotoRequestEmail,
+  sendFinalPriceEmail,
+  sendBookingConfirmationEmail
 };

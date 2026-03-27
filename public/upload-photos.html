@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload Photos - Revive Exterior Cleaning</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background: linear-gradient(135deg, #84cc16 0%, #65a30d 100%);
+      min-height: 100vh; padding: 20px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .container {
+      background: white; border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      padding: 32px; max-width: 520px; width: 100%;
+    }
+    h1 { color: #365314; font-size: 24px; margin-bottom: 8px; text-align: center; }
+    .subtitle { color: #64748b; text-align: center; margin-bottom: 24px; line-height: 1.5; font-size: 15px; }
+    .info-box {
+      background: #f0fdf4; border-left: 4px solid #84cc16;
+      padding: 16px; border-radius: 0 8px 8px 0; margin-bottom: 24px;
+    }
+    .info-box p { color: #365314; font-size: 14px; line-height: 1.5; margin-bottom: 4px; }
+    .info-box strong { color: #365314; }
+    .estimate { font-size: 20px; font-weight: 700; color: #365314; }
+
+    /* Upload area */
+    .upload-zone {
+      border: 2px dashed #cbd5e1; border-radius: 12px;
+      padding: 32px 20px; text-align: center; cursor: pointer;
+      transition: all 0.2s; background: #fafafa; margin-bottom: 16px;
+    }
+    .upload-zone.dragover { border-color: #84cc16; background: #f0fdf4; }
+    .upload-zone.has-files { border-color: #84cc16; border-style: solid; }
+    .upload-icon { font-size: 36px; margin-bottom: 8px; }
+    .upload-text { color: #64748b; font-size: 15px; margin-bottom: 8px; }
+    .upload-hint { color: #94a3b8; font-size: 13px; }
+    .camera-btn {
+      display: inline-block; background: #f1f5f9; color: #475569;
+      padding: 10px 20px; border-radius: 8px; border: 1px solid #e2e8f0;
+      cursor: pointer; font-size: 14px; margin-top: 8px; transition: background 0.2s;
+    }
+    .camera-btn:hover { background: #e2e8f0; }
+
+    /* Preview grid */
+    .previews { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px; }
+    .preview-item {
+      position: relative; border-radius: 8px; overflow: hidden;
+      aspect-ratio: 1; background: #f1f5f9;
+    }
+    .preview-item img { width: 100%; height: 100%; object-fit: cover; }
+    .preview-remove {
+      position: absolute; top: 4px; right: 4px;
+      background: rgba(0,0,0,0.6); color: white; border: none;
+      width: 24px; height: 24px; border-radius: 50%; cursor: pointer;
+      font-size: 14px; line-height: 24px; text-align: center;
+    }
+    .preview-remove:hover { background: #dc2626; }
+
+    /* Tips */
+    .tips { margin-bottom: 24px; }
+    .tips h3 { color: #365314; font-size: 14px; margin-bottom: 8px; }
+    .tips ul { list-style: none; padding: 0; }
+    .tips li { color: #64748b; font-size: 13px; padding: 4px 0; padding-left: 20px; position: relative; }
+    .tips li::before { content: "\2022"; color: #84cc16; position: absolute; left: 4px; font-weight: bold; }
+
+    /* Submit button */
+    .submit-btn {
+      background: #84cc16; color: white; border: none;
+      padding: 16px; font-size: 17px; font-weight: 700;
+      border-radius: 8px; cursor: pointer; width: 100%;
+      transition: background 0.2s; display: none;
+    }
+    .submit-btn:hover { background: #65a30d; }
+    .submit-btn:disabled { background: #cbd5e1; cursor: not-allowed; }
+    .submit-btn.visible { display: block; }
+
+    /* Progress */
+    .progress { display: none; margin-bottom: 16px; }
+    .progress.active { display: block; }
+    .progress-bar {
+      height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%; background: #84cc16; border-radius: 3px;
+      transition: width 0.3s; width: 0%;
+    }
+    .progress-text { color: #64748b; font-size: 13px; text-align: center; margin-top: 8px; }
+
+    /* Success state */
+    .success { display: none; text-align: center; padding: 20px 0; }
+    .success.active { display: block; }
+    .success-icon { font-size: 48px; margin-bottom: 16px; color: #84cc16; }
+    .success h2 { color: #365314; margin-bottom: 8px; }
+    .success p { color: #64748b; line-height: 1.6; }
+
+    /* Error */
+    .error-msg { color: #dc2626; font-size: 14px; text-align: center; margin-bottom: 12px; display: none; }
+    .error-msg.active { display: block; }
+
+    /* Hidden inputs */
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="uploadForm">
+      <h1>Upload Photos of Your Property</h1>
+      <p class="subtitle" id="greetingText">Send us some photos so we can finalise your price.</p>
+
+      <div class="info-box" id="infoBox" style="display:none;">
+        <p><strong>Your estimated range:</strong> <span class="estimate" id="estimateRange"></span></p>
+        <p>Upload clear photos and we'll send you a fixed price.</p>
+      </div>
+
+      <div class="upload-zone" id="dropZone">
+        <div class="upload-icon">&#128247;</div>
+        <div class="upload-text">Tap to select photos or drag & drop</div>
+        <div class="upload-hint">JPEG, PNG or WebP - max 10MB each, up to 10 photos</div>
+        <label class="camera-btn">
+          &#128248; Take a Photo
+          <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" class="hidden" id="cameraInput">
+        </label>
+      </div>
+      <input type="file" accept="image/jpeg,image/png,image/webp" multiple class="hidden" id="fileInput">
+
+      <div class="previews" id="previews"></div>
+
+      <div class="tips">
+        <h3>What photos to take:</h3>
+        <ul>
+          <li>The front of your property showing the areas to be cleaned</li>
+          <li>Close-up shots of dirty or stained areas</li>
+          <li>Any access points or tight spaces</li>
+          <li>The full scope of the area (e.g. full driveway, full roof view)</li>
+        </ul>
+      </div>
+
+      <div class="error-msg" id="errorMsg"></div>
+
+      <div class="progress" id="progress">
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-text" id="progressText">Uploading...</div>
+      </div>
+
+      <button class="submit-btn" id="submitBtn" type="button">Upload Photos</button>
+    </div>
+
+    <div class="success" id="successState">
+      <div class="success-icon">&#10003;</div>
+      <h2>Photos Received!</h2>
+      <p>Thanks! We're now reviewing your photos and will send you a fixed price via email and WhatsApp shortly.</p>
+      <p style="margin-top: 16px; font-size: 14px; color: #94a3b8;">You can close this page now.</p>
+    </div>
+  </div>
+
+  <script>
+    const quoteId = window.location.pathname.split('/').pop();
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const cameraInput = document.getElementById('cameraInput');
+    const previews = document.getElementById('previews');
+    const submitBtn = document.getElementById('submitBtn');
+    const errorMsg = document.getElementById('errorMsg');
+    const progress = document.getElementById('progress');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    const uploadForm = document.getElementById('uploadForm');
+    const successState = document.getElementById('successState');
+
+    let selectedFiles = [];
+
+    // Load quote info
+    fetch('/api/pipeline/' + quoteId + '/status')
+      .then(r => r.json())
+      .then(data => {
+        if (data.success && data.data) {
+          const d = data.data;
+          if (d.name) {
+            document.getElementById('greetingText').textContent =
+              'Hi ' + d.name + '! Send us some photos so we can finalise your price.';
+          }
+          if (d.estimateMin && d.estimateMax) {
+            document.getElementById('estimateRange').textContent =
+              '\u00A3' + Number(d.estimateMin).toFixed(0) + ' \u2013 \u00A3' + Number(d.estimateMax).toFixed(0);
+            document.getElementById('infoBox').style.display = 'block';
+          }
+        }
+      })
+      .catch(() => {});
+
+    // Drop zone events
+    dropZone.addEventListener('click', (e) => {
+      if (e.target.closest('.camera-btn') || e.target.closest('#cameraInput')) return;
+      fileInput.click();
+    });
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault(); dropZone.classList.remove('dragover');
+      addFiles(e.dataTransfer.files);
+    });
+
+    fileInput.addEventListener('change', () => addFiles(fileInput.files));
+    cameraInput.addEventListener('change', () => addFiles(cameraInput.files));
+
+    function addFiles(fileList) {
+      const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+      for (const file of fileList) {
+        if (selectedFiles.length >= 10) {
+          showError('Maximum 10 photos allowed.'); break;
+        }
+        if (!allowed.includes(file.type)) {
+          showError('Only JPEG, PNG and WebP files are allowed.'); continue;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          showError(file.name + ' is too large (max 10MB).'); continue;
+        }
+        selectedFiles.push(file);
+      }
+      renderPreviews();
+      fileInput.value = '';
+      cameraInput.value = '';
+    }
+
+    function renderPreviews() {
+      previews.innerHTML = '';
+      selectedFiles.forEach((file, i) => {
+        const item = document.createElement('div');
+        item.className = 'preview-item';
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(file);
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'preview-remove';
+        removeBtn.innerHTML = '&times;';
+        removeBtn.onclick = (e) => { e.stopPropagation(); selectedFiles.splice(i, 1); renderPreviews(); };
+        item.appendChild(img);
+        item.appendChild(removeBtn);
+        previews.appendChild(item);
+      });
+
+      if (selectedFiles.length > 0) {
+        submitBtn.classList.add('visible');
+        submitBtn.textContent = 'Upload ' + selectedFiles.length + ' Photo' + (selectedFiles.length > 1 ? 's' : '');
+        dropZone.classList.add('has-files');
+      } else {
+        submitBtn.classList.remove('visible');
+        dropZone.classList.remove('has-files');
+      }
+      hideError();
+    }
+
+    function showError(msg) { errorMsg.textContent = msg; errorMsg.classList.add('active'); }
+    function hideError() { errorMsg.classList.remove('active'); }
+
+    // Upload
+    submitBtn.addEventListener('click', async () => {
+      if (selectedFiles.length === 0) return;
+
+      submitBtn.disabled = true;
+      progress.classList.add('active');
+      hideError();
+
+      try {
+        const photos = [];
+        for (let i = 0; i < selectedFiles.length; i++) {
+          progressText.textContent = 'Processing photo ' + (i + 1) + ' of ' + selectedFiles.length + '...';
+          progressFill.style.width = ((i / selectedFiles.length) * 50) + '%';
+
+          const file = selectedFiles[i];
+          const base64 = await fileToBase64(file);
+          photos.push({
+            filename: file.name.replace(/[^a-zA-Z0-9._-]/g, '_'),
+            contentType: file.type,
+            data: base64
+          });
+        }
+
+        progressText.textContent = 'Uploading...';
+        progressFill.style.width = '60%';
+
+        const response = await fetch('/api/pipeline/' + quoteId + '/upload-photos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ photos })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Upload failed');
+        }
+
+        progressFill.style.width = '100%';
+        progressText.textContent = 'Done!';
+
+        setTimeout(() => {
+          uploadForm.style.display = 'none';
+          successState.classList.add('active');
+        }, 500);
+
+      } catch (err) {
+        showError(err.message || 'Upload failed. Please try again.');
+        submitBtn.disabled = false;
+        progress.classList.remove('active');
+      }
+    });
+
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+  </script>
+</body>
+</html>

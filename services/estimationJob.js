@@ -127,6 +127,16 @@ async function processEstimation(supabase, quoteId, quote) {
       }
     }
 
+    // Step 6: Advance pipeline (send photo request or trigger AI pricing)
+    try {
+      const { advanceAfterEstimation } = require('./pipelineManager');
+      advanceAfterEstimation(supabase, quoteId, updatedQuote).catch(err => {
+        log.error('Pipeline advancement failed', { quoteId, error: err.message });
+      });
+    } catch (pipelineErr) {
+      log.error('Pipeline module load failed', { quoteId, error: pipelineErr.message });
+    }
+
     return {
       success: true,
       estimate,

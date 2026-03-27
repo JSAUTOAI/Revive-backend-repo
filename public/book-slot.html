@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Book Your Slot - Revive Exterior Cleaning</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background: linear-gradient(135deg, #84cc16 0%, #65a30d 100%);
+      min-height: 100vh; padding: 20px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .container {
+      background: white; border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      padding: 32px; max-width: 560px; width: 100%;
+    }
+    h1 { color: #365314; font-size: 24px; text-align: center; margin-bottom: 8px; }
+    .subtitle { color: #64748b; text-align: center; margin-bottom: 24px; font-size: 15px; }
+    .price-badge {
+      background: #f0fdf4; border: 2px solid #84cc16; border-radius: 12px;
+      padding: 12px 20px; text-align: center; margin-bottom: 24px;
+    }
+    .price-badge .label { font-size: 12px; color: #65a30d; text-transform: uppercase; letter-spacing: 1px; }
+    .price-badge .amount { font-size: 28px; font-weight: 800; color: #365314; }
+
+    /* Suggested slots */
+    .section-title { color: #365314; font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+    .slots { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+    .slot-card {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 16px; border: 2px solid #e2e8f0; border-radius: 10px;
+      cursor: pointer; transition: all 0.2s; background: white;
+    }
+    .slot-card:hover { border-color: #84cc16; background: #fafff5; }
+    .slot-card.selected { border-color: #84cc16; background: #f0fdf4; }
+    .slot-date { font-weight: 600; color: #1e293b; font-size: 15px; }
+    .slot-day { color: #64748b; font-size: 13px; }
+    .slot-times { display: flex; gap: 6px; flex-wrap: wrap; }
+    .time-chip {
+      padding: 6px 12px; border-radius: 6px; font-size: 13px;
+      cursor: pointer; border: 1px solid #e2e8f0; color: #475569;
+      background: white; transition: all 0.15s;
+    }
+    .time-chip:hover { border-color: #84cc16; background: #f0fdf4; }
+    .time-chip.selected { background: #84cc16; color: white; border-color: #84cc16; }
+
+    /* Calendar toggle */
+    .show-more {
+      display: block; width: 100%; padding: 12px; margin-bottom: 20px;
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+      color: #64748b; font-size: 14px; cursor: pointer; text-align: center;
+      transition: background 0.2s;
+    }
+    .show-more:hover { background: #f1f5f9; }
+
+    /* Full calendar */
+    .calendar { display: none; margin-bottom: 20px; }
+    .calendar.active { display: block; }
+    .cal-month { font-weight: 600; color: #365314; margin: 16px 0 8px; font-size: 15px; }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 8px; }
+    .cal-header { text-align: center; font-size: 11px; color: #94a3b8; font-weight: 600; padding: 4px 0; }
+    .cal-day {
+      text-align: center; padding: 8px 2px; border-radius: 6px;
+      font-size: 13px; cursor: default; color: #cbd5e1;
+    }
+    .cal-day.available { color: #1e293b; cursor: pointer; background: #f0fdf4; }
+    .cal-day.available:hover { background: #84cc16; color: white; }
+    .cal-day.selected { background: #84cc16; color: white; }
+    .cal-day.today { font-weight: 700; }
+
+    /* Time picker for calendar */
+    .time-picker { display: none; margin-bottom: 20px; text-align: center; }
+    .time-picker.active { display: block; }
+    .time-picker .label { font-size: 14px; color: #64748b; margin-bottom: 8px; }
+    .time-picker .selected-date { font-weight: 700; color: #365314; }
+    .time-picker .time-options { display: flex; gap: 8px; justify-content: center; margin-top: 8px; }
+    .time-option {
+      padding: 10px 20px; border-radius: 8px; border: 2px solid #e2e8f0;
+      background: white; cursor: pointer; font-size: 14px; color: #475569;
+      transition: all 0.15s;
+    }
+    .time-option:hover { border-color: #84cc16; background: #f0fdf4; }
+    .time-option.selected { background: #84cc16; color: white; border-color: #84cc16; }
+
+    /* Confirm button */
+    .confirm-btn {
+      background: #84cc16; color: white; border: none;
+      padding: 16px; font-size: 17px; font-weight: 700;
+      border-radius: 8px; cursor: pointer; width: 100%;
+      transition: background 0.2s; display: none;
+    }
+    .confirm-btn.visible { display: block; }
+    .confirm-btn:hover { background: #65a30d; }
+    .confirm-btn:disabled { background: #cbd5e1; cursor: not-allowed; }
+
+    /* Confirmation modal */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5); z-index: 100;
+      align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: white; border-radius: 16px; padding: 32px;
+      max-width: 400px; width: 100%; text-align: center;
+    }
+    .modal h2 { color: #365314; margin-bottom: 8px; }
+    .modal p { color: #64748b; line-height: 1.6; margin-bottom: 8px; }
+    .modal .booking-detail { font-size: 18px; font-weight: 700; color: #365314; margin: 12px 0; }
+    .modal-btns { display: flex; gap: 8px; margin-top: 20px; }
+    .modal-btns button {
+      flex: 1; padding: 12px; border-radius: 8px; font-size: 15px;
+      font-weight: 600; cursor: pointer; border: none;
+    }
+    .btn-cancel { background: #f1f5f9; color: #475569; }
+    .btn-confirm { background: #84cc16; color: white; }
+    .btn-confirm:disabled { background: #cbd5e1; }
+
+    /* Success */
+    .success { display: none; text-align: center; padding: 20px 0; }
+    .success.active { display: block; }
+    .success-icon { font-size: 48px; margin-bottom: 16px; color: #84cc16; }
+    .success h2 { color: #365314; margin-bottom: 8px; }
+    .success p { color: #64748b; line-height: 1.6; }
+    .success .booking-summary {
+      background: #f0fdf4; border-radius: 12px; padding: 20px;
+      margin: 20px 0; border: 2px solid #84cc16;
+    }
+    .success .detail { font-size: 15px; color: #334155; margin: 4px 0; }
+    .success .detail strong { color: #365314; }
+
+    .loading { text-align: center; padding: 40px 0; color: #64748b; }
+    .error-msg { color: #dc2626; text-align: center; font-size: 14px; margin-bottom: 12px; display: none; }
+    .error-msg.active { display: block; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="bookingForm">
+      <h1>Choose Your Slot</h1>
+      <p class="subtitle" id="subtitleText">Pick a date and time that works for you.</p>
+
+      <div class="price-badge" id="priceBadge" style="display:none;">
+        <div class="label">Confirmed Price</div>
+        <div class="amount" id="priceAmount"></div>
+      </div>
+
+      <div class="loading" id="loadingState">Loading available slots...</div>
+
+      <div id="slotsContainer" style="display:none;">
+        <p class="section-title">Suggested Dates</p>
+        <div class="slots" id="suggestedSlots"></div>
+
+        <button class="show-more" id="showMoreBtn" type="button">Show Full Calendar &darr;</button>
+
+        <div class="calendar" id="calendar"></div>
+
+        <div class="time-picker" id="timePicker">
+          <div class="label">Select a time for <span class="selected-date" id="selectedDateText"></span></div>
+          <div class="time-options" id="timeOptions"></div>
+        </div>
+
+        <div class="error-msg" id="errorMsg"></div>
+        <button class="confirm-btn" id="confirmBtn" type="button">Confirm Booking</button>
+      </div>
+    </div>
+
+    <div class="success" id="successState">
+      <div class="success-icon">&#128197;</div>
+      <h2>You're Booked In!</h2>
+      <div class="booking-summary">
+        <div class="detail"><strong>Date:</strong> <span id="bookedDate"></span></div>
+        <div class="detail"><strong>Time:</strong> <span id="bookedTime"></span></div>
+        <div class="detail"><strong>Services:</strong> <span id="bookedServices"></span></div>
+      </div>
+      <p>You'll receive a confirmation via email and WhatsApp shortly with all the details.</p>
+      <p style="margin-top: 12px; font-size: 14px; color: #94a3b8;">If you need to change anything, just get in touch with us.</p>
+    </div>
+
+    <!-- Confirmation modal -->
+    <div class="modal-overlay" id="modal">
+      <div class="modal">
+        <h2>Confirm Your Booking</h2>
+        <div class="booking-detail" id="modalDetail"></div>
+        <p>We'll send you a confirmation straight away.</p>
+        <div class="modal-btns">
+          <button class="btn-cancel" id="modalCancel" type="button">Go Back</button>
+          <button class="btn-confirm" id="modalConfirm" type="button">Confirm</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const quoteId = window.location.pathname.split('/').pop();
+    let allSlots = [];
+    let selectedDate = null;
+    let selectedTime = null;
+    let quoteData = null;
+
+    const timeLabels = { morning: 'Morning', afternoon: 'Afternoon', evening: 'Evening' };
+
+    // Load data
+    Promise.all([
+      fetch('/api/pipeline/' + quoteId + '/status').then(r => r.json()),
+      fetch('/api/pipeline/' + quoteId + '/available-slots').then(r => r.json())
+    ]).then(([statusRes, slotsRes]) => {
+      document.getElementById('loadingState').style.display = 'none';
+
+      if (statusRes.success && statusRes.data) {
+        quoteData = statusRes.data;
+        if (quoteData.name) {
+          document.getElementById('subtitleText').textContent =
+            quoteData.name + ', pick a date and time that works for you.';
+        }
+        if (quoteData.finalPrice) {
+          document.getElementById('priceAmount').textContent = '\u00A3' + Number(quoteData.finalPrice).toFixed(0);
+          document.getElementById('priceBadge').style.display = 'block';
+        }
+      }
+
+      if (slotsRes.success && slotsRes.data) {
+        allSlots = slotsRes.data.slots;
+        renderSuggestedSlots();
+        document.getElementById('slotsContainer').style.display = 'block';
+      }
+    }).catch(() => {
+      document.getElementById('loadingState').textContent = 'Failed to load slots. Please refresh the page.';
+    });
+
+    function renderSuggestedSlots() {
+      const container = document.getElementById('suggestedSlots');
+      const suggested = allSlots.slice(0, 5);
+
+      suggested.forEach(slot => {
+        const card = document.createElement('div');
+        card.className = 'slot-card';
+        card.innerHTML = `
+          <div>
+            <div class="slot-date">${slot.dateFormatted}</div>
+            <div class="slot-day">${slot.dayName}</div>
+          </div>
+          <div class="slot-times">
+            ${slot.slots.map(t => `<span class="time-chip" data-date="${slot.date}" data-time="${t}">${timeLabels[t]}</span>`).join('')}
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      // Time chip click handler (delegated)
+      container.addEventListener('click', (e) => {
+        const chip = e.target.closest('.time-chip');
+        if (!chip) return;
+        selectSlot(chip.dataset.date, chip.dataset.time);
+        document.querySelectorAll('.time-chip').forEach(c => c.classList.remove('selected'));
+        document.querySelectorAll('.cal-day').forEach(c => c.classList.remove('selected'));
+        chip.classList.add('selected');
+      });
+    }
+
+    function selectSlot(date, time) {
+      selectedDate = date;
+      selectedTime = time;
+      const slot = allSlots.find(s => s.date === date);
+      const confirmBtn = document.getElementById('confirmBtn');
+      confirmBtn.textContent = 'Confirm ' + (slot ? slot.dayName : '') + ' ' + timeLabels[time];
+      confirmBtn.classList.add('visible');
+      document.getElementById('errorMsg').classList.remove('active');
+    }
+
+    // Show more / calendar
+    document.getElementById('showMoreBtn').addEventListener('click', function() {
+      this.style.display = 'none';
+      renderCalendar();
+      document.getElementById('calendar').classList.add('active');
+    });
+
+    function renderCalendar() {
+      const cal = document.getElementById('calendar');
+      const availableDates = {};
+      allSlots.forEach(s => { availableDates[s.date] = s; });
+
+      const today = new Date();
+      const months = {};
+
+      allSlots.forEach(s => {
+        const d = new Date(s.date + 'T00:00:00');
+        const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+        if (!months[key]) months[key] = { year: d.getFullYear(), month: d.getMonth() };
+      });
+
+      Object.values(months).forEach(({ year, month }) => {
+        const monthLabel = new Date(year, month).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+        const heading = document.createElement('div');
+        heading.className = 'cal-month';
+        heading.textContent = monthLabel;
+        cal.appendChild(heading);
+
+        const grid = document.createElement('div');
+        grid.className = 'cal-grid';
+
+        // Headers
+        ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(d => {
+          const h = document.createElement('div');
+          h.className = 'cal-header';
+          h.textContent = d;
+          grid.appendChild(h);
+        });
+
+        // Days
+        const firstDay = new Date(year, month, 1);
+        let startDay = firstDay.getDay() - 1;
+        if (startDay < 0) startDay = 6;
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        for (let i = 0; i < startDay; i++) {
+          grid.appendChild(document.createElement('div'));
+        }
+
+        for (let d = 1; d <= daysInMonth; d++) {
+          const dateStr = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+          const dayEl = document.createElement('div');
+          dayEl.className = 'cal-day';
+          dayEl.textContent = d;
+
+          if (availableDates[dateStr]) {
+            dayEl.classList.add('available');
+            dayEl.dataset.date = dateStr;
+            dayEl.addEventListener('click', () => {
+              document.querySelectorAll('.cal-day').forEach(c => c.classList.remove('selected'));
+              document.querySelectorAll('.time-chip').forEach(c => c.classList.remove('selected'));
+              dayEl.classList.add('selected');
+              showTimePicker(dateStr, availableDates[dateStr]);
+            });
+          }
+
+          const todayStr = today.toISOString().split('T')[0];
+          if (dateStr === todayStr) dayEl.classList.add('today');
+
+          grid.appendChild(dayEl);
+        }
+
+        cal.appendChild(grid);
+      });
+    }
+
+    function showTimePicker(date, slotData) {
+      const picker = document.getElementById('timePicker');
+      const dateText = document.getElementById('selectedDateText');
+      const options = document.getElementById('timeOptions');
+
+      dateText.textContent = slotData.dayName + ' ' + slotData.dateFormatted;
+      options.innerHTML = '';
+
+      slotData.slots.forEach(t => {
+        const btn = document.createElement('button');
+        btn.className = 'time-option';
+        btn.textContent = timeLabels[t];
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.time-option').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          selectSlot(date, t);
+        });
+        options.appendChild(btn);
+      });
+
+      picker.classList.add('active');
+      selectedDate = date;
+      selectedTime = null;
+      document.getElementById('confirmBtn').classList.remove('visible');
+    }
+
+    // Confirm button -> modal
+    document.getElementById('confirmBtn').addEventListener('click', () => {
+      if (!selectedDate || !selectedTime) return;
+      const slot = allSlots.find(s => s.date === selectedDate);
+      document.getElementById('modalDetail').textContent =
+        (slot ? slot.dayName + ' ' + slot.dateFormatted : selectedDate) + ' - ' + timeLabels[selectedTime];
+      document.getElementById('modal').classList.add('active');
+    });
+
+    document.getElementById('modalCancel').addEventListener('click', () => {
+      document.getElementById('modal').classList.remove('active');
+    });
+
+    document.getElementById('modalConfirm').addEventListener('click', async () => {
+      const btn = document.getElementById('modalConfirm');
+      btn.disabled = true;
+      btn.textContent = 'Booking...';
+
+      try {
+        const response = await fetch('/api/pipeline/' + quoteId + '/book', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date: selectedDate, timeSlot: selectedTime })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Booking failed');
+        }
+
+        document.getElementById('modal').classList.remove('active');
+
+        // Show success
+        const slot = allSlots.find(s => s.date === selectedDate);
+        document.getElementById('bookedDate').textContent = slot ? slot.dayName + ' ' + slot.dateFormatted : selectedDate;
+        document.getElementById('bookedTime').textContent = timeLabels[selectedTime];
+        document.getElementById('bookedServices').textContent =
+          quoteData && quoteData.services ? quoteData.services.map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(', ') : 'Your services';
+
+        document.getElementById('bookingForm').style.display = 'none';
+        document.getElementById('successState').classList.add('active');
+
+      } catch (err) {
+        document.getElementById('modal').classList.remove('active');
+        document.getElementById('errorMsg').textContent = err.message;
+        document.getElementById('errorMsg').classList.add('active');
+        btn.disabled = false;
+        btn.textContent = 'Confirm';
+      }
+    });
+  </script>
+</body>
+</html>

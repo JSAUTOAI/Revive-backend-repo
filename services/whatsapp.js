@@ -363,11 +363,184 @@ async function sendReviewRequestWhatsApp(job, reviewUrl) {
   }
 }
 
+// ─── Pipeline WhatsApp Templates ────────────────────────────────────
+
+/**
+ * Send photo request via WhatsApp
+ * Uses freeform message (works within 24h window) or template if configured.
+ */
+async function sendPhotoRequestWhatsApp(quote) {
+  try {
+    if (!quote.phone) {
+      return { success: false, error: 'No phone number' };
+    }
+
+    log.info('Sending photo request', { phone: quote.phone });
+
+    const toWhatsApp = formatPhoneNumber(quote.phone);
+    const services = (quote.services || []).map(s => capitalizeService(s)).join(', ');
+    const priceRange = `£${Number(quote.estimated_value_min || 0).toFixed(0)} - £${Number(quote.estimated_value_max || 0).toFixed(0)}`;
+    const baseUrl = process.env.BASE_URL || '';
+    const uploadUrl = `${baseUrl}/upload-photos/${quote.id}`;
+
+    const templateSid = process.env.TWILIO_PHOTO_REQUEST_TEMPLATE;
+
+    if (templateSid) {
+      const vars = {
+        '1': String(quote.name || 'there'),
+        '2': String(services),
+        '3': String(priceRange),
+        '4': String(uploadUrl)
+      };
+
+      const message = await client.messages.create({
+        from: FROM_WHATSAPP,
+        to: toWhatsApp,
+        contentSid: templateSid,
+        contentVariables: JSON.stringify(vars)
+      });
+
+      log.info('Photo request sent via template', { messageSid: message.sid });
+      return { success: true, messageSid: message.sid };
+    }
+
+    // Freeform fallback
+    const body = `Hi ${quote.name || 'there'}, thanks for your enquiry about ${services}!\n\nYour estimated range is *${priceRange}*.\n\nTo get you a *fixed price*, we just need a few photos of the area to be cleaned. You can upload them here:\n\n${uploadUrl}\n\nOnce we've reviewed them, we'll send your final price straight through. 📸`;
+
+    const message = await client.messages.create({
+      from: FROM_WHATSAPP,
+      to: toWhatsApp,
+      body: body
+    });
+
+    log.info('Photo request sent via freeform', { messageSid: message.sid });
+    return { success: true, messageSid: message.sid };
+
+  } catch (error) {
+    log.warn('Photo request WhatsApp failed', { quoteId: quote.id, error: error.message });
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Send final fixed price via WhatsApp
+ */
+async function sendFinalPriceWhatsApp(quote) {
+  try {
+    if (!quote.phone) {
+      return { success: false, error: 'No phone number' };
+    }
+
+    log.info('Sending final price', { phone: quote.phone, price: quote.final_price });
+
+    const toWhatsApp = formatPhoneNumber(quote.phone);
+    const services = (quote.services || []).map(s => capitalizeService(s)).join(', ');
+    const baseUrl = process.env.BASE_URL || '';
+    const acceptUrl = `${baseUrl}/final-price/${quote.id}`;
+
+    const templateSid = process.env.TWILIO_FINAL_PRICE_TEMPLATE;
+
+    if (templateSid) {
+      const vars = {
+        '1': String(quote.name || 'there'),
+        '2': String(`£${Number(quote.final_price).toFixed(0)}`),
+        '3': String(services),
+        '4': String(acceptUrl)
+      };
+
+      const message = await client.messages.create({
+        from: FROM_WHATSAPP,
+        to: toWhatsApp,
+        contentSid: templateSid,
+        contentVariables: JSON.stringify(vars)
+      });
+
+      log.info('Final price sent via template', { messageSid: message.sid });
+      return { success: true, messageSid: message.sid };
+    }
+
+    // Freeform fallback
+    const body = `Hi ${quote.name || 'there'}, we've reviewed your photos and here's your fixed price:\n\n*£${Number(quote.final_price).toFixed(0)}* for ${services}\n\nHappy with this? Accept and book your slot online:\n${acceptUrl}\n\nPlease note: this price is based on the information and photos provided. If conditions differ on-site, we'll discuss any adjustments before starting.`;
+
+    const message = await client.messages.create({
+      from: FROM_WHATSAPP,
+      to: toWhatsApp,
+      body: body
+    });
+
+    log.info('Final price sent via freeform', { messageSid: message.sid });
+    return { success: true, messageSid: message.sid };
+
+  } catch (error) {
+    log.warn('Final price WhatsApp failed', { quoteId: quote.id, error: error.message });
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Send booking confirmation via WhatsApp
+ */
+async function sendBookingConfirmationWhatsApp(quote, job) {
+  try {
+    if (!quote.phone) {
+      return { success: false, error: 'No phone number' };
+    }
+
+    log.info('Sending booking confirmation', { phone: quote.phone });
+
+    const toWhatsApp = formatPhoneNumber(quote.phone);
+    const services = (quote.services || []).map(s => capitalizeService(s)).join(', ');
+    const timeLabels = { morning: 'Morning (8am-12pm)', afternoon: 'Afternoon (12pm-4pm)', evening: 'Evening (4pm-7pm)' };
+    const dateFormatted = new Date(job.scheduled_date + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const timeFormatted = timeLabels[job.time_slot] || job.time_slot;
+
+    const templateSid = process.env.TWILIO_BOOKING_CONFIRMATION_TEMPLATE;
+
+    if (templateSid) {
+      const vars = {
+        '1': String(quote.name || 'there'),
+        '2': String(dateFormatted),
+        '3': String(timeFormatted),
+        '4': String(services)
+      };
+
+      const message = await client.messages.create({
+        from: FROM_WHATSAPP,
+        to: toWhatsApp,
+        contentSid: templateSid,
+        contentVariables: JSON.stringify(vars)
+      });
+
+      log.info('Booking confirmation sent via template', { messageSid: message.sid });
+      return { success: true, messageSid: message.sid };
+    }
+
+    // Freeform fallback
+    const body = `Hi ${quote.name || 'there'}, you're all booked in! 🎉\n\n📅 *${dateFormatted}*\n⏰ *${timeFormatted}*\n🏠 ${services}\n💰 £${Number(quote.final_price).toFixed(0)}\n\nBefore the day:\n• Move vehicles/items away from the work area\n• Ensure access to outdoor taps if possible\n• Let us know about any pets or gates\n\nNeed to reschedule? Just reply to this message. See you soon!`;
+
+    const message = await client.messages.create({
+      from: FROM_WHATSAPP,
+      to: toWhatsApp,
+      body: body
+    });
+
+    log.info('Booking confirmation sent via freeform', { messageSid: message.sid });
+    return { success: true, messageSid: message.sid };
+
+  } catch (error) {
+    log.warn('Booking confirmation WhatsApp failed', { quoteId: quote.id, error: error.message });
+    return { success: false, error: error.message };
+  }
+}
+
 module.exports = {
   sendConfirmationWhatsApp,
   sendEstimateWhatsApp,
   sendAdminAlertWhatsApp,
   sendFollowUpWhatsApp,
   sendRescheduleWhatsApp,
-  sendReviewRequestWhatsApp
+  sendReviewRequestWhatsApp,
+  sendPhotoRequestWhatsApp,
+  sendFinalPriceWhatsApp,
+  sendBookingConfirmationWhatsApp
 };

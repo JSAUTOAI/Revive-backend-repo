@@ -20,6 +20,7 @@
     "json2csv": "^6.0.0-alpha.2",
     "node-cron": "^4.2.1",
     "resend": "^6.9.2",
+    "stripe": "^20.4.1",
     "twilio": "^5.12.1",
     "winston": "^3.19.0"
   }

@@ -293,9 +293,32 @@ async function sendInvoice(req, res) {
     }
     const viewUrl = `${baseUrl}/invoice/${invoice.view_token}`;
 
-    // Send email
+    // Generate Stripe payment link if configured and not already created
+    let paymentUrl = invoice.payment_link_url || null;
+    if (!paymentUrl) {
+      const stripeService = require('../services/stripe');
+      if (stripeService.isConfigured()) {
+        const stripeResult = await stripeService.createCheckoutSession(invoice);
+        if (stripeResult.success) {
+          paymentUrl = stripeResult.paymentUrl;
+          // Store payment link on the invoice
+          await supabase
+            .from('invoices')
+            .update({
+              stripe_session_id: stripeResult.sessionId,
+              payment_link_url: paymentUrl
+            })
+            .eq('id', id);
+          invoice.payment_link_url = paymentUrl;
+        } else {
+          log.warn('Stripe payment link generation failed, sending without', { error: stripeResult.error });
+        }
+      }
+    }
+
+    // Send email (with payment link if available)
     const { sendInvoiceEmail } = require('../services/emailer');
-    const emailResult = await sendInvoiceEmail(invoice, viewUrl);
+    const emailResult = await sendInvoiceEmail(invoice, viewUrl, paymentUrl);
 
     if (!emailResult.success) {
       log.error('Email send failed', { error: emailResult.error });
@@ -408,6 +431,15 @@ async function viewInvoice(req, res) {
       </div>
     ` : '';
 
+    // Check if customer just paid (redirected from Stripe)
+    const justPaid = req.query.paid === 'true';
+
+    const paidBanner = justPaid && invoice.status !== 'paid' ? `
+      <div style="background: #d1fae5; color: #065f46; padding: 16px; text-align: center; font-size: 16px; font-weight: 600; border-bottom: 2px solid #10b981;">
+        Payment received — thank you! Your invoice will be updated shortly.
+      </div>
+    ` : '';
+
     const paidWatermark = invoice.status === 'paid' ? `
       <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); font-size: 120px; font-weight: 900; color: rgba(34, 197, 94, 0.08); pointer-events: none; z-index: 0; letter-spacing: 8px;">PAID</div>
     ` : '';
@@ -435,6 +467,7 @@ async function viewInvoice(req, res) {
 </head>
 <body>
   ${paidWatermark}
+  ${paidBanner}
   <div class="container" style="position: relative; z-index: 1;">
     <!-- Header -->
     <div style="background: #84cc16; color: white; padding: 32px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
@@ -518,12 +551,22 @@ async function viewInvoice(req, res) {
     </div>
   </div>
 
-  <!-- Print Button -->
-  <div class="no-print" style="text-align: center; padding: 16px;">
-    <button onclick="window.print()" style="background: #84cc16; color: white; border: none; padding: 12px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer;">
+  <!-- Action Buttons -->
+  <div class="no-print" style="text-align: center; padding: 16px; display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;">
+    ${invoice.status !== 'paid' ? `
+    <a href="/invoice/${token}/pay" style="background: #84cc16; color: white; border: none; padding: 12px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block;">
+      Pay Now by Card
+    </a>
+    ` : ''}
+    <button onclick="window.print()" style="background: ${invoice.status !== 'paid' ? '#6b7280' : '#84cc16'}; color: white; border: none; padding: 12px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer;">
       Print / Save as PDF
     </button>
   </div>
+  ${invoice.status === 'paid' ? '' : `
+  <div class="no-print" style="text-align: center; padding: 0 16px 16px; font-size: 13px; color: #9ca3af;">
+    Prefer bank transfer? Use the payment details above with reference <strong>${invoice.invoice_number}</strong>
+  </div>
+  `}
 </body>
 </html>`;
 
@@ -534,6 +577,122 @@ async function viewInvoice(req, res) {
   }
 }
 
+/**
+ * GET /invoice/:token/pay
+ * Redirect customer to Stripe Checkout for payment
+ */
+async function payInvoice(req, res) {
+  try {
+    const { token } = req.params;
+
+    const { data: invoice, error } = await supabase
+      .from('invoices')
+      .select('*')
+      .eq('view_token', token)
+      .single();
+
+    if (error || !invoice) {
+      return res.status(404).send('<html><body><h1>Invoice not found</h1></body></html>');
+    }
+
+    if (invoice.status === 'paid') {
+      return res.redirect(`/invoice/${token}?paid=true`);
+    }
+
+    // If we already have a payment link, redirect to it
+    if (invoice.payment_link_url) {
+      return res.redirect(invoice.payment_link_url);
+    }
+
+    // Generate a new Stripe session
+    const stripeService = require('../services/stripe');
+    if (!stripeService.isConfigured()) {
+      return res.status(400).send('<html><body><h1>Online payment not available</h1><p>Please pay by bank transfer using the details on your invoice.</p></body></html>');
+    }
+
+    const result = await stripeService.createCheckoutSession(invoice);
+    if (!result.success) {
+      log.error('Pay redirect failed', { error: result.error });
+      return res.status(500).send('<html><body><h1>Payment error</h1><p>Please try again or pay by bank transfer.</p></body></html>');
+    }
+
+    // Store the new session
+    await supabase
+      .from('invoices')
+      .update({
+        stripe_session_id: result.sessionId,
+        payment_link_url: result.paymentUrl
+      })
+      .eq('id', invoice.id);
+
+    res.redirect(result.paymentUrl);
+  } catch (error) {
+    log.error('Pay redirect error', { error: error.message });
+    res.status(500).send('<html><body><h1>Error</h1><p>Failed to process payment redirect.</p></body></html>');
+  }
+}
+
+/**
+ * POST /webhooks/stripe
+ * Handle Stripe webhook events (payment confirmation)
+ */
+async function handleStripeWebhook(req, res) {
+  const stripeService = require('../services/stripe');
+  const client = stripeService.getStripe();
+
+  if (!client) {
+    return res.status(400).json({ error: 'Stripe not configured' });
+  }
+
+  const sig = req.headers['stripe-signature'];
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  let event;
+
+  try {
+    if (webhookSecret && sig) {
+      event = client.webhooks.constructEvent(req.rawBody || req.body, sig, webhookSecret);
+    } else {
+      // No webhook secret configured — parse the body directly (dev mode)
+      event = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    }
+  } catch (err) {
+    log.error('Webhook signature verification failed', { error: err.message });
+    return res.status(400).json({ error: 'Webhook signature verification failed' });
+  }
+
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+    const invoiceId = session.metadata?.invoice_id || session.client_reference_id;
+
+    if (!invoiceId) {
+      log.warn('Stripe webhook: no invoice_id in metadata');
+      return res.json({ received: true });
+    }
+
+    log.info('Payment received', { invoiceId, sessionId: session.id });
+
+    const { error } = await supabase
+      .from('invoices')
+      .update({
+        status: 'paid',
+        paid_at: new Date().toISOString(),
+        payment_method: 'stripe',
+        stripe_payment_intent_id: session.payment_intent || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', invoiceId);
+
+    if (error) {
+      log.error('Failed to update invoice after payment', { error: error.message, invoiceId });
+    } else {
+      log.info('Invoice marked as paid', { invoiceId });
+    }
+  }
+
+  res.json({ received: true });
+}
+
 module.exports = {
   setSupabaseClient,
   createInvoice,
@@ -542,5 +701,7 @@ module.exports = {
   updateInvoice,
   sendInvoice,
   getJobInvoice,
-  viewInvoice
+  viewInvoice,
+  payInvoice,
+  handleStripeWebhook
 };

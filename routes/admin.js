@@ -1044,6 +1044,159 @@ async function restoreQuote(req, res) {
   }
 }
 
+// ─── Pipeline Admin Endpoints ─────────────────────────────────────
+
+/**
+ * GET /admin/pipeline/stats
+ * Pipeline funnel counts by stage
+ */
+async function getPipelineStats(req, res) {
+  try {
+    const { data, error } = await supabase
+      .from('quotes')
+      .select('pipeline_stage')
+      .is('deleted_at', null)
+      .not('pipeline_stage', 'is', null);
+
+    if (error) throw error;
+
+    const counts = {};
+    (data || []).forEach(q => {
+      const stage = q.pipeline_stage || 'unknown';
+      counts[stage] = (counts[stage] || 0) + 1;
+    });
+
+    res.json({ success: true, data: counts });
+  } catch (error) {
+    log.error('Pipeline stats error', { error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+/**
+ * GET /admin/pipeline/pending-approvals
+ * Quotes awaiting admin price approval
+ */
+async function getPendingApprovals(req, res) {
+  try {
+    const { data, error } = await supabase
+      .from('quotes')
+      .select('id, name, email, phone, services, address_line1, postcode, estimated_value_min, estimated_value_max, final_price, final_price_confidence, final_price_reasoning, final_price_ai_version, final_price_set_at, pipeline_stage, photo_count, created_at')
+      .eq('pipeline_stage', 'final_price_pending_approval')
+      .is('deleted_at', null)
+      .order('final_price_set_at', { ascending: true });
+
+    if (error) throw error;
+
+    res.json({ success: true, data: data || [] });
+  } catch (error) {
+    log.error('Pending approvals error', { error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+/**
+ * POST /admin/pipeline/:quoteId/approve-price
+ * Approve or adjust the AI-suggested price
+ */
+async function approvePrice(req, res) {
+  try {
+    const { quoteId } = req.params;
+    const { price, notes } = req.body;
+
+    if (!price || isNaN(Number(price)) || Number(price) <= 0) {
+      return res.status(400).json({ success: false, error: 'Valid price is required' });
+    }
+
+    const { advanceAfterAdminApproval } = require('../services/pipelineManager');
+    const result = await advanceAfterAdminApproval(supabase, quoteId, Number(price), notes);
+
+    if (!result.success) {
+      return res.status(500).json({ success: false, error: result.error });
+    }
+
+    log.info('Price approved', { quoteId, price });
+    res.json({ success: true, message: `Price of £${price} approved and sent to customer` });
+  } catch (error) {
+    log.error('Approve price error', { error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+/**
+ * GET /admin/settings/pipeline
+ * Get pipeline configuration
+ */
+async function getPipelineSettings(req, res) {
+  try {
+    const { data, error } = await supabase
+      .from('settings')
+      .select('value, updated_at')
+      .eq('key', 'pipeline_config')
+      .single();
+
+    const defaults = {
+      pricing_mode: 'ai_suggest_admin_approves',
+      confidence_threshold: 0.7,
+      photo_reminder_days: 2,
+      final_price_reminder_days: 3,
+      max_booking_slots_initial: 5,
+      booking_lookahead_weeks: 6,
+      max_jobs_per_day: 4,
+      honesty_clause: 'This price is based on the information provided and access to the site. If conditions differ from what was described, any adjustments will be discussed before work begins.'
+    };
+
+    if (error || !data) {
+      return res.json({ success: true, data: defaults });
+    }
+
+    res.json({ success: true, data: { ...defaults, ...(data.value || {}) }, updated_at: data.updated_at });
+  } catch (error) {
+    log.error('Pipeline settings error', { error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
+/**
+ * PUT /admin/settings/pipeline
+ * Update pipeline configuration
+ */
+async function updatePipelineSettings(req, res) {
+  try {
+    const config = req.body;
+
+    // Validate pricing mode
+    const validModes = ['ai_suggest_admin_approves', 'fully_automated_with_override', 'fully_automated'];
+    if (config.pricing_mode && !validModes.includes(config.pricing_mode)) {
+      return res.status(400).json({ success: false, error: 'Invalid pricing mode' });
+    }
+
+    // Validate confidence threshold
+    if (config.confidence_threshold !== undefined) {
+      const ct = Number(config.confidence_threshold);
+      if (isNaN(ct) || ct < 0 || ct > 1) {
+        return res.status(400).json({ success: false, error: 'Confidence threshold must be between 0 and 1' });
+      }
+    }
+
+    const { error } = await supabase
+      .from('settings')
+      .upsert({
+        key: 'pipeline_config',
+        value: config,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'key' });
+
+    if (error) throw error;
+
+    log.info('Pipeline settings updated', { mode: config.pricing_mode });
+    res.json({ success: true, message: 'Pipeline settings updated' });
+  } catch (error) {
+    log.error('Update pipeline settings error', { error: error.message });
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+}
+
 module.exports = {
   setSupabaseClient,
   listQuotes,
@@ -1063,5 +1216,10 @@ module.exports = {
   testEstimate,
   getPricingHistory,
   softDeleteQuote,
-  restoreQuote
+  restoreQuote,
+  getPipelineStats,
+  getPendingApprovals,
+  approvePrice,
+  getPipelineSettings,
+  updatePipelineSettings
 };
