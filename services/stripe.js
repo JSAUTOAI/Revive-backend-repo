@@ -33,10 +33,7 @@ async function createCheckoutSession(invoice) {
   }
 
   try {
-    const baseUrl = process.env.BASE_URL;
-    if (!baseUrl) {
-      return { success: false, error: 'BASE_URL not configured' };
-    }
+    const baseUrl = process.env.BASE_URL || 'https://revive-backend-repo-production.up.railway.app';
 
     const lineItems = (Array.isArray(invoice.line_items) ? invoice.line_items : []).map(item => ({
       price_data: {
