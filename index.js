@@ -108,6 +108,22 @@ app.use(express.json({
 // Parse URL-encoded bodies (from forms)
 app.use(express.urlencoded({ extended: true }));
 
+// Canonical host: the site is published on www, and every canonical URL and
+// sitemap entry says so. Anything arriving on the bare apex is redirected
+// there so search engines don't index the same pages under two hostnames.
+// Scoped to this one hostname and to safe methods, so the Railway domain and
+// all API/webhook traffic are untouched.
+const CANONICAL_HOST = 'www.reviveexteriorcleaningsolutions.co.uk';
+const APEX_HOST = 'reviveexteriorcleaningsolutions.co.uk';
+
+app.use((req, res, next) => {
+  const host = (req.headers['x-forwarded-host'] || req.headers.host || '').split(':')[0];
+  if (host === APEX_HOST && (req.method === 'GET' || req.method === 'HEAD')) {
+    return res.redirect(301, `https://${CANONICAL_HOST}${req.originalUrl}`);
+  }
+  next();
+});
+
 // Serve static files from /public
 app.use(express.static(path.join(__dirname, 'public')));
 
