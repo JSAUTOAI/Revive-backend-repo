@@ -49,6 +49,7 @@ const customerRoutes = require('./routes/customers');
 const invoiceRoutes = require('./routes/invoices');
 const financeRoutes = require('./routes/finance');
 const webhookRoutes = require('./routes/webhooks');
+const exportRoutes = require('./routes/exports');
 
 // Create Express app
 const app = express();
@@ -72,6 +73,7 @@ pricingConfig.setSupabaseClient(supabase);
 followUpScheduler.setSupabaseClient(supabase);
 webhookRoutes.setSupabaseClient(supabase);
 pipelineRoutes.setSupabaseClient(supabase);
+exportRoutes.setSupabaseClient(supabase);
 
 // =======================
 // MIDDLEWARE
@@ -135,10 +137,48 @@ const chatLimiter = rateLimit({
 // ROUTES
 // =======================
 
-// Home route
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+// =======================
+// WEBSITE PAGES
+// =======================
+// The public site is built from the Aura mirror by scripts/build-site.mjs and
+// served from /public. Clean URLs are the canonical form; Aura's original
+// slugs 301 to them so any existing links keep working.
+
+const SITE_PAGES = {
+  '/': 'index.html',
+  '/services': 'services.html',
+  '/instant-quote': 'instant-quote.html',
+  '/before-after': 'before-after.html',
+  '/about': 'about.html',
+  '/contact': 'contact.html',
+  '/legal': 'legal.html'
+};
+
+const LEGACY_SLUGS = {
+  '/home': '/',
+  '/services-2': '/services',
+  '/contact-us': '/contact',
+  '/before-and-after': '/before-after',
+  '/instant-quote-page': '/instant-quote',
+  '/legal-pages-privacy-cookies-terms': '/legal',
+  '/terms': '/legal',
+  '/cookies': '/legal',
+  '/quote': '/instant-quote'
+};
+
+for (const [url, file] of Object.entries(SITE_PAGES)) {
+  app.get(url, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', file));
+  });
+}
+
+for (const [from, to] of Object.entries(LEGACY_SLUGS)) {
+  app.get(from, (req, res) => {
+    // 301 so search engines consolidate on the canonical URL rather than
+    // treating both as duplicate pages.
+    res.redirect(301, to);
+  });
+}
 
 // Health check for monitoring
 app.get('/health', (req, res) => {
@@ -1260,6 +1300,12 @@ app.post('/confirm-acceptance/:quoteId', async (req, res) => {
 
 // Export quotes as CSV
 app.get('/admin/export', requireAdminAuth, adminRoutes.exportQuotes);
+
+// Data export — every table as CSV, or the whole lot as one JSON backup.
+// '/all' is declared before ':dataset' so it isn't swallowed by the wildcard.
+app.get('/admin/exports', requireAdminAuth, exportRoutes.listDatasets);
+app.get('/admin/exports/all', requireAdminAuth, exportRoutes.exportAll);
+app.get('/admin/exports/:dataset', requireAdminAuth, exportRoutes.exportDataset);
 
 // List quotes with filtering
 app.get('/admin/quotes', requireAdminAuth, adminRoutes.listQuotes);

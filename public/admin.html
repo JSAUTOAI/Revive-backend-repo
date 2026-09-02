@@ -1324,6 +1324,43 @@
       </div>
     </div>
 
+    <!-- Data Export & Backup -->
+    <div class="bg-neutral-900 border border-neutral-800 rounded-xl mb-4">
+      <div class="px-5 py-4 border-b border-neutral-800 flex items-center justify-between cursor-pointer" onclick="toggleSettingsSection('dataExport')">
+        <h3 class="text-white text-sm font-semibold">Data Export &amp; Backup</h3>
+        <svg id="chevron-dataExport" class="w-4 h-4 text-neutral-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      </div>
+      <div id="section-dataExport" class="p-5">
+
+        <div class="flex flex-wrap items-end gap-3 mb-5">
+          <div>
+            <label class="block text-neutral-500 text-[10px] uppercase tracking-wider mb-1">From (optional)</label>
+            <input type="date" id="export-from" class="bg-neutral-950 border border-neutral-700 text-neutral-200 text-xs rounded-lg px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-neutral-500 text-[10px] uppercase tracking-wider mb-1">To (optional)</label>
+            <input type="date" id="export-to" class="bg-neutral-950 border border-neutral-700 text-neutral-200 text-xs rounded-lg px-3 py-2">
+          </div>
+          <label class="flex items-center gap-2 text-neutral-400 text-xs pb-2 cursor-pointer">
+            <input type="checkbox" id="export-deleted" class="accent-lime-400">
+            Include deleted records
+          </label>
+        </div>
+
+        <div class="bg-neutral-950 border border-neutral-800 rounded-lg p-4 mb-5 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p class="text-white text-sm font-semibold">Download everything</p>
+            <p class="text-neutral-500 text-xs mt-1">Every table in one JSON file — customers, quotes, jobs, invoices, finance, settings. This is your full backup.</p>
+          </div>
+          <button onclick="downloadFullBackup()" id="backup-btn" class="bg-lime-400 hover:bg-lime-300 text-black font-semibold px-4 py-2 rounded-lg text-xs transition-colors whitespace-nowrap">Download Backup</button>
+        </div>
+
+        <p class="text-neutral-500 text-xs mb-3">Or download any single table as a CSV for Excel or Google Sheets:</p>
+        <div id="export-catalogue" class="text-neutral-500 text-xs">Loading…</div>
+
+      </div>
+    </div>
+
     <!-- Section 1: Service Pricing -->
     <div class="bg-neutral-900 border border-neutral-800 rounded-xl mb-4">
       <div class="px-5 py-4 border-b border-neutral-800 flex items-center justify-between cursor-pointer" onclick="toggleSettingsSection('servicePricing')">
@@ -3563,6 +3600,15 @@ function renderTimeline(q) {
 // EXPORT
 // ============================
 async function exportCSV() {
+  // Away from the quotes tab this button exports whatever the current tab is
+  // showing. Quotes keeps its own richer export because it honours the
+  // status/service filters on screen.
+  if (currentTab !== 'quotes') {
+    var dataset = TAB_DATASETS[currentTab];
+    if (!dataset) return;
+    return downloadDataset(dataset, null, document.getElementById('csvBtn'));
+  }
+
   try {
     var params = '';
     var statusFilter = document.getElementById('filter-status').value;
@@ -3592,6 +3638,132 @@ async function exportCSV() {
     showToast('CSV exported', 'success');
   } catch (e) {
     showToast('Export failed', 'error');
+  }
+}
+
+// ============================
+// DATA EXPORT & BACKUP
+// ============================
+
+// Tabs that map onto an exportable dataset, so the header Export button knows
+// what it is exporting. Quotes is absent because it has its own richer export
+// that honours the on-screen filters.
+var TAB_DATASETS = {
+  customers: 'customers',
+  invoices: 'invoices',
+  schedule: 'jobs',
+  chats: 'chats'
+};
+
+/** Shared download plumbing: the admin API needs a bearer token, so a plain
+ *  link won't do — fetch it, then hand the blob to a synthetic anchor. */
+async function downloadFromApi(path, filename, btn) {
+  var original = btn ? btn.textContent : null;
+  if (btn) { btn.disabled = true; btn.textContent = 'Preparing…'; }
+
+  try {
+    var res = await fetch(API_BASE + path, {
+      headers: { 'Authorization': 'Bearer ' + state.token }
+    });
+
+    if (!res.ok) {
+      var err = await res.json().catch(function() { return {}; });
+      showToast(err.error || 'Export failed', 'error');
+      return false;
+    }
+
+    var blob = await res.blob();
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    return true;
+
+  } catch (e) {
+    showToast('Export failed', 'error');
+    return false;
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = original; }
+  }
+}
+
+/** Date range and deleted-records options from the Settings panel. */
+function exportFilterParams() {
+  var params = [];
+  var from = document.getElementById('export-from');
+  var to = document.getElementById('export-to');
+  var deleted = document.getElementById('export-deleted');
+  if (from && from.value) params.push('date_from=' + from.value);
+  if (to && to.value) params.push('date_to=' + to.value);
+  if (deleted && deleted.checked) params.push('include_deleted=1');
+  return params.length ? '?' + params.join('&') : '';
+}
+
+function todayStamp() {
+  return new Date().toISOString().split('T')[0];
+}
+
+/** `applyFilters` is opt-in: only the Settings panel owns the date-range and
+ *  deleted-records inputs, so the per-tab Export button must not silently
+ *  inherit a range someone set on another screen. */
+async function downloadDataset(key, label, btn, applyFilters) {
+  var ok = await downloadFromApi(
+    '/admin/exports/' + key + (applyFilters ? exportFilterParams() : ''),
+    'revive-' + key + '-' + todayStamp() + '.csv',
+    btn
+  );
+  if (ok) showToast((label || key) + ' exported', 'success');
+}
+
+async function downloadFullBackup() {
+  var btn = document.getElementById('backup-btn');
+  var ok = await downloadFromApi(
+    '/admin/exports/all' + exportFilterParams(),
+    'revive-backup-' + todayStamp() + '.json',
+    btn
+  );
+  if (ok) showToast('Backup downloaded', 'success');
+}
+
+/** The catalogue is rendered from the API rather than hardcoded, so adding a
+ *  dataset on the server puts a button here automatically. */
+async function loadExportCatalogue() {
+  var box = document.getElementById('export-catalogue');
+  if (!box) return;
+
+  try {
+    var res = await fetch(API_BASE + '/admin/exports', {
+      headers: { 'Authorization': 'Bearer ' + state.token }
+    });
+    var data = await res.json();
+    if (!data.success) throw new Error('failed');
+
+    var groups = { crm: 'Leads & Customers', operations: 'Operations', money: 'Money', system: 'System' };
+    var html = '';
+
+    Object.keys(groups).forEach(function(group) {
+      var items = data.datasets.filter(function(d) { return d.group === group; });
+      if (!items.length) return;
+
+      html += '<div class="mb-4">';
+      html += '<p class="text-neutral-500 text-[10px] uppercase tracking-wider mb-2">' + groups[group] + '</p>';
+      html += '<div class="flex flex-wrap gap-2">';
+      items.forEach(function(d) {
+        html += '<button onclick="downloadDataset(\'' + d.key + '\', \'' + d.label.replace(/'/g, "\\'") + '\', this, true)" '
+             +  'class="bg-neutral-950 border border-neutral-700 hover:border-lime-400 text-neutral-300 hover:text-white px-3 py-2 rounded-lg text-xs transition-colors">'
+             +  d.label + '</button>';
+      });
+      html += '</div></div>';
+    });
+
+    box.innerHTML = html;
+
+  } catch (e) {
+    box.innerHTML = '<span class="text-red-400">Could not load the export list. Reload the page to try again.</span>';
   }
 }
 
@@ -3730,9 +3902,17 @@ function switchTab(tab) {
   document.getElementById('content-' + tab).classList.remove('hidden');
   document.getElementById('tab-' + tab).className = 'tab-btn px-4 py-2 text-xs font-semibold rounded-t-lg transition-colors bg-neutral-900 text-lime-400 border border-neutral-800 border-b-0';
 
-  // Show/hide CSV button (only on quotes tab)
+  // Show the CSV button on any tab that has something to export, and label it
+  // with what it will actually download.
   var csvBtn = document.getElementById('csvBtn');
-  if (csvBtn) csvBtn.style.display = tab === 'quotes' ? '' : 'none';
+  if (csvBtn) {
+    var exportable = tab === 'quotes' || TAB_DATASETS[tab];
+    csvBtn.style.display = exportable ? '' : 'none';
+    if (exportable) {
+      var name = tab === 'schedule' ? 'Jobs' : tab.charAt(0).toUpperCase() + tab.slice(1);
+      csvBtn.title = 'Download ' + name + ' as CSV';
+    }
+  }
 
   // Show loading spinner for non-quotes tabs (quotes has its own)
   if (tab !== 'quotes') showTabLoading(tab);
@@ -3745,7 +3925,7 @@ function switchTab(tab) {
   if (tab === 'finance') finLoadAll();
   if (tab === 'chats') loadChats();
   if (tab === 'reports') loadReports();
-  if (tab === 'settings') loadSettings();
+  if (tab === 'settings') { loadSettings(); loadExportCatalogue(); }
 }
 
 // ============================
